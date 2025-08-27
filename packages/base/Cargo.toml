@@ -1,0 +1,27 @@
+[package]
+name = "base"
+version = "1.0.0"
+description = "Common used codebase"
+repository = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = []
+dev = []
+std = []
+
+[dependencies]
+pinocchio = { workspace = true }
+pinocchio-pubkey = { workspace = true }
+pinocchio-system = { workspace = true }
+pinocchio-token = { workspace = true }
+pinocchio-associated-token-account = { workspace = true }
+solana-instruction = { workspace = true }
+solana-pubkey = { workspace = true }
+strum = { workspace = true }
+strum_macros = { workspace = true }

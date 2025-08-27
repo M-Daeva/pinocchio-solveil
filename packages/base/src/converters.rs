@@ -1,0 +1,414 @@
+use {
+    crate::types::Result,
+    pinocchio::{program_error::ProgramError, pubkey::Pubkey, ProgramResult},
+    std::{mem, slice},
+};
+
+// TODO: try to use bytemuck
+
+/// for tests
+#[cfg(feature = "dev")]
+pub fn from_u8_option(data: Option<u8>) -> Result<Vec<u8>> {
+    Ok(vec![data.unwrap_or_default()])
+}
+
+/// for tests
+#[cfg(feature = "dev")]
+pub fn from_u8(data: u8) -> Result<Vec<u8>> {
+    Ok(vec![data])
+}
+
+// Boolean (1 byte: 0 = false, non-zero = true)
+#[inline]
+pub fn to_bool(data: &[u8], start_index: usize) -> Result<(bool, usize)> {
+    const DATA_SIZE: usize = 1;
+    let end_index = start_index + DATA_SIZE;
+    let value = data[start_index] != 0;
+
+    Ok((value, end_index))
+}
+
+// u8 (1 byte)
+#[inline]
+pub fn to_u8(data: &[u8], start_index: usize) -> Result<(u8, usize)> {
+    const DATA_SIZE: usize = 1;
+    let end_index = start_index + DATA_SIZE;
+    let value = data[start_index];
+
+    Ok((value, end_index))
+}
+
+// u16 (2 bytes, little-endian)
+#[inline]
+pub fn to_u16(data: &[u8], start_index: usize) -> Result<(u16, usize)> {
+    const DATA_SIZE: usize = 2;
+    let end_index = start_index + DATA_SIZE;
+    let data_slice = &data[start_index..end_index];
+
+    let value = u16::from_le_bytes(
+        data_slice
+            .try_into()
+            .map_err(|_| ProgramError::InvalidInstructionData)?,
+    );
+
+    Ok((value, end_index))
+}
+
+// u32 (4 bytes, little-endian)
+#[inline]
+pub fn to_u32(data: &[u8], start_index: usize) -> Result<(u32, usize)> {
+    const DATA_SIZE: usize = 4;
+    let end_index = start_index + DATA_SIZE;
+    let data_slice = &data[start_index..end_index];
+
+    let value = u32::from_le_bytes(
+        data_slice
+            .try_into()
+            .map_err(|_| ProgramError::InvalidInstructionData)?,
+    );
+
+    Ok((value, end_index))
+}
+
+// u64 (8 bytes, little-endian)
+#[inline]
+pub fn to_u64(data: &[u8], start_index: usize) -> Result<(u64, usize)> {
+    const DATA_SIZE: usize = 8;
+    let end_index = start_index + DATA_SIZE;
+    let data_slice = &data[start_index..end_index];
+
+    let value = u64::from_le_bytes(
+        data_slice
+            .try_into()
+            .map_err(|_| ProgramError::InvalidInstructionData)?,
+    );
+
+    Ok((value, end_index))
+}
+
+// u128 (16 bytes, little-endian)
+#[inline]
+pub fn to_u128(data: &[u8], start_index: usize) -> Result<(u128, usize)> {
+    const DATA_SIZE: usize = 16;
+    let end_index = start_index + DATA_SIZE;
+    let data_slice = &data[start_index..end_index];
+
+    let value = u128::from_le_bytes(
+        data_slice
+            .try_into()
+            .map_err(|_| ProgramError::InvalidInstructionData)?,
+    );
+
+    Ok((value, end_index))
+}
+
+#[inline]
+pub fn to_pubkey(data: &[u8], start_index: usize) -> Result<(Pubkey, usize)> {
+    const DATA_SIZE: usize = 32;
+    let end_index = start_index + DATA_SIZE;
+    let data_slice = &data[start_index..end_index];
+
+    let value = Pubkey::try_from(data_slice).map_err(|_| ProgramError::InvalidInstructionData)?;
+
+    Ok((value, end_index))
+}
+
+// String (length-prefixed with u32, then UTF-8 bytes)
+// Format: [length: u32][utf8_bytes: length bytes]
+#[inline]
+pub fn to_string(data: &[u8], start_index: usize) -> Result<(String, usize)> {
+    const U32_DATA_SIZE: usize = 4;
+    let (length, _) = to_u32(data, start_index)?;
+    let content_start = start_index + U32_DATA_SIZE;
+    let content_end = content_start + length as usize;
+
+    let string = String::from_utf8(data[content_start..content_end].to_vec())
+        .map_err(|_| ProgramError::InvalidInstructionData)?;
+
+    Ok((string, content_end))
+}
+
+// Vec<T> where T has a fixed size (like u64, u32, etc.)
+// Format: [length: u32][items: length * size_of::<T>() bytes]
+#[inline]
+pub fn to_vec_fixed<T, F>(
+    data: &[u8],
+    start_index: usize,
+    item_parser: F,
+) -> Result<(Vec<T>, usize)>
+where
+    F: Fn(&[u8], usize) -> Result<(T, usize)>,
+{
+    let (length, mut current_index) = to_u32(data, start_index)?;
+    let mut vec = Vec::with_capacity(length as usize);
+
+    for _ in 0..length {
+        let (item, end_index) = item_parser(data, current_index)?;
+        vec.push(item);
+        current_index = end_index;
+    }
+
+    Ok((vec, current_index))
+}
+
+// Option<T> (1 byte discriminant + optional T)
+// Format: [is_some: u8][value: T if is_some != 0]
+#[inline]
+pub fn to_option<T, F>(
+    data: &[u8],
+    start_index: usize,
+    item_parser: F,
+) -> Result<(Option<T>, usize)>
+where
+    F: Fn(&[u8], usize) -> Result<(T, usize)>,
+{
+    let (is_some, _) = to_bool(data, start_index)?;
+
+    if is_some {
+        let (value, new_index) = item_parser(data, start_index)?;
+        Ok((Some(value), new_index))
+    } else {
+        Ok((None, start_index))
+    }
+}
+
+// Array of fixed-size elements [T; N]
+// No length prefix - reads exactly N elements of type T
+#[inline]
+pub fn to_array<T, F, const N: usize>(
+    data: &[u8],
+    start_index: usize,
+    item_parser: F,
+) -> Result<([T; N], usize)>
+where
+    T: Copy + Default,
+    F: Fn(&[u8], usize) -> Result<(T, usize)>,
+{
+    let mut array = [T::default(); N];
+    let mut current_index = start_index;
+
+    for i in 0..N {
+        let (item, end_index) = item_parser(data, current_index)?;
+        array[i] = item;
+        current_index = end_index;
+    }
+
+    Ok((array, current_index))
+}
+
+// For types that can be directly interpreted as bytes (zero-copy)
+
+// Boolean (1 byte: 0 = false, 1 = true)
+#[inline]
+pub fn bool_as_bytes(value: &bool) -> &[u8] {
+    unsafe { slice::from_raw_parts(value as *const bool as *const u8, 1) }
+}
+
+// u8 (1 byte) - already a byte
+#[inline]
+pub fn u8_as_bytes(value: &u8) -> &[u8] {
+    slice::from_ref(value)
+}
+
+// u16 (2 bytes, little-endian)
+#[inline]
+pub fn u16_as_bytes(value: &u16) -> &[u8] {
+    unsafe { slice::from_raw_parts(value as *const u16 as *const u8, mem::size_of::<u16>()) }
+}
+
+// u32 (4 bytes, little-endian)
+#[inline]
+pub fn u32_as_bytes(value: &u32) -> &[u8] {
+    unsafe { slice::from_raw_parts(value as *const u32 as *const u8, mem::size_of::<u32>()) }
+}
+
+// u64 (8 bytes, little-endian)
+#[inline]
+pub fn u64_as_bytes(value: &u64) -> &[u8] {
+    unsafe { slice::from_raw_parts(value as *const u64 as *const u8, mem::size_of::<u64>()) }
+}
+
+// u128 (16 bytes, little-endian)
+#[inline]
+pub fn u128_as_bytes(value: &u128) -> &[u8] {
+    unsafe { slice::from_raw_parts(value as *const u128 as *const u8, mem::size_of::<u128>()) }
+}
+
+// Pubkey (32 bytes) - assuming Pubkey has as_ref() or to_bytes() method
+#[inline]
+pub fn pubkey_as_bytes(value: &Pubkey) -> &[u8] {
+    value.as_ref() // Most Pubkey implementations provide this
+}
+
+// String as UTF-8 bytes (no length prefix - just the content)
+#[inline]
+pub fn string_as_bytes(value: &str) -> &[u8] {
+    value.as_bytes()
+}
+
+// // Arrays of primitive types (zero-copy)
+// #[inline]
+// pub fn array_u8_as_bytes<const N: usize>(value: &[u8; N]) -> &[u8] {
+//     value.as_slice()
+// }
+
+// #[inline]
+// pub fn array_u16_as_bytes<const N: usize>(value: &[u16; N]) -> &[u8] {
+//     unsafe { slice::from_raw_parts(value.as_ptr() as *const u8, N * mem::size_of::<u16>()) }
+// }
+
+// #[inline]
+// pub fn array_u32_as_bytes<const N: usize>(value: &[u32; N]) -> &[u8] {
+//     unsafe { slice::from_raw_parts(value.as_ptr() as *const u8, N * mem::size_of::<u32>()) }
+// }
+
+// #[inline]
+// pub fn array_u64_as_bytes<const N: usize>(value: &[u64; N]) -> &[u8] {
+//     unsafe { slice::from_raw_parts(value.as_ptr() as *const u8, N * mem::size_of::<u64>()) }
+// }
+
+// Slices of primitive types (zero-copy)
+#[inline]
+pub fn slice_u16_as_bytes(value: &[u16]) -> &[u8] {
+    unsafe {
+        slice::from_raw_parts(
+            value.as_ptr() as *const u8,
+            value.len() * mem::size_of::<u16>(),
+        )
+    }
+}
+
+#[inline]
+pub fn slice_u32_as_bytes(value: &[u32]) -> &[u8] {
+    unsafe {
+        slice::from_raw_parts(
+            value.as_ptr() as *const u8,
+            value.len() * mem::size_of::<u32>(),
+        )
+    }
+}
+
+#[inline]
+pub fn slice_u64_as_bytes(value: &[u64]) -> &[u8] {
+    unsafe {
+        slice::from_raw_parts(
+            value.as_ptr() as *const u8,
+            value.len() * mem::size_of::<u64>(),
+        )
+    }
+}
+
+#[inline]
+pub fn slice_u128_as_bytes(value: &[u128]) -> &[u8] {
+    unsafe {
+        slice::from_raw_parts(
+            value.as_ptr() as *const u8,
+            value.len() * mem::size_of::<u128>(),
+        )
+    }
+}
+
+// Generic function for any type that can be safely interpreted as bytes
+#[inline]
+pub fn any_as_bytes<T>(value: &T) -> &[u8] {
+    unsafe { slice::from_raw_parts(value as *const T as *const u8, mem::size_of::<T>()) }
+}
+
+// For cases where you need to build complex structures efficiently
+// Use a pre-allocated buffer and write directly into it
+
+pub struct ByteWriter<'a> {
+    buffer: &'a mut [u8],
+    position: usize,
+}
+
+impl<'a> ByteWriter<'a> {
+    #[inline]
+    pub fn new(buffer: &'a mut [u8]) -> Self {
+        Self {
+            buffer,
+            position: 0,
+        }
+    }
+
+    #[inline]
+    pub fn write_bytes(&mut self, data: &[u8]) -> ProgramResult {
+        let end_pos = self.position + data.len();
+        if end_pos > self.buffer.len() {
+            Err(ProgramError::InvalidInstructionData)?;
+        }
+
+        self.buffer[self.position..end_pos].copy_from_slice(data);
+        self.position = end_pos;
+
+        Ok(())
+    }
+
+    #[inline]
+    pub fn write_u8(&mut self, value: u8) -> ProgramResult {
+        self.write_bytes(&[value])
+    }
+
+    #[inline]
+    pub fn write_u16(&mut self, value: u16) -> ProgramResult {
+        self.write_bytes(&value.to_le_bytes())
+    }
+
+    #[inline]
+    pub fn write_u32(&mut self, value: u32) -> ProgramResult {
+        self.write_bytes(&value.to_le_bytes())
+    }
+
+    #[inline]
+    pub fn write_u64(&mut self, value: u64) -> ProgramResult {
+        self.write_bytes(&value.to_le_bytes())
+    }
+
+    #[inline]
+    pub fn write_u128(&mut self, value: u128) -> ProgramResult {
+        self.write_bytes(&value.to_le_bytes())
+    }
+
+    #[inline]
+    pub fn write_bool(&mut self, value: bool) -> ProgramResult {
+        self.write_u8(if value { 1 } else { 0 })
+    }
+
+    #[inline]
+    pub fn write_string(&mut self, value: &str) -> ProgramResult {
+        let bytes = value.as_bytes();
+        self.write_u32(bytes.len() as u32)?;
+        self.write_bytes(bytes)
+    }
+
+    #[inline]
+    pub fn write_pubkey(&mut self, value: &Pubkey) -> ProgramResult {
+        self.write_bytes(value.as_ref())
+    }
+
+    #[inline]
+    pub fn position(&self) -> usize {
+        self.position
+    }
+
+    #[inline]
+    pub fn remaining(&self) -> usize {
+        self.buffer.len() - self.position
+    }
+
+    #[inline]
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.buffer[..self.position]
+    }
+}
+
+// Macro for creating temporary byte arrays on the stack (for small data)
+#[macro_export]
+macro_rules! stack_serialize {
+    ($size:expr, |$writer:ident| $body:expr) => {{
+        let mut buffer = [0u8; $size];
+        let mut $writer = ByteWriter::new(&mut buffer);
+        $body?;
+        Ok($writer.as_bytes())
+    }};
+}

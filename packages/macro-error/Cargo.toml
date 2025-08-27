@@ -1,0 +1,21 @@
+[package]
+name = "macro-error"
+version = "1.0.0"
+description = "Macro to generate custom error wrapper"
+repository = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = []
+dev = []
+std = []
+
+[dependencies]
+pinocchio = { workspace = true }
+strum = { workspace = true }
+strum_macros = { workspace = true }

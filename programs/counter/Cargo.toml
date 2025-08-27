@@ -1,0 +1,24 @@
+[package]
+name = "counter"
+version = "1.0.0"
+description = "Pinocchio counter"
+repository = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = []
+std = []
+
+[dependencies]
+pinocchio = { workspace = true }
+pinocchio-pubkey = { workspace = true }
+pinocchio-log = { workspace = true }
+
+base = { workspace = true }
+macro-error = { workspace = true }
+counter-cpi = { workspace = true }
