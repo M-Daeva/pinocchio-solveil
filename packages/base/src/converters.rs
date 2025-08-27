@@ -366,6 +366,23 @@ impl<'a> ByteWriter<'a> {
     }
 
     #[inline]
+    pub fn write_option_custom<T>(&mut self, value: &Option<T>) -> ProgramResult
+    where
+        T: ZeroCopySerialize + ZeroCopyDeserialize,
+    {
+        match value {
+            Some(inner_value) => {
+                self.write_u8(1)?; // is_some = true
+                self.write_custom(inner_value)?;
+            }
+            None => {
+                self.write_u8(0)?; // is_some = false
+            }
+        }
+        Ok(())
+    }
+
+    #[inline]
     pub fn write_bytes(&mut self, data: &[u8]) -> ProgramResult {
         let end_pos = self.position + data.len();
         if end_pos > self.buffer.len() {

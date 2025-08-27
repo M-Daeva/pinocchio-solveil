@@ -1,7 +1,7 @@
 [package]
-name = "counter"
+name = "registry"
 version = "1.0.0"
-description = "Pinocchio counter"
+description = "Pinocchio registry"
 repository = { workspace = true }
 edition = { workspace = true }
 authors = { workspace = true }
@@ -21,4 +21,4 @@ pinocchio-log = { workspace = true }
 
 base = { workspace = true }
 macro-error = { workspace = true }
-counter-cpi = { workspace = true }
+registry-cpi = { workspace = true }

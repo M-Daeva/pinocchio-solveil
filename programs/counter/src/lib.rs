@@ -1,11 +1,11 @@
 #![allow(unexpected_cfgs)]
 
 use {
-    counter_cpi::{state::discriminator as DISCRIMINATOR, ID},
     pinocchio::{
         account_info::AccountInfo, entrypoint, program_error::ProgramError, pubkey::Pubkey,
         ProgramResult,
     },
+    registry_cpi::{state::discriminator as DISCRIMINATOR, ID},
 };
 
 mod instructions;
@@ -22,7 +22,6 @@ pub fn process_instruction(
         Some((discriminator, data)) => {
             let instruction = match *discriminator {
                 DISCRIMINATOR::INIT => instructions::init,
-                DISCRIMINATOR::SET => instructions::set,
                 _ => Err(ProgramError::InvalidInstructionData)?,
             };
 
