@@ -1,10 +1,8 @@
 use {
-    crate::types::Result,
+    crate::types::{Result, ZeroCopyDeserialize, ZeroCopySerialize},
     pinocchio::{program_error::ProgramError, pubkey::Pubkey, ProgramResult},
     std::{mem, slice},
 };
-
-// TODO: try to use bytemuck
 
 /// for tests
 #[cfg(feature = "dev")]
@@ -308,6 +306,26 @@ pub fn slice_u128_as_bytes(value: &[u128]) -> &[u8] {
     }
 }
 
+// Option<T> (1 byte discriminant + optional T)
+// Format: [is_some: u8][value: T if is_some != 0]
+#[inline]
+pub fn option_as_bytes<T, F>(value: &Option<T>, item_serializer: F) -> Vec<u8>
+where
+    F: Fn(&T) -> &[u8],
+{
+    match value {
+        Some(inner_value) => {
+            let mut bytes = Vec::new();
+            bytes.push(1u8); // is_some = true
+            bytes.extend_from_slice(item_serializer(inner_value));
+            bytes
+        }
+        None => {
+            vec![0u8] // is_some = false, no additional data
+        }
+    }
+}
+
 // Generic function for any type that can be safely interpreted as bytes
 #[inline]
 pub fn any_as_bytes<T>(value: &T) -> &[u8] {
@@ -329,6 +347,22 @@ impl<'a> ByteWriter<'a> {
             buffer,
             position: 0,
         }
+    }
+
+    #[inline]
+    pub fn write_custom<T>(&mut self, data: &T) -> ProgramResult
+    where
+        T: ZeroCopySerialize + ZeroCopyDeserialize,
+    {
+        let end_pos = self.position + core::mem::size_of::<T>();
+        if end_pos > self.buffer.len() {
+            Err(ProgramError::InvalidInstructionData)?;
+        }
+
+        data.serialize_into(self.buffer)?;
+        self.position = end_pos;
+
+        Ok(())
     }
 
     #[inline]

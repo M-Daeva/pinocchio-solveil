@@ -4,21 +4,40 @@ use {
     strum_macros::EnumIter,
 };
 
-// Generate AnyError with all your error types
+// Generate AnyError with all error types
 any_error! {
     CustomError => Custom,
     AuthError => Auth
 }
 
-// Your existing error enums - now they need EnumIter to work with the macro
 #[derive(Clone, Copy, Debug, Eq, PartialEq, EnumIter)]
 pub enum CustomError {
-    // "No parameters were provided"
+    // "Parameters are not provided!"
     NoParameters,
-    // "Wrong asset type was used"
+    // "Wrong asset type!"
     WrongAssetType,
-    // "Zero amount can't be accepted"
+    // "Zero amount to send!"
     ZeroAmount,
+    // "Exceeded available asset amount!"
+    ExceededAvailableAssetAmount,
+    // "The contract is temporary paused!"
+    ContractIsPaused,
+    // "Max data size is out of range!"
+    MaxDataSizeIsOutOfRange,
+    // "Max data size is exceeded!"
+    MaxDataSizeIsExceeded,
+    // "Wrong user ID!"
+    WrongUserId,
+    // "Account can't be activated twice!"
+    ActivateAccountTwice,
+    // "Account isn't activated!"
+    AccountIsNotActivated,
+    // "Account can't be opened twice!"
+    OpenAccountTwice,
+    // "Account isn't opened!"
+    AccountIsNotOpened,
+    // "Nonce must be unique!"
+    BadNonce,
 }
 
 impl ErrorIndexOffset for CustomError {

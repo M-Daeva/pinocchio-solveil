@@ -1,7 +1,10 @@
 use {
     crate::types::common::{AssetItem, Range},
     base::{
-        converters::{to_bool, to_pubkey, to_u32, to_u8, ByteWriter},
+        converters::{
+            option_as_bytes, pubkey_as_bytes, to_bool, to_option, to_pubkey, to_u32, to_u64, to_u8,
+            ByteWriter,
+        },
         guards::check_ix_data_len,
         helpers::get_space,
         types::{Result, Space, ZeroCopyDeserialize, ZeroCopySerialize},
@@ -84,7 +87,7 @@ impl Space for Bump {
 
 #[derive(Debug, PartialEq)]
 pub struct Config {
-    /// can update the config and execute priveled instructions
+    /// can update the config and execute priveledged instructions
     pub admin: Pubkey,
     pub is_paused: bool,
     pub rotation_timeout: u32,
@@ -98,7 +101,8 @@ impl ZeroCopySerialize for Config {
         writer.write_pubkey(&self.admin)?;
         writer.write_bool(self.is_paused)?;
         writer.write_u32(self.rotation_timeout)?;
-        // TODO: write registration_fee, data_size_range
+        writer.write_custom::<AssetItem>(&self.registration_fee)?;
+        writer.write_custom::<Range>(&self.data_size_range)?;
 
         Ok(())
     }
@@ -138,6 +142,30 @@ pub struct UserCounter {
     pub last_user_id: u32,
 }
 
+impl ZeroCopySerialize for UserCounter {
+    fn serialize_into(&self, data: &mut [u8]) -> Result<()> {
+        let mut writer = ByteWriter::new(data);
+        writer.write_u32(self.last_user_id)?;
+
+        Ok(())
+    }
+}
+
+impl ZeroCopyDeserialize for UserCounter {
+    fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)> {
+        let (last_user_id, end_index) = to_u32(data, start_index)?;
+        check_ix_data_len(data, end_index)?;
+
+        Ok((Self { last_user_id }, end_index))
+    }
+}
+
+impl Space for UserCounter {
+    fn get_space() -> u64 {
+        get_space::<Self>()
+    }
+}
+
 /// to transfer ownership from one address to another in 2 steps (for security reasons) \
 /// used both for app admin and user accounts
 #[derive(Debug, PartialEq)]
@@ -145,6 +173,41 @@ pub struct RotationState {
     pub owner: Pubkey,
     pub new_owner: Option<Pubkey>,
     pub expiration_date: u64,
+}
+
+impl ZeroCopySerialize for RotationState {
+    fn serialize_into(&self, data: &mut [u8]) -> Result<()> {
+        let mut writer = ByteWriter::new(data);
+        writer.write_pubkey(&self.owner)?;
+        writer.write_bytes(&option_as_bytes(&self.new_owner, pubkey_as_bytes))?;
+        writer.write_u64(self.expiration_date)?;
+
+        Ok(())
+    }
+}
+
+impl ZeroCopyDeserialize for RotationState {
+    fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)> {
+        let (owner, end_index) = to_pubkey(data, start_index)?;
+        let (new_owner, end_index) = to_option(data, end_index, to_pubkey)?;
+        let (expiration_date, end_index) = to_u64(data, end_index)?;
+        check_ix_data_len(data, end_index)?;
+
+        Ok((
+            Self {
+                owner,
+                new_owner,
+                expiration_date,
+            },
+            end_index,
+        ))
+    }
+}
+
+impl Space for RotationState {
+    fn get_space() -> u64 {
+        get_space::<Self>()
+    }
 }
 
 // /// get by user: Pubkey
