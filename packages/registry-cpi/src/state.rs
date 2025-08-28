@@ -2,8 +2,8 @@ use {
     crate::types::common::{AssetItem, Range},
     base::{
         converters::{
-            option_as_bytes, pubkey_as_bytes, to_bool, to_option, to_pubkey, to_u32, to_u64, to_u8,
-            ByteWriter,
+            option_as_bytes, pubkey_as_bytes, to_bool, to_option, to_pubkey, to_string, to_u32,
+            to_u64, to_u8, ByteWriter,
         },
         guards::check_ix_data_len,
         helpers::get_space,
@@ -210,34 +210,102 @@ impl Space for RotationState {
     }
 }
 
-// /// get by user: Pubkey
-// #[account]
-// #[derive(InitSpace, PartialEq, Debug)]
-// pub struct UserId {
-//     pub id: u32,
-//     pub is_open: bool,
-//     pub is_activated: bool,
-//     pub account_bump: u8,
-//     pub rotation_state_bump: u8,
-// }
+/// get by user: Pubkey
+#[derive(Debug, PartialEq)]
+pub struct UserId {
+    pub id: u32,
+    pub is_open: bool,
+    pub is_activated: bool,
+    pub account_bump: u8,
+    pub rotation_state_bump: u8,
+}
 
-// /// get by user_id: u32
-// #[account]
-// #[derive(PartialEq, Debug)]
-// pub struct UserAccount {
-//     /// encrypted user data
-//     pub data: String,
-//     /// encryption nonce
-//     pub nonce: u64,
-//     /// allocated storage capacity
-//     pub max_size: u32,
-// }
+impl ZeroCopySerialize for UserId {
+    fn serialize_into(&self, data: &mut [u8]) -> Result<()> {
+        let mut writer = ByteWriter::new(data);
+        writer.write_u32(self.id)?;
+        writer.write_bool(self.is_open)?;
+        writer.write_bool(self.is_activated)?;
+        writer.write_u8(self.account_bump)?;
+        writer.write_u8(self.rotation_state_bump)?;
 
-// impl UserAccount {
-//     pub fn get_space(max_size: u32) -> usize {
-//         8 +   // discriminator
-//         4 + max_size as usize + // data (String: 4 bytes length + content)
-//         8 +   // nonce (u64)
-//         4 // max_size (u32)
-//     }
-// }
+        Ok(())
+    }
+}
+
+impl ZeroCopyDeserialize for UserId {
+    fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)> {
+        let (id, end_index) = to_u32(data, start_index)?;
+        let (is_open, end_index) = to_bool(data, end_index)?;
+        let (is_activated, end_index) = to_bool(data, end_index)?;
+        let (account_bump, end_index) = to_u8(data, end_index)?;
+        let (rotation_state_bump, end_index) = to_u8(data, end_index)?;
+        check_ix_data_len(data, end_index)?;
+
+        Ok((
+            Self {
+                id,
+                is_open,
+                is_activated,
+                account_bump,
+                rotation_state_bump,
+            },
+            end_index,
+        ))
+    }
+}
+
+impl Space for UserId {
+    fn get_space() -> u64 {
+        get_space::<Self>()
+    }
+}
+
+/// get by user_id: u32
+#[derive(Debug, PartialEq)]
+pub struct UserAccount {
+    /// encrypted user data
+    pub data: String,
+    /// encryption nonce
+    pub nonce: u64,
+    /// allocated storage capacity
+    pub max_size: u32,
+}
+
+impl ZeroCopySerialize for UserAccount {
+    fn serialize_into(&self, data: &mut [u8]) -> Result<()> {
+        let mut writer = ByteWriter::new(data);
+        writer.write_string(&self.data)?;
+        writer.write_u64(self.nonce)?;
+        writer.write_u32(self.max_size)?;
+
+        Ok(())
+    }
+}
+
+impl ZeroCopyDeserialize for UserAccount {
+    fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)> {
+        let (self_data, end_index) = to_string(data, start_index)?;
+        let (nonce, end_index) = to_u64(data, end_index)?;
+        let (max_size, end_index) = to_u32(data, end_index)?;
+        check_ix_data_len(data, end_index)?;
+
+        Ok((
+            Self {
+                data: self_data,
+                nonce,
+                max_size,
+            },
+            end_index,
+        ))
+    }
+}
+
+impl UserAccount {
+    pub fn get_space(max_size: u32) -> usize {
+        8 +   // discriminator
+        4 + max_size as usize + // data (String: 4 bytes length + content)
+        8 +   // nonce (u64)
+        4 // max_size (u32)
+    }
+}
