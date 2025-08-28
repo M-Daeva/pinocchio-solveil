@@ -52,12 +52,11 @@ pub struct Bump {
 
 impl ZeroCopySerialize for Bump {
     fn serialize_into(&self, data: &mut [u8]) -> Result<()> {
-        let mut writer = ByteWriter::new(data);
-        writer.write_u8(self.config)?;
-        writer.write_u8(self.user_counter)?;
-        writer.write_u8(self.rotation_state)?;
-
-        Ok(())
+        ByteWriter::new(data)
+            .write_u8(self.config)?
+            .write_u8(self.user_counter)?
+            .write_u8(self.rotation_state)?
+            .complete()
     }
 }
 
@@ -97,14 +96,13 @@ pub struct Config {
 
 impl ZeroCopySerialize for Config {
     fn serialize_into(&self, data: &mut [u8]) -> Result<()> {
-        let mut writer = ByteWriter::new(data);
-        writer.write_pubkey(&self.admin)?;
-        writer.write_bool(self.is_paused)?;
-        writer.write_u32(self.rotation_timeout)?;
-        writer.write_custom::<AssetItem>(&self.registration_fee)?;
-        writer.write_custom::<Range>(&self.data_size_range)?;
-
-        Ok(())
+        ByteWriter::new(data)
+            .write_pubkey(&self.admin)?
+            .write_bool(self.is_paused)?
+            .write_u32(self.rotation_timeout)?
+            .write_custom::<AssetItem>(&self.registration_fee)?
+            .write_custom::<Range>(&self.data_size_range)?
+            .complete()
     }
 }
 
@@ -144,10 +142,9 @@ pub struct UserCounter {
 
 impl ZeroCopySerialize for UserCounter {
     fn serialize_into(&self, data: &mut [u8]) -> Result<()> {
-        let mut writer = ByteWriter::new(data);
-        writer.write_u32(self.last_user_id)?;
-
-        Ok(())
+        ByteWriter::new(data)
+            .write_u32(self.last_user_id)?
+            .complete()
     }
 }
 
@@ -177,12 +174,11 @@ pub struct RotationState {
 
 impl ZeroCopySerialize for RotationState {
     fn serialize_into(&self, data: &mut [u8]) -> Result<()> {
-        let mut writer = ByteWriter::new(data);
-        writer.write_pubkey(&self.owner)?;
-        writer.write_bytes(&option_as_bytes(&self.new_owner, pubkey_as_bytes))?;
-        writer.write_u64(self.expiration_date)?;
-
-        Ok(())
+        ByteWriter::new(data)
+            .write_pubkey(&self.owner)?
+            .write_bytes(&option_as_bytes(&self.new_owner, pubkey_as_bytes))?
+            .write_u64(self.expiration_date)?
+            .complete()
     }
 }
 
@@ -222,14 +218,13 @@ pub struct UserId {
 
 impl ZeroCopySerialize for UserId {
     fn serialize_into(&self, data: &mut [u8]) -> Result<()> {
-        let mut writer = ByteWriter::new(data);
-        writer.write_u32(self.id)?;
-        writer.write_bool(self.is_open)?;
-        writer.write_bool(self.is_activated)?;
-        writer.write_u8(self.account_bump)?;
-        writer.write_u8(self.rotation_state_bump)?;
-
-        Ok(())
+        ByteWriter::new(data)
+            .write_u32(self.id)?
+            .write_bool(self.is_open)?
+            .write_bool(self.is_activated)?
+            .write_u8(self.account_bump)?
+            .write_u8(self.rotation_state_bump)?
+            .complete()
     }
 }
 
@@ -274,12 +269,11 @@ pub struct UserAccount {
 
 impl ZeroCopySerialize for UserAccount {
     fn serialize_into(&self, data: &mut [u8]) -> Result<()> {
-        let mut writer = ByteWriter::new(data);
-        writer.write_string(&self.data)?;
-        writer.write_u64(self.nonce)?;
-        writer.write_u32(self.max_size)?;
-
-        Ok(())
+        ByteWriter::new(data)
+            .write_string(&self.data)?
+            .write_u64(self.nonce)?
+            .write_u32(self.max_size)?
+            .complete()
     }
 }
 

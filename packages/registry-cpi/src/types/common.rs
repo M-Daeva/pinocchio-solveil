@@ -15,11 +15,10 @@ pub struct AssetItem {
 
 impl ZeroCopySerialize for AssetItem {
     fn serialize_into(&self, data: &mut [u8]) -> Result<()> {
-        let mut writer = ByteWriter::new(data);
-        writer.write_u64(self.amount)?;
-        writer.write_pubkey(&self.asset)?;
-
-        Ok(())
+        ByteWriter::new(data)
+            .write_u64(self.amount)?
+            .write_pubkey(&self.asset)?
+            .complete()
     }
 }
 
@@ -41,11 +40,10 @@ pub struct Range {
 
 impl ZeroCopySerialize for Range {
     fn serialize_into(&self, data: &mut [u8]) -> Result<()> {
-        let mut writer = ByteWriter::new(data);
-        writer.write_u32(self.min)?;
-        writer.write_u32(self.max)?;
-
-        Ok(())
+        ByteWriter::new(data)
+            .write_u32(self.min)?
+            .write_u32(self.max)?
+            .complete()
     }
 }
 

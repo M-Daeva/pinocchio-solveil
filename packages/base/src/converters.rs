@@ -338,7 +338,7 @@ impl<'a> ByteWriter<'a> {
     }
 
     #[inline]
-    pub fn write_custom<T>(&mut self, data: &T) -> ProgramResult
+    pub fn write_custom<T>(mut self, data: &T) -> Result<Self>
     where
         T: ZeroCopySerialize + ZeroCopyDeserialize,
     {
@@ -350,28 +350,28 @@ impl<'a> ByteWriter<'a> {
         data.serialize_into(&mut self.buffer[self.position..])?;
         self.position = end_pos;
 
-        Ok(())
+        Ok(self)
     }
 
     #[inline]
-    pub fn write_option_custom<T>(&mut self, value: &Option<T>) -> ProgramResult
+    pub fn write_option_custom<T>(mut self, value: &Option<T>) -> Result<Self>
     where
         T: ZeroCopySerialize + ZeroCopyDeserialize,
     {
         match value {
             Some(inner_value) => {
-                self.write_u8(1)?; // is_some = true
-                self.write_custom(inner_value)?;
+                self = self.write_u8(1)?; // is_some = true
+                self = self.write_custom(inner_value)?;
             }
             None => {
-                self.write_u8(0)?; // is_some = false
+                self = self.write_u8(0)?; // is_some = false
             }
         }
-        Ok(())
+        Ok(self)
     }
 
     #[inline]
-    pub fn write_bytes(&mut self, data: &[u8]) -> ProgramResult {
+    pub fn write_bytes(mut self, data: &[u8]) -> Result<Self> {
         let end_pos = self.position + data.len();
         if end_pos > self.buffer.len() {
             Err(ProgramError::InvalidInstructionData)?;
@@ -380,49 +380,54 @@ impl<'a> ByteWriter<'a> {
         self.buffer[self.position..end_pos].copy_from_slice(data);
         self.position = end_pos;
 
-        Ok(())
+        Ok(self)
     }
 
     #[inline]
-    pub fn write_u8(&mut self, value: u8) -> ProgramResult {
+    pub fn write_u8(self, value: u8) -> Result<Self> {
         self.write_bytes(&[value])
     }
 
     #[inline]
-    pub fn write_u16(&mut self, value: u16) -> ProgramResult {
+    pub fn write_u16(self, value: u16) -> Result<Self> {
         self.write_bytes(&value.to_le_bytes())
     }
 
     #[inline]
-    pub fn write_u32(&mut self, value: u32) -> ProgramResult {
+    pub fn write_u32(self, value: u32) -> Result<Self> {
         self.write_bytes(&value.to_le_bytes())
     }
 
     #[inline]
-    pub fn write_u64(&mut self, value: u64) -> ProgramResult {
+    pub fn write_u64(self, value: u64) -> Result<Self> {
         self.write_bytes(&value.to_le_bytes())
     }
 
     #[inline]
-    pub fn write_u128(&mut self, value: u128) -> ProgramResult {
+    pub fn write_u128(self, value: u128) -> Result<Self> {
         self.write_bytes(&value.to_le_bytes())
     }
 
     #[inline]
-    pub fn write_bool(&mut self, value: bool) -> ProgramResult {
+    pub fn write_bool(self, value: bool) -> Result<Self> {
         self.write_u8(if value { 1 } else { 0 })
     }
 
     #[inline]
-    pub fn write_string(&mut self, value: &str) -> ProgramResult {
+    pub fn write_string(mut self, value: &str) -> Result<Self> {
         let bytes = value.as_bytes();
-        self.write_u32(bytes.len() as u32)?;
+        self = self.write_u32(bytes.len() as u32)?;
         self.write_bytes(bytes)
     }
 
     #[inline]
-    pub fn write_pubkey(&mut self, value: &Pubkey) -> ProgramResult {
+    pub fn write_pubkey(self, value: &Pubkey) -> Result<Self> {
         self.write_bytes(value.as_ref())
+    }
+
+    #[inline]
+    pub fn complete(self) -> ProgramResult {
+        Ok(())
     }
 
     #[inline]

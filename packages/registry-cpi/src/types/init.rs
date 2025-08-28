@@ -100,14 +100,12 @@ impl base::types::InstructionSerialize for InstructionData {
         use base::converters::{option_as_bytes, u32_as_bytes, ByteWriter, ByteWriterVecExt};
 
         let mut buffer = vec![];
-        let position = {
-            let mut writer = ByteWriter::from_vec(&mut buffer);
-            writer.write_u8(crate::state::discriminator::INIT)?;
-            writer.write_bytes(&option_as_bytes(&self.rotation_timeout, u32_as_bytes))?;
-            writer.write_option_custom(&self.account_registration_fee)?;
-            writer.write_option_custom(&self.account_data_size_range)?;
-            writer.position()
-        };
+        let position = ByteWriter::from_vec(&mut buffer)
+            .write_u8(crate::state::discriminator::INIT)?
+            .write_bytes(&option_as_bytes(&self.rotation_timeout, u32_as_bytes))?
+            .write_option_custom(&self.account_registration_fee)?
+            .write_option_custom(&self.account_data_size_range)?
+            .position();
         buffer.truncate(position);
 
         Ok(buffer)
