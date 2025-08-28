@@ -9,8 +9,8 @@ use {
     pretty_assertions::assert_eq,
     registry_cpi::{
         state::{
-            Config, ACCOUNT_DATA_SIZE_MAX, ACCOUNT_DATA_SIZE_MIN, ACCOUNT_REGISTRATION_FEE_AMOUNT,
-            ROTATION_TIMEOUT,
+            Config, RotationState, UserCounter, ACCOUNT_DATA_SIZE_MAX, ACCOUNT_DATA_SIZE_MIN,
+            ACCOUNT_REGISTRATION_FEE_AMOUNT, ROTATION_TIMEOUT,
         },
         types::common::{AssetItem, Range},
     },
@@ -50,6 +50,15 @@ fn init_default() -> TestResult<()> {
                 min: ACCOUNT_DATA_SIZE_MIN,
                 max: ACCOUNT_DATA_SIZE_MAX,
             }
+        }
+    );
+    assert_eq!(app.registry_query_user_counter()?, UserCounter::default());
+    assert_eq!(
+        app.registry_query_admin_rotation_state()?,
+        RotationState {
+            owner: AppUser::Admin.pubkey(),
+            new_owner: None,
+            expiration_date: app.get_clock_time()
         }
     );
 

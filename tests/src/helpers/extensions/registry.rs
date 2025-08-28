@@ -9,7 +9,7 @@ use {
     base::types::InstructionSerialize,
     litesvm::types::TransactionMetadata,
     registry_cpi::{
-        state::{Config, ACCOUNT_REGISTRATION_FEE_ASSET},
+        state::{Config, RotationState, UserCounter, ACCOUNT_REGISTRATION_FEE_ASSET},
         types::{
             self,
             common::{AssetItem, Range},
@@ -27,6 +27,10 @@ pub trait CounterExtension {
     ) -> TestResult<TransactionMetadata>;
 
     fn registry_query_config(&self) -> TestResult<Config>;
+
+    fn registry_query_user_counter(&self) -> TestResult<UserCounter>;
+
+    fn registry_query_admin_rotation_state(&self) -> TestResult<RotationState>;
 }
 
 impl CounterExtension for App {
@@ -101,5 +105,13 @@ impl CounterExtension for App {
 
     fn registry_query_config(&self) -> TestResult<Config> {
         get_data(&self.litesvm, &self.pda.registry_config())
+    }
+
+    fn registry_query_user_counter(&self) -> TestResult<UserCounter> {
+        get_data(&self.litesvm, &self.pda.registry_user_counter())
+    }
+
+    fn registry_query_admin_rotation_state(&self) -> TestResult<RotationState> {
+        get_data(&self.litesvm, &self.pda.registry_admin_rotation_state())
     }
 }
