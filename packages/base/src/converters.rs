@@ -359,7 +359,7 @@ impl<'a> ByteWriter<'a> {
             Err(ProgramError::InvalidInstructionData)?;
         }
 
-        data.serialize_into(self.buffer)?;
+        data.serialize_into(&mut self.buffer[self.position..])?;
         self.position = end_pos;
 
         Ok(())
