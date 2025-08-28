@@ -2246,6 +2246,7 @@ dependencies = [
  "macro-account",
  "macro-error",
  "pinocchio",
+ "pinocchio-log",
  "pinocchio-pubkey",
  "pinocchio-system",
  "solana-instruction",

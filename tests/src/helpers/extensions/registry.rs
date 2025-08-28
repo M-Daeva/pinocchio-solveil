@@ -82,7 +82,6 @@ impl CounterExtension for App {
         .to_account_metas();
 
         let instruction_data = &types::init::InstructionData {
-            //  bumps,
             rotation_timeout,
             account_registration_fee,
             account_data_size_range,

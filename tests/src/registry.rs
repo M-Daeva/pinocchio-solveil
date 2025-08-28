@@ -36,22 +36,22 @@ fn init_app() -> TestResult<App> {
 fn init_default() -> TestResult<()> {
     let app = init_app()?;
 
-    // assert_eq!(
-    //     app.registry_query_config()?,
-    //     Config {
-    //         admin: AppUser::Admin.pubkey(),
-    //         is_paused: false,
-    //         rotation_timeout: ROTATION_TIMEOUT,
-    //         registration_fee: AssetItem {
-    //             amount: ACCOUNT_REGISTRATION_FEE_AMOUNT,
-    //             asset: AppToken::USDC.pubkey(),
-    //         },
-    //         data_size_range: Range {
-    //             min: ACCOUNT_DATA_SIZE_MIN,
-    //             max: ACCOUNT_DATA_SIZE_MAX,
-    //         }
-    //     }
-    // );
+    assert_eq!(
+        app.registry_query_config()?,
+        Config {
+            admin: AppUser::Admin.pubkey(),
+            is_paused: false,
+            rotation_timeout: ROTATION_TIMEOUT,
+            registration_fee: AssetItem {
+                amount: ACCOUNT_REGISTRATION_FEE_AMOUNT,
+                asset: AppToken::USDC.pubkey(),
+            },
+            data_size_range: Range {
+                min: ACCOUNT_DATA_SIZE_MIN,
+                max: ACCOUNT_DATA_SIZE_MAX,
+            }
+        }
+    );
 
     Ok(())
 }

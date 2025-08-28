@@ -125,7 +125,7 @@ pub fn init(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult 
         signer_seeds,
         &crate::ID,
     )?;
-    AccountData::init(bump)?.save(RotationState {
+    AccountData::init(admin_rotation_state)?.save(RotationState {
         owner: *sender.key(),
         new_owner: None,
         expiration_date: clock_time,

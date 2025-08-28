@@ -27,6 +27,7 @@ pub struct Accounts<'a> {
     #[account(writable)]
     pub admin_rotation_state: &'a AccountInfo,
     pub revenue_mint: &'a AccountInfo,
+    #[account(writable)]
     pub revenue_app_ata: &'a AccountInfo,
 }
 
@@ -68,7 +69,6 @@ impl<'a> TryFrom<&'a [AccountInfo]> for Accounts<'a> {
 }
 
 pub struct InstructionData {
-    // pub bumps: Bump,
     pub rotation_timeout: Option<u32>,
     pub account_registration_fee: Option<AssetItem>,
     pub account_data_size_range: Option<Range>,
@@ -78,7 +78,6 @@ impl TryFrom<&[u8]> for InstructionData {
     type Error = ProgramError;
 
     fn try_from(data: &[u8]) -> Result<Self> {
-        // let (bumps, end_index) = Bump::deserialize_from(data, 0)?;
         let (rotation_timeout, end_index) = to_option(data, 0, to_u32)?;
         let (account_registration_fee, end_index) =
             to_option(data, end_index, AssetItem::deserialize_from)?;
@@ -87,7 +86,6 @@ impl TryFrom<&[u8]> for InstructionData {
         check_ix_data_len(data, end_index)?;
 
         Ok(Self {
-            // bumps,
             rotation_timeout,
             account_registration_fee,
             account_data_size_range,
@@ -95,31 +93,43 @@ impl TryFrom<&[u8]> for InstructionData {
     }
 }
 
-/// for tests
-#[cfg(feature = "dev")]
-impl base::types::ZeroCopySerialize for InstructionData {
-    fn serialize_into(&self, data: &mut [u8]) -> Result<()> {
-        use base::converters::{option_as_bytes, u32_as_bytes, ByteWriter};
+// /// for tests
+// #[cfg(feature = "dev")]
+// impl base::types::ZeroCopySerialize for InstructionData {
+//     fn serialize_into(&self, data: &mut [u8]) -> Result<()> {
+//         use base::converters::{option_as_bytes, u32_as_bytes, ByteWriter};
 
-        let mut writer = ByteWriter::new(data);
-        // writer.write_custom(&self.bumps)?;
-        writer.write_bytes(&option_as_bytes(&self.rotation_timeout, u32_as_bytes))?;
-        writer.write_option_custom(&self.account_registration_fee)?;
-        writer.write_option_custom(&self.account_data_size_range)?;
+//         let mut writer = ByteWriter::new(data);
+//         // writer.write_custom(&self.bumps)?;
+//         writer.write_bytes(&option_as_bytes(&self.rotation_timeout, u32_as_bytes))?;
+//         writer.write_option_custom(&self.account_registration_fee)?;
+//         writer.write_option_custom(&self.account_data_size_range)?;
 
-        Ok(())
-    }
-}
+//         Ok(())
+//     }
+// }
 
 /// for tests
 #[cfg(feature = "dev")]
 impl base::types::InstructionSerialize for InstructionData {
     fn serialize(&self) -> Result<Vec<u8>> {
-        use base::types::ZeroCopySerialize;
+        use base::converters::{option_as_bytes, u32_as_bytes, ByteWriter};
 
-        let buffer: &mut [u8] = &mut [crate::state::discriminator::INIT];
-        self.serialize_into(buffer)?;
+        // Pre-allocate a buffer large enough for all possible data
+        let mut buffer = vec![0u8; 256]; // Adjust size as needed
+        buffer[0] = crate::state::discriminator::INIT;
 
-        Ok(buffer.to_vec())
+        let bytes_written = {
+            let mut writer = ByteWriter::new(&mut buffer[1..]);
+            writer.write_bytes(&option_as_bytes(&self.rotation_timeout, u32_as_bytes))?;
+            writer.write_option_custom(&self.account_registration_fee)?;
+            writer.write_option_custom(&self.account_data_size_range)?;
+            writer.position() // Return the position before writer is dropped
+        };
+
+        // Truncate to actual used size
+        buffer.truncate(1 + bytes_written);
+
+        Ok(buffer)
     }
 }
