@@ -2,15 +2,16 @@ use {
     pinocchio::{
         account_info::{AccountInfo, RefMut},
         program_error::ProgramError,
+        pubkey::Pubkey,
     },
+    pinocchio_pubkey::pubkey,
     std::marker::PhantomData,
 };
 
 pub const TOKEN_2022_ACCOUNT_DISCRIMINATOR_OFFSET: usize = 165;
 pub const TOKEN_2022_MINT_DISCRIMINATOR: u8 = 0x01;
 pub const TOKEN_2022_TOKEN_ACCOUNT_DISCRIMINATOR: u8 = 0x02;
-pub const TOKEN_2022_PROGRAM_ID: [u8; 32] =
-    pinocchio_pubkey::pubkey!("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb");
+pub const TOKEN_2022_PROGRAM_ID: Pubkey = pubkey!("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb");
 
 pub const DISCRIMINATOR_SPACE: usize = 8;
 
@@ -30,7 +31,8 @@ pub trait ZeroCopySerialize {
 }
 
 pub trait ZeroCopyDeserialize: Sized {
-    fn deserialize_from(data: &[u8]) -> Result<Self>;
+    /// returns end_index
+    fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)>;
 }
 
 // Account data wrapper for typed access
@@ -52,8 +54,9 @@ where
     }
 
     #[inline]
-    pub fn load(&self) -> Result<T> {
-        T::deserialize_from(&self.data)
+    pub fn load(&self) -> Result<(T, usize)> {
+        // TODO: probably start_index must be passed with init and stored in AccountData
+        T::deserialize_from(&self.data, 0)
     }
 
     #[inline]
@@ -66,7 +69,7 @@ where
     where
         F: FnOnce(T) -> Result<T>,
     {
-        let data = self.load()?;
+        let (data, _) = self.load()?;
         let updated_data = f(data)?;
         self.save(updated_data)
     }
