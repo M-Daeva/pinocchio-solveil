@@ -2,7 +2,6 @@ use {
     crate::helpers::suite::decimal::{str_to_dec, Decimal},
     registry_cpi::error::AnyError,
     solana_keypair::Keypair,
-    solana_pubkey::Pubkey,
     std::fmt::Debug,
     strum::IntoEnumIterator,
     strum_macros::{Display, EnumIter, IntoStaticStr},
@@ -47,6 +46,16 @@ const KEYPAIR_WBTC: &str =
     "2RyN2wrHo8fDrvqULn61ThcSeMyBE3eQ35ADxk5bvjkMrtZRKZwYNRQgxS33UkTrw3udySYMeoJxapbLbyz3aDiZ";
 const PUBKEY_WBTC: &str = "An6eCPnnsspFAy5bUrgnNkU4hkedv9ZDRUJazUTG1ewb";
 
+const PUBKEY_WSOL: &str = "So11111111111111111111111111111111111111112";
+
+pub trait SolPubkey {
+    fn pubkey(&self) -> solana_pubkey::Pubkey;
+}
+
+pub trait PinPubkey {
+    fn pubkey(&self) -> pinocchio::pubkey::Pubkey;
+}
+
 #[derive(Debug, Clone, Copy, Display, IntoStaticStr, EnumIter, PartialEq)]
 pub enum AppUser {
     Admin,
@@ -54,15 +63,25 @@ pub enum AppUser {
     Bob,
 }
 
+impl SolPubkey for AppUser {
+    fn pubkey(&self) -> solana_pubkey::Pubkey {
+        solana_pubkey::Pubkey::from_str_const(self.get_pubkey_str())
+    }
+}
+
+impl PinPubkey for AppUser {
+    fn pubkey(&self) -> pinocchio::pubkey::Pubkey {
+        pinocchio_pubkey::from_str(self.get_pubkey_str())
+    }
+}
+
 impl AppUser {
-    pub fn pubkey(&self) -> Pubkey {
-        let str_const = match self {
+    fn get_pubkey_str(&self) -> &str {
+        match self {
             Self::Admin => PUBKEY_ADMIN,
             Self::Alice => PUBKEY_ALICE,
             Self::Bob => PUBKEY_BOB,
-        };
-
-        Pubkey::from_str_const(str_const)
+        }
     }
 
     pub fn keypair(&self) -> Keypair {
@@ -77,7 +96,7 @@ impl AppUser {
 
     pub fn list() {
         for item in Self::iter() {
-            println!("{:#?}: {:#?}", item, item.pubkey());
+            println!("{:#?}: {:#?}", item, SolPubkey::pubkey(&item));
         }
         println!();
     }
@@ -109,16 +128,26 @@ pub enum AppToken {
     WSOL,
 }
 
+impl SolPubkey for AppToken {
+    fn pubkey(&self) -> solana_pubkey::Pubkey {
+        solana_pubkey::Pubkey::from_str_const(self.get_pubkey_str())
+    }
+}
+
+impl PinPubkey for AppToken {
+    fn pubkey(&self) -> pinocchio::pubkey::Pubkey {
+        pinocchio_pubkey::from_str(self.get_pubkey_str())
+    }
+}
+
 impl AppToken {
-    pub fn pubkey(&self) -> Pubkey {
-        let str_const = match self {
+    fn get_pubkey_str(&self) -> &str {
+        match self {
             Self::USDC => PUBKEY_USDC,
             Self::PYTH => PUBKEY_PYTH,
             Self::WBTC => PUBKEY_WBTC,
-            Self::WSOL => &spl_token::native_mint::ID.to_string(),
-        };
-
-        Pubkey::from_str_const(str_const)
+            Self::WSOL => PUBKEY_WSOL,
+        }
     }
 
     pub fn keypair(&self) -> Keypair {
@@ -134,7 +163,7 @@ impl AppToken {
 
     pub fn list() {
         for item in Self::iter() {
-            println!("{:#?}: {:#?}", item, item.pubkey());
+            println!("{:#?}: {:#?}", item, SolPubkey::pubkey(&item));
         }
         println!();
     }
@@ -297,4 +326,12 @@ impl TestError {
 
         None
     }
+}
+
+pub fn sol_to_pin_pubkey(sol_pubkey: &solana_pubkey::Pubkey) -> pinocchio::pubkey::Pubkey {
+    pinocchio::pubkey::Pubkey::from(sol_pubkey.to_bytes())
+}
+
+pub fn pin_to_sol_pubkey(pin_pubkey: &pinocchio::pubkey::Pubkey) -> solana_pubkey::Pubkey {
+    solana_pubkey::Pubkey::new_from_array(*pin_pubkey)
 }

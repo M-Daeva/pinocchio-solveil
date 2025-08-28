@@ -1,7 +1,9 @@
 use {
     crate::helpers::suite::{
         core::sol_kite::create_token_mint,
-        types::{AppAsset, AppCoin, AppToken, AppUser, GetDecimals, TestError, TestResult},
+        types::{
+            AppAsset, AppCoin, AppToken, AppUser, GetDecimals, SolPubkey, TestError, TestResult,
+        },
     },
     base::types::ZeroCopyDeserialize,
     litesvm::{types::TransactionMetadata, LiteSVM},

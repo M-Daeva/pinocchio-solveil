@@ -4,7 +4,7 @@ use {
             extension::{get_data, send_tx_with_ix},
             App, ProgramId,
         },
-        types::{AppUser, TestError, TestResult},
+        types::{AppUser, SolPubkey, TestError, TestResult},
     },
     base::types::InstructionSerialize,
     litesvm::types::TransactionMetadata,
