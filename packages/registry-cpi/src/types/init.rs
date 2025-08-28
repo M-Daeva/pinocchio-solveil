@@ -1,8 +1,5 @@
 use {
-    crate::{
-        state::Bump,
-        types::common::{AssetItem, Range},
-    },
+    crate::types::common::{AssetItem, Range},
     base::{
         accounts::{AccountCheck, MintAccount, SignerAccount, SystemProgram},
         converters::{to_option, to_u32},
@@ -71,7 +68,7 @@ impl<'a> TryFrom<&'a [AccountInfo]> for Accounts<'a> {
 }
 
 pub struct InstructionData {
-    pub bumps: Bump,
+    // pub bumps: Bump,
     pub rotation_timeout: Option<u32>,
     pub account_registration_fee: Option<AssetItem>,
     pub account_data_size_range: Option<Range>,
@@ -81,8 +78,8 @@ impl TryFrom<&[u8]> for InstructionData {
     type Error = ProgramError;
 
     fn try_from(data: &[u8]) -> Result<Self> {
-        let (bumps, end_index) = Bump::deserialize_from(data, 0)?;
-        let (rotation_timeout, end_index) = to_option(data, end_index, to_u32)?;
+        // let (bumps, end_index) = Bump::deserialize_from(data, 0)?;
+        let (rotation_timeout, end_index) = to_option(data, 0, to_u32)?;
         let (account_registration_fee, end_index) =
             to_option(data, end_index, AssetItem::deserialize_from)?;
         let (account_data_size_range, end_index) =
@@ -90,7 +87,7 @@ impl TryFrom<&[u8]> for InstructionData {
         check_ix_data_len(data, end_index)?;
 
         Ok(Self {
-            bumps,
+            // bumps,
             rotation_timeout,
             account_registration_fee,
             account_data_size_range,
@@ -105,7 +102,7 @@ impl base::types::ZeroCopySerialize for InstructionData {
         use base::converters::{option_as_bytes, u32_as_bytes, ByteWriter};
 
         let mut writer = ByteWriter::new(data);
-        writer.write_custom(&self.bumps)?;
+        // writer.write_custom(&self.bumps)?;
         writer.write_bytes(&option_as_bytes(&self.rotation_timeout, u32_as_bytes))?;
         writer.write_option_custom(&self.account_registration_fee)?;
         writer.write_option_custom(&self.account_data_size_range)?;

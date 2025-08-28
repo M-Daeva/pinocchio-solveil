@@ -43,6 +43,6 @@ solana-kite = { workspace = true }
 
 # dev feature is required for test helpers
 base = { workspace = true, features = ["dev"] }
-counter-cpi = { workspace = true, features = ["dev"] }
+registry-cpi = { workspace = true, features = ["dev"] }
 
-counter = { workspace = true }
+registry = { workspace = true }

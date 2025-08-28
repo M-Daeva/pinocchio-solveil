@@ -122,21 +122,48 @@ pub struct ProgramId {
     // standard
     pub system_program: Pubkey,
     pub token_program: Pubkey,
+    pub associated_token_program: Pubkey,
 
     // custom
-    pub counter: Pubkey,
+    pub registry: Pubkey,
 }
 
 pub struct Pda {
-    counter_program_id: Pubkey,
+    registry_program_id: Pubkey,
 }
 
 #[allow(clippy::useless_vec)]
 impl Pda {
-    pub fn counter_counter(&self) -> Pubkey {
+    // registry
+    //
+    pub fn registry_bump(&self) -> Pubkey {
         get_pda_and_bump(
-            &seeds![counter_cpi::state::seed::COUNTER],
-            &self.counter_program_id,
+            &seeds![registry_cpi::state::seed::BUMP],
+            &self.registry_program_id,
+        )
+        .0
+    }
+
+    pub fn registry_config(&self) -> Pubkey {
+        get_pda_and_bump(
+            &seeds![registry_cpi::state::seed::CONFIG],
+            &self.registry_program_id,
+        )
+        .0
+    }
+
+    pub fn registry_user_counter(&self) -> Pubkey {
+        get_pda_and_bump(
+            &seeds![registry_cpi::state::seed::USER_COUNTER],
+            &self.registry_program_id,
+        )
+        .0
+    }
+
+    pub fn registry_admin_rotation_state(&self) -> Pubkey {
+        get_pda_and_bump(
+            &seeds![registry_cpi::state::seed::ADMIN_ROTATION_STATE],
+            &self.registry_program_id,
         )
         .0
     }
@@ -159,18 +186,19 @@ impl App {
             // standard
             system_program: system_program::ID,
             token_program: spl_token::ID,
+            associated_token_program: spl_associated_token_account::ID,
 
             // custom
-            counter: counter_cpi::ID.into(),
+            registry: registry_cpi::ID.into(),
         };
 
         // specify PDA
         let pda = Pda {
-            counter_program_id: program_id.counter,
+            registry_program_id: program_id.registry,
         };
 
         // upload custom programs
-        upload_program(&mut litesvm, "counter", &program_id.counter);
+        upload_program(&mut litesvm, "registry", &program_id.registry);
 
         Self {
             litesvm,
@@ -432,12 +460,16 @@ fn upload_program(litesvm: &mut LiteSVM, program_name: &str, program_id: &Pubkey
 pub mod extension {
     use super::*;
 
-    pub fn get_data<T>(litesvm: &LiteSVM, pda: &Pubkey) -> TestResult<T>
+    pub fn get_data<T>(litesvm: &LiteSVM, pda: &Pubkey, start_index: usize) -> TestResult<T>
     where
         T: ZeroCopyDeserialize,
     {
         match litesvm.get_account(pda) {
-            Some(account) => T::deserialize_from(&account.data).map_err(TestError::from_raw_error),
+            Some(account) => {
+                let (data, _end_index) = T::deserialize_from(&account.data, start_index)
+                    .map_err(TestError::from_raw_error)?;
+                Ok(data)
+            }
             _ => Err(TestError::from_raw_error(
                 program_error::ProgramError::UninitializedAccount,
             )),

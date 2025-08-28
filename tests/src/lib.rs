@@ -1,9 +1,9 @@
 #[cfg(test)]
-pub mod counter;
+pub mod registry;
 
 pub mod helpers {
     pub mod extensions {
-        pub mod counter;
+        pub mod registry;
     }
 
     pub mod suite {

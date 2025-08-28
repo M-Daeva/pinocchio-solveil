@@ -1,6 +1,6 @@
 use {
     crate::helpers::suite::decimal::{str_to_dec, Decimal},
-    counter_cpi::error::AnyError,
+    registry_cpi::error::AnyError,
     solana_keypair::Keypair,
     solana_pubkey::Pubkey,
     std::fmt::Debug,
@@ -298,42 +298,3 @@ impl TestError {
         None
     }
 }
-
-// #[derive(Default, Debug)]
-// pub struct AccountsBuilder {
-//     list: Vec<AccountMeta>,
-// }
-
-// impl AccountsBuilder {
-//     /// accepts 1st keypair as payer
-//     pub fn new(signers: &[Keypair]) -> Self {
-//         if signers.is_empty() {
-//             Self::default()
-//         } else {
-//             let payer = signers[0].pubkey();
-
-//             Self {
-//                 list: vec![AccountMeta::new(payer, true)],
-//             }
-//         }
-//     }
-
-//     pub fn with_signer(mut self, pubkey: Pubkey) -> Self {
-//         self.list.push(AccountMeta::new(pubkey, true));
-//         self
-//     }
-
-//     pub fn with(mut self, pubkey: Pubkey) -> Self {
-//         self.list.push(AccountMeta::new(pubkey, false));
-//         self
-//     }
-
-//     pub fn with_readonly(mut self, pubkey: Pubkey) -> Self {
-//         self.list.push(AccountMeta::new_readonly(pubkey, false));
-//         self
-//     }
-
-//     pub fn build(self) -> Vec<AccountMeta> {
-//         self.list
-//     }
-// }
