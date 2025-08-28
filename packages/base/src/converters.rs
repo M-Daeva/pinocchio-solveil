@@ -4,18 +4,6 @@ use {
     std::{mem, slice},
 };
 
-/// for tests
-#[cfg(feature = "dev")]
-pub fn from_u8_option(data: Option<u8>) -> Result<Vec<u8>> {
-    Ok(vec![data.unwrap_or_default()])
-}
-
-/// for tests
-#[cfg(feature = "dev")]
-pub fn from_u8(data: u8) -> Result<Vec<u8>> {
-    Ok(vec![data])
-}
-
 // Boolean (1 byte: 0 = false, non-zero = true)
 #[inline]
 pub fn to_bool(data: &[u8], start_index: usize) -> Result<(bool, usize)> {
@@ -326,11 +314,11 @@ where
     }
 }
 
-// Generic function for any type that can be safely interpreted as bytes
-#[inline]
-pub fn any_as_bytes<T>(value: &T) -> &[u8] {
-    unsafe { slice::from_raw_parts(value as *const T as *const u8, mem::size_of::<T>()) }
-}
+// // Generic function for any type that can be safely interpreted as bytes
+// #[inline]
+// pub fn any_as_bytes<T>(value: &T) -> &[u8] {
+//     unsafe { slice::from_raw_parts(value as *const T as *const u8, mem::size_of::<T>()) }
+// }
 
 // For cases where you need to build complex structures efficiently
 // Use a pre-allocated buffer and write directly into it
@@ -453,13 +441,30 @@ impl<'a> ByteWriter<'a> {
     }
 }
 
-// Macro for creating temporary byte arrays on the stack (for small data)
-#[macro_export]
-macro_rules! stack_serialize {
-    ($size:expr, |$writer:ident| $body:expr) => {{
-        let mut buffer = [0u8; $size];
-        let mut $writer = ByteWriter::new(&mut buffer);
-        $body?;
-        Ok($writer.as_bytes())
-    }};
+/// for tests
+#[cfg(feature = "dev")]
+pub trait ByteWriterVecExt<'a> {
+    fn from_vec(buffer: &'a mut Vec<u8>) -> ByteWriter<'a>;
+    fn truncate_buffer(self, buffer: &mut Vec<u8>);
+}
+
+/// for tests
+#[cfg(feature = "dev")]
+impl<'a> ByteWriterVecExt<'a> for ByteWriter<'a> {
+    #[inline]
+    fn from_vec(buffer: &'a mut Vec<u8>) -> ByteWriter<'a> {
+        // Ensure the vec has some initial capacity to avoid immediate reallocation
+        if buffer.capacity() < 256 {
+            buffer.reserve(256);
+        }
+        // Resize to match capacity to avoid bounds checking issues
+        let capacity = buffer.capacity();
+        buffer.resize(capacity, 0);
+        ByteWriter::new(buffer)
+    }
+
+    #[inline]
+    fn truncate_buffer(self, buffer: &mut Vec<u8>) {
+        buffer.truncate(self.position());
+    }
 }

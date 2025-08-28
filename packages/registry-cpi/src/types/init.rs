@@ -93,42 +93,22 @@ impl TryFrom<&[u8]> for InstructionData {
     }
 }
 
-// /// for tests
-// #[cfg(feature = "dev")]
-// impl base::types::ZeroCopySerialize for InstructionData {
-//     fn serialize_into(&self, data: &mut [u8]) -> Result<()> {
-//         use base::converters::{option_as_bytes, u32_as_bytes, ByteWriter};
-
-//         let mut writer = ByteWriter::new(data);
-//         // writer.write_custom(&self.bumps)?;
-//         writer.write_bytes(&option_as_bytes(&self.rotation_timeout, u32_as_bytes))?;
-//         writer.write_option_custom(&self.account_registration_fee)?;
-//         writer.write_option_custom(&self.account_data_size_range)?;
-
-//         Ok(())
-//     }
-// }
-
 /// for tests
 #[cfg(feature = "dev")]
 impl base::types::InstructionSerialize for InstructionData {
     fn serialize(&self) -> Result<Vec<u8>> {
-        use base::converters::{option_as_bytes, u32_as_bytes, ByteWriter};
+        use base::converters::{option_as_bytes, u32_as_bytes, ByteWriter, ByteWriterVecExt};
 
-        // Pre-allocate a buffer large enough for all possible data
-        let mut buffer = vec![0u8; 256]; // Adjust size as needed
-        buffer[0] = crate::state::discriminator::INIT;
-
-        let bytes_written = {
-            let mut writer = ByteWriter::new(&mut buffer[1..]);
+        let mut buffer = vec![];
+        let position = {
+            let mut writer = ByteWriter::from_vec(&mut buffer);
+            writer.write_u8(crate::state::discriminator::INIT)?;
             writer.write_bytes(&option_as_bytes(&self.rotation_timeout, u32_as_bytes))?;
             writer.write_option_custom(&self.account_registration_fee)?;
             writer.write_option_custom(&self.account_data_size_range)?;
-            writer.position() // Return the position before writer is dropped
+            writer.position()
         };
-
-        // Truncate to actual used size
-        buffer.truncate(1 + bytes_written);
+        buffer.truncate(position);
 
         Ok(buffer)
     }
