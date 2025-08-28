@@ -26,8 +26,6 @@ use {
     strum::IntoEnumIterator,
 };
 
-const IS_LOGS_DISPLAYED: bool = false;
-
 pub mod sol_kite {
     use {
         litesvm::LiteSVM, solana_keypair::Keypair, solana_kite::SolanaKiteError,
@@ -173,13 +171,14 @@ impl Pda {
 
 pub struct App {
     pub litesvm: LiteSVM,
+    is_log_displayed: bool,
 
     pub program_id: ProgramId,
     pub pda: Pda,
 }
 
 impl App {
-    pub fn create_app_with_programs() -> Self {
+    pub fn create_app_with_programs(is_log_displayed: bool) -> Self {
         // prepare environment with balances
         let mut litesvm = Self::init_env_with_balances();
 
@@ -204,14 +203,15 @@ impl App {
 
         Self {
             litesvm,
+            is_log_displayed,
 
             program_id,
             pda,
         }
     }
 
-    pub fn new() -> Self {
-        let mut app = Self::create_app_with_programs();
+    pub fn new(is_log_displayed: bool) -> Self {
+        let mut app = Self::create_app_with_programs(is_log_displayed);
         app.create_wsol();
 
         // prepare programs
@@ -341,7 +341,7 @@ impl App {
         let signers = &[sender.keypair()];
         let ix = system_instruction::transfer(payer, recipient, amount);
 
-        extension::send_tx(&mut self.litesvm, &[ix], signers)
+        extension::send_tx(&mut self.litesvm, &[ix], signers, self.is_log_displayed)
     }
 
     pub fn transfer_token(
@@ -368,7 +368,7 @@ impl App {
         )
         .map_err(TestError::from_unknown)?;
 
-        extension::send_tx(&mut self.litesvm, &[ix], signers)
+        extension::send_tx(&mut self.litesvm, &[ix], signers, self.is_log_displayed)
     }
 
     pub fn get_balance(&self, user: AppUser, asset: impl Into<AppAsset>) -> u64 {
@@ -426,7 +426,7 @@ impl App {
 
 impl Default for App {
     fn default() -> Self {
-        Self::new()
+        Self::new(false)
     }
 }
 
@@ -482,6 +482,7 @@ pub mod extension {
         litesvm: &mut LiteSVM,
         instructions: &[Instruction],
         signers: &S,
+        is_log_displayed: bool,
     ) -> TestResult<TransactionMetadata>
     where
         S: Signers + ?Sized,
@@ -496,15 +497,26 @@ pub mod extension {
             litesvm.latest_blockhash(),
         );
 
-        litesvm.send_transaction(transaction).map_err(|e| {
-            let logs = &e.meta.logs;
+        match litesvm.send_transaction(transaction) {
+            Ok(x) => {
+                let logs = &x.logs;
 
-            if IS_LOGS_DISPLAYED {
-                println!("Transaction logs: {:#?}\n", logs);
+                if is_log_displayed {
+                    println!("Transaction logs: {:#?}\n", logs);
+                }
+
+                Ok(x)
             }
+            Err(e) => {
+                let logs = &e.meta.logs;
 
-            get_test_error_from_logs(logs)
-        })
+                if is_log_displayed {
+                    println!("Transaction logs: {:#?}\n", logs);
+                }
+
+                Err(get_test_error_from_logs(logs))
+            }
+        }
     }
 
     pub fn send_tx_with_ix<S>(
@@ -524,7 +536,7 @@ pub mod extension {
             data: instruction_data.to_vec(),
         };
 
-        send_tx(&mut app.litesvm, &[ix], signers)
+        send_tx(&mut app.litesvm, &[ix], signers, app.is_log_displayed)
     }
 }
 

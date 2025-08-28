@@ -17,7 +17,7 @@ use {
 };
 
 fn init_app() -> TestResult<App> {
-    let mut app = App::new();
+    let mut app = App::new(false);
 
     app.registry_try_init(
         AppUser::Admin,

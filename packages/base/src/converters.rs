@@ -160,13 +160,13 @@ pub fn to_option<T, F>(
 where
     F: Fn(&[u8], usize) -> Result<(T, usize)>,
 {
-    let (is_some, _) = to_bool(data, start_index)?;
+    let (is_some, next_index) = to_bool(data, start_index)?;
 
     if is_some {
-        let (value, new_index) = item_parser(data, start_index)?;
+        let (value, new_index) = item_parser(data, next_index)?;
         Ok((Some(value), new_index))
     } else {
-        Ok((None, start_index))
+        Ok((None, next_index))
     }
 }
 
