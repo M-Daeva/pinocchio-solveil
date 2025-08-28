@@ -462,14 +462,14 @@ fn upload_program(litesvm: &mut LiteSVM, program_name: &str, program_id: &Pubkey
 pub mod extension {
     use super::*;
 
-    pub fn get_data<T>(litesvm: &LiteSVM, pda: &Pubkey, start_index: usize) -> TestResult<T>
+    pub fn get_data<T>(litesvm: &LiteSVM, pda: &Pubkey) -> TestResult<T>
     where
         T: ZeroCopyDeserialize,
     {
         match litesvm.get_account(pda) {
             Some(account) => {
-                let (data, _end_index) = T::deserialize_from(&account.data, start_index)
-                    .map_err(TestError::from_raw_error)?;
+                let (data, _end_index) =
+                    T::deserialize_from(&account.data, 0).map_err(TestError::from_raw_error)?;
                 Ok(data)
             }
             _ => Err(TestError::from_raw_error(

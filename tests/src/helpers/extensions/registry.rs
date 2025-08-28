@@ -100,6 +100,6 @@ impl CounterExtension for App {
     }
 
     fn registry_query_config(&self) -> TestResult<Config> {
-        get_data(&self.litesvm, &self.pda.registry_config(), 0)
+        get_data(&self.litesvm, &self.pda.registry_config())
     }
 }
