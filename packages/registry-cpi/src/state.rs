@@ -137,7 +137,7 @@ impl Space for Config {
 }
 
 /// for indexing
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Default)]
 pub struct UserCounter {
     pub last_user_id: u32,
 }
