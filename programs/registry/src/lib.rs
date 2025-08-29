@@ -33,7 +33,7 @@ pub fn process_instruction(
                 DISCRIMINATOR::REOPEN_ACCOUNT => instructions::reopen_account,
                 // activates account with fee asset payment
                 DISCRIMINATOR::ACTIVATE_ACCOUNT => instructions::activate_account,
-                DISCRIMINATOR::WRITE_DATA => todo!(),
+                DISCRIMINATOR::WRITE_DATA => instructions::write_data,
                 DISCRIMINATOR::REQUEST_ACCOUNT_ROTATION => todo!(),
                 // updates address - id pair
                 DISCRIMINATOR::CONFIRM_ACCOUNT_ROTATION => todo!(),

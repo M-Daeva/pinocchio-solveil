@@ -1,5 +1,5 @@
 use {
-    crate::state::{discriminator as DISCRIMINATOR, seed as SEED, Bump, Config, UserId},
+    crate::state::{discriminator as DISCRIMINATOR, seed as SEED, Bump, Config},
     base::{
         accounts::{
             AccountCheck, AssociatedTokenAccount, AssociatedTokenAccountCheck, MintAccount,
@@ -58,12 +58,12 @@ impl<'a> TryFrom<&'a [AccountInfo]> for Accounts<'a> {
             Config::get_space(),
             Some(&[SEED::CONFIG]),
         )?;
-        ProgramAccount::check(
-            user_id,
-            &crate::ID,
-            UserId::get_space(),
-            Some(&[SEED::USER_ID, sender.key()]),
-        )?;
+        // ProgramAccount::check( // TODO: check with user instead of sender
+        //     user_id,
+        //     &crate::ID,
+        //     UserId::get_space(),
+        //     Some(&[SEED::USER_ID, sender.key()]),
+        // )?;
         MintAccount::check(revenue_mint)?;
         AssociatedTokenAccount::check(revenue_sender_ata, sender, revenue_mint, token_program)?;
         AssociatedTokenAccount::check(revenue_app_ata, config, revenue_mint, token_program)?;

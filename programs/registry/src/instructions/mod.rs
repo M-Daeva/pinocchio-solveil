@@ -6,6 +6,7 @@ pub mod init;
 pub mod reopen_account;
 pub mod update_config;
 pub mod withdraw_revenue;
+pub mod write_data;
 
 pub use activate_account::*;
 pub use close_account::*;
@@ -15,3 +16,4 @@ pub use init::*;
 pub use reopen_account::*;
 pub use update_config::*;
 pub use withdraw_revenue::*;
+pub use write_data::*;

@@ -307,3 +307,258 @@ fn activate_account_guards() -> TestResult<()> {
 
     Ok(())
 }
+
+#[test]
+fn activate_account_for_other_user() -> TestResult<()> {
+    const MAX_DATA_SIZE: u32 = 1_000;
+
+    let mut app = init_app()?;
+
+    app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, None)?;
+    app.registry_try_activate_account(AppUser::Bob, Some(AppUser::Alice), None)?;
+
+    assert_eq!(
+        app.registry_query_user_account(AppUser::Alice)?.max_size,
+        MAX_DATA_SIZE
+    );
+
+    Ok(())
+}
+
+#[test]
+fn withdraw_revenue_default() -> TestResult<()> {
+    const MAX_DATA_SIZE: u32 = 1_000;
+
+    let mut app = init_app()?;
+
+    app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, None)?;
+    app.registry_try_activate_account(AppUser::Alice, None, None)?;
+
+    let admin_usdc_before = app.get_balance(AppUser::Admin, AppToken::USDC);
+
+    app.registry_try_withdraw_revenue(AppUser::Admin, None, None, None)?;
+
+    let admin_usdc_after = app.get_balance(AppUser::Admin, AppToken::USDC);
+    assert_eq!(
+        admin_usdc_after - admin_usdc_before,
+        ACCOUNT_REGISTRATION_FEE_AMOUNT
+    );
+
+    Ok(())
+}
+
+#[test]
+fn withdraw_revenue_by_amount_to_recipient() -> TestResult<()> {
+    const MAX_DATA_SIZE: u32 = 1_000;
+
+    let mut app = init_app()?;
+
+    app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, None)?;
+    app.registry_try_activate_account(AppUser::Alice, None, None)?;
+
+    let revenue = app.get_ata_token_balance(
+        &app.pda.registry_config(),
+        &pin_to_sol_pubkey(&AppToken::USDC.pubkey()),
+    );
+    assert_eq!(revenue, ACCOUNT_REGISTRATION_FEE_AMOUNT);
+
+    let bob_usdc_before = app.get_balance(AppUser::Bob, AppToken::USDC);
+    app.registry_try_withdraw_revenue(
+        AppUser::Admin,
+        Some(revenue / 2),
+        Some(AppUser::Bob),
+        Some(AppToken::USDC),
+    )?;
+
+    let bob_usdc_after = app.get_balance(AppUser::Bob, AppToken::USDC);
+    assert_eq!(
+        bob_usdc_after - bob_usdc_before,
+        ACCOUNT_REGISTRATION_FEE_AMOUNT / 2
+    );
+
+    Ok(())
+}
+
+#[test]
+fn withdraw_revenue_guards() -> TestResult<()> {
+    const MAX_DATA_SIZE: u32 = 1_000;
+
+    let mut app = init_app()?;
+
+    app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, None)?;
+    app.registry_try_activate_account(AppUser::Alice, None, None)?;
+
+    // only admin can withdraw
+    let res = app
+        .registry_try_withdraw_revenue(AppUser::Alice, None, None, None)
+        .unwrap_err();
+    assert_error(res, AuthError::Unauthorized);
+
+    // lower amount limit
+    let res = app
+        .registry_try_withdraw_revenue(AppUser::Admin, Some(0), None, None)
+        .unwrap_err();
+    assert_error(res, CustomError::ZeroAmount);
+
+    // higher amount limit
+    let res = app
+        .registry_try_withdraw_revenue(
+            AppUser::Admin,
+            Some(ACCOUNT_REGISTRATION_FEE_AMOUNT + 1),
+            None,
+            None,
+        )
+        .unwrap_err();
+    assert_error(res, CustomError::ExceededAvailableAssetAmount);
+
+    app.get_or_create_ata(
+        AppUser::Admin,
+        &app.pda.registry_config(),
+        &pin_to_sol_pubkey(&AppToken::PYTH.pubkey()),
+    )?;
+    let res = app
+        .registry_try_withdraw_revenue(AppUser::Admin, None, None, Some(AppToken::PYTH))
+        .unwrap_err();
+    assert_error(res, CustomError::WrongAssetType);
+
+    Ok(())
+}
+
+#[test]
+fn close_account_guards() -> TestResult<()> {
+    const MAX_DATA_SIZE_0: u32 = 1_000;
+
+    let mut app = init_app()?;
+
+    // account must be created first
+    app.registry_try_close_account(AppUser::Alice, None)
+        .unwrap_err();
+
+    // close account of other user
+    app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE_0, None)?;
+    app.registry_try_close_account(AppUser::Bob, Some(AppUser::Alice))
+        .unwrap_err();
+
+    // close account twice
+    app.registry_try_close_account(AppUser::Alice, None)?;
+    app.registry_try_close_account(AppUser::Alice, None)
+        .unwrap_err();
+
+    Ok(())
+}
+
+#[test]
+fn reopen_account_default() -> TestResult<()> {
+    const MAX_DATA_SIZE_0: u32 = 1_000;
+    const MAX_DATA_SIZE_1: u32 = 1_000;
+
+    let mut app = init_app()?;
+
+    app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE_0, None)?;
+    app.registry_try_activate_account(AppUser::Alice, None, None)?;
+    app.registry_try_close_account(AppUser::Alice, None)?;
+
+    let user_id = app.registry_query_user_id(AppUser::Alice)?;
+    assert_eq!(user_id.id, 1);
+    assert_eq!(user_id.is_open, false);
+    assert_eq!(user_id.is_activated, true);
+
+    app.registry_try_reopen_account(AppUser::Alice, MAX_DATA_SIZE_1)?;
+
+    let user_id = app.registry_query_user_id(AppUser::Alice)?;
+    assert_eq!(user_id.id, 1);
+    assert_eq!(user_id.is_open, true);
+    assert_eq!(user_id.is_activated, true);
+
+    assert_eq!(
+        app.registry_query_user_account(AppUser::Alice)?.max_size,
+        MAX_DATA_SIZE_1
+    );
+
+    Ok(())
+}
+
+#[test]
+fn reopen_account_guards() -> TestResult<()> {
+    const MAX_DATA_SIZE_0: u32 = 1_000;
+
+    let mut app = init_app()?;
+
+    // account must be created first
+    app.registry_try_reopen_account(AppUser::Alice, MAX_DATA_SIZE_0)
+        .unwrap_err();
+
+    // account can't be open twice
+    app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE_0, None)?;
+    app.registry_try_reopen_account(AppUser::Alice, MAX_DATA_SIZE_0)
+        .unwrap_err();
+
+    Ok(())
+}
+
+#[test]
+fn write_data_default() -> TestResult<()> {
+    const MAX_DATA_SIZE: u32 = 1_000;
+    const DATA_0: &str = "encrypted_secrets_0";
+    const DATA_1: &str = "encrypted_secrets_1";
+    const NONCE_0: u64 = 1;
+    const NONCE_1: u64 = 2;
+
+    let mut app = init_app()?;
+
+    app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, None)?;
+    app.registry_try_activate_account(AppUser::Alice, None, None)?;
+
+    for (data, nonce) in [(DATA_0, NONCE_0), (DATA_1, NONCE_1)] {
+        app.registry_try_write_data(AppUser::Alice, data, nonce)?;
+
+        assert_eq!(
+            app.registry_query_user_account(AppUser::Alice)?,
+            UserAccount {
+                data: data.to_string(),
+                nonce,
+                max_size: MAX_DATA_SIZE
+            }
+        );
+    }
+
+    Ok(())
+}
+
+#[test]
+fn write_data_multiple_users() -> TestResult<()> {
+    const MAX_DATA_SIZE: u32 = 1_000;
+    const DATA_0: &str = "encrypted_secrets_0";
+    const DATA_1: &str = "encrypted_secrets_1";
+    const NONCE_0: u64 = 1;
+    const NONCE_1: u64 = 2;
+
+    let mut app = init_app()?;
+
+    for user in [AppUser::Alice, AppUser::Bob] {
+        app.registry_try_create_account(user, MAX_DATA_SIZE, None)?;
+        app.registry_try_activate_account(user, None, None)?;
+    }
+
+    app.registry_try_write_data(AppUser::Alice, DATA_0, NONCE_0)?;
+    app.registry_try_write_data(AppUser::Bob, DATA_1, NONCE_1)?;
+
+    assert_eq!(
+        app.registry_query_user_account(AppUser::Alice)?,
+        UserAccount {
+            data: DATA_0.to_string(),
+            nonce: NONCE_0,
+            max_size: MAX_DATA_SIZE
+        }
+    );
+    assert_eq!(
+        app.registry_query_user_account(AppUser::Bob)?,
+        UserAccount {
+            data: DATA_1.to_string(),
+            nonce: NONCE_1,
+            max_size: MAX_DATA_SIZE
+        }
+    );
+
+    Ok(())
+}

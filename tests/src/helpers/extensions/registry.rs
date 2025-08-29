@@ -80,6 +80,13 @@ pub trait CounterExtension {
         revenue_asset: Option<AppToken>, // to test guards
     ) -> TestResult<TransactionMetadata>;
 
+    fn registry_try_write_data(
+        &mut self,
+        sender: AppUser,
+        data: &str,
+        nonce: u64,
+    ) -> TestResult<TransactionMetadata>;
+
     fn registry_query_config(&self) -> TestResult<Config>;
 
     fn registry_query_user_counter(&self) -> TestResult<UserCounter>;
@@ -520,6 +527,51 @@ impl CounterExtension for App {
 
         let instruction_data = &types::activate_account::InstructionData {
             user: sol_to_pin_pubkey(&user),
+        }
+        .serialize()
+        .map_err(TestError::from_raw_error)?;
+
+        send_tx_with_ix(
+            self,
+            &program_id,
+            &accounts,
+            &instruction_data,
+            signers,
+            &[],
+        )
+    }
+
+    fn registry_try_write_data(
+        &mut self,
+        sender: AppUser,
+        data: &str,
+        nonce: u64,
+    ) -> TestResult<TransactionMetadata> {
+        // programs
+        let ProgramId {
+            registry: program_id,
+            ..
+        } = self.program_id;
+
+        // signers
+        let signers = &[sender.keypair()];
+        let payer = sender.pubkey();
+
+        // pda
+        let user_id = self.pda.registry_user_id(payer);
+        let id = self.registry_query_user_id(sender)?.id;
+        let user_account = self.pda.registry_user_account(id);
+
+        let accounts = types::write_data::TestAccounts {
+            sender: payer,
+            user_id,
+            user_account,
+        }
+        .to_account_metas();
+
+        let instruction_data = &types::write_data::InstructionData {
+            data: data.to_string(),
+            nonce,
         }
         .serialize()
         .map_err(TestError::from_raw_error)?;
