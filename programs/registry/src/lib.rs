@@ -34,9 +34,9 @@ pub fn process_instruction(
                 // activates account with fee asset payment
                 DISCRIMINATOR::ACTIVATE_ACCOUNT => instructions::activate_account,
                 DISCRIMINATOR::WRITE_DATA => instructions::write_data,
-                DISCRIMINATOR::REQUEST_ACCOUNT_ROTATION => todo!(),
+                DISCRIMINATOR::REQUEST_ACCOUNT_ROTATION => instructions::request_account_rotation,
                 // updates address - id pair
-                DISCRIMINATOR::CONFIRM_ACCOUNT_ROTATION => todo!(),
+                DISCRIMINATOR::CONFIRM_ACCOUNT_ROTATION => instructions::confirm_account_rotation,
                 _ => Err(ProgramError::InvalidInstructionData)?,
             };
 

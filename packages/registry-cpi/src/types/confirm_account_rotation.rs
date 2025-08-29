@@ -1,9 +1,11 @@
 use {
-    crate::types::common::{AssetItem, Range},
+    crate::state::{discriminator as DISCRIMINATOR, seed as SEED, UserId},
     base::{
-        accounts::{AccountCheck, MintAccount, SignerAccount, SystemProgram},
-        converters::{to_u32, ByteReader},
-        types::{Result, ZeroCopyDeserialize},
+        accounts::{
+            AccountCheck, ProgramAccount, ProgramAccountCheck, SignerAccount, SystemProgram,
+        },
+        converters::ByteReader,
+        types::{Result, Space},
     },
     pinocchio::{account_info::AccountInfo, program_error::ProgramError},
     r#macro_account::AccountMetas,
@@ -12,81 +14,56 @@ use {
 #[derive(AccountMetas)]
 pub struct Accounts<'a> {
     pub system_program: &'a AccountInfo,
-    pub token_program: &'a AccountInfo,
-    pub associated_token_program: &'a AccountInfo,
 
     #[account(signer, writable)]
     pub sender: &'a AccountInfo,
+
     #[account(writable)]
-    pub bump: &'a AccountInfo,
+    pub user_id_pre: &'a AccountInfo,
+
+    pub user_id: &'a AccountInfo,
+
     #[account(writable)]
-    pub config: &'a AccountInfo,
-    #[account(writable)]
-    pub user_counter: &'a AccountInfo,
-    #[account(writable)]
-    pub admin_rotation_state: &'a AccountInfo,
-    pub revenue_mint: &'a AccountInfo,
-    #[account(writable)]
-    pub revenue_app_ata: &'a AccountInfo,
+    pub user_rotation_state: &'a AccountInfo,
 }
 
 impl<'a> TryFrom<&'a [AccountInfo]> for Accounts<'a> {
     type Error = ProgramError;
 
     fn try_from(accounts: &'a [AccountInfo]) -> Result<Self> {
-        let [system_program, token_program, associated_token_program, sender, bump, config, user_counter, admin_rotation_state, revenue_mint, revenue_app_ata] =
-            accounts
-        else {
+        let [system_program, sender, user_id_pre, user_id, user_rotation_state] = accounts else {
             Err(ProgramError::NotEnoughAccountKeys)?
         };
 
         SystemProgram::check(system_program)?;
-        // token_program
-        // associated_token_program
-
         SignerAccount::check(sender)?;
-        // bump
-        // config
-        // user_counter
-        // admin_rotation_state
-        MintAccount::check(revenue_mint)?;
-        // revenue_app_ata
+        // user_id_pre,
+        ProgramAccount::check(
+            user_id,
+            &crate::ID,
+            UserId::get_space(),
+            Some(&[SEED::USER_ID, sender.key()]),
+        )?;
+        // user_rotation_state, // TODO: should check but not here
 
         Ok(Self {
             system_program,
-            token_program,
-            associated_token_program,
             sender,
-            bump,
-            config,
-            user_counter,
-            admin_rotation_state,
-            revenue_mint,
-            revenue_app_ata,
+            user_id_pre,
+            user_id,
+            user_rotation_state,
         })
     }
 }
 
 #[derive(Default)]
-pub struct InstructionData {
-    pub rotation_timeout: Option<u32>,
-    pub account_registration_fee: Option<AssetItem>,
-    pub account_data_size_range: Option<Range>,
-}
+pub struct InstructionData {}
 
 impl TryFrom<&[u8]> for InstructionData {
     type Error = ProgramError;
 
     fn try_from(data: &[u8]) -> Result<Self> {
-        ByteReader::new::<Self>(data, 0)
-            .read_option(|x| &mut x.rotation_timeout, to_u32)?
-            .read_option(
-                |x| &mut x.account_registration_fee,
-                AssetItem::deserialize_from,
-            )?
-            .read_option(|x| &mut x.account_data_size_range, Range::deserialize_from)?
-            .complete()
-            .map(|(x, _)| x)
+        ByteReader::new::<Self>(data, 0).complete().map(|(x, _)| x)
     }
 }
 
@@ -94,14 +71,11 @@ impl TryFrom<&[u8]> for InstructionData {
 #[cfg(feature = "dev")]
 impl base::types::InstructionSerialize for InstructionData {
     fn serialize(&self) -> Result<Vec<u8>> {
-        use base::converters::{option_as_bytes, u32_as_bytes, ByteWriter, ByteWriterVecExt};
+        use base::converters::{ByteWriter, ByteWriterVecExt};
 
         let mut buffer = vec![];
         let position = ByteWriter::from_vec(&mut buffer)
-            .write_u8(crate::state::discriminator::INIT)?
-            .write_bytes(&option_as_bytes(&self.rotation_timeout, u32_as_bytes))?
-            .write_option_custom(&self.account_registration_fee)?
-            .write_option_custom(&self.account_data_size_range)?
+            .write_u8(DISCRIMINATOR::CONFIRM_ACCOUNT_ROTATION)?
             .position();
         buffer.truncate(position);
 

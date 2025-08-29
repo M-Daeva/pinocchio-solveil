@@ -562,3 +562,63 @@ fn write_data_multiple_users() -> TestResult<()> {
 
     Ok(())
 }
+
+#[test]
+fn rotate_account() -> TestResult<()> {
+    const MAX_DATA_SIZE: u32 = 1_000;
+    const DATA_0: &str = "encrypted_secrets_0";
+    const NONCE_0: u64 = 1;
+
+    let mut app = init_app()?;
+
+    app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, None)?;
+    app.registry_try_activate_account(AppUser::Alice, None, None)?;
+    app.registry_try_write_data(AppUser::Alice, DATA_0, NONCE_0)?;
+
+    // new owner isn't specified
+    let res = app
+        .registry_try_confirm_account_rotation(AppUser::Bob, AppUser::Alice)
+        .unwrap_err();
+    assert_error(res, AuthError::NoNewOwner);
+
+    // the owner can't be new owner
+    let res = app
+        .registry_try_request_account_rotation(AppUser::Alice, AppUser::Alice)
+        .unwrap_err();
+    assert_error(res, AuthError::UselessRotation);
+
+    // // too late to confirm account rotation
+    // app.registry_try_request_account_rotation(AppUser::Alice, AppUser::Bob)?;
+    // app.wait(ROTATION_TIMEOUT as u64);
+    // let res = app
+    //     .registry_try_confirm_account_rotation(AppUser::Bob, AppUser::Alice)
+    //     .unwrap_err();
+    // assert_error(res, AuthError::TransferOwnerDeadline);
+
+    // // only new owner can confirm account rotation
+    // app.registry_try_request_account_rotation(AppUser::Alice, AppUser::Bob)?;
+    // let res = app
+    //     .registry_try_confirm_account_rotation(AppUser::Admin, AppUser::Alice)
+    //     .unwrap_err();
+    // assert_error(res, AuthError::Unauthorized);
+
+    // // success
+    // app.registry_try_confirm_account_rotation(AppUser::Bob, AppUser::Alice)?;
+    // app.registry_query_user_id(AppUser::Alice).unwrap_err();
+    // assert_eq!(
+    //     app.registry_query_user_account(AppUser::Bob)?,
+    //     UserAccount {
+    //         data: DATA_0.to_string(),
+    //         nonce: NONCE_0,
+    //         max_size: MAX_DATA_SIZE
+    //     }
+    // );
+
+    // // new owner isn't specified after rotation
+    // let res = app
+    //     .registry_try_confirm_account_rotation(AppUser::Alice, AppUser::Bob)
+    //     .unwrap_err();
+    // assert_error(res, AuthError::NoNewOwner);
+
+    Ok(())
+}

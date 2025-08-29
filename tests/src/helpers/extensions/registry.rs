@@ -87,6 +87,18 @@ pub trait CounterExtension {
         nonce: u64,
     ) -> TestResult<TransactionMetadata>;
 
+    fn registry_try_request_account_rotation(
+        &mut self,
+        sender: AppUser,
+        new_owner: AppUser,
+    ) -> TestResult<TransactionMetadata>;
+
+    fn registry_try_confirm_account_rotation(
+        &mut self,
+        sender: AppUser,
+        prev_owner: AppUser,
+    ) -> TestResult<TransactionMetadata>;
+
     fn registry_query_config(&self) -> TestResult<Config>;
 
     fn registry_query_user_counter(&self) -> TestResult<UserCounter>;
@@ -575,6 +587,99 @@ impl CounterExtension for App {
         }
         .serialize()
         .map_err(TestError::from_raw_error)?;
+
+        send_tx_with_ix(
+            self,
+            &program_id,
+            &accounts,
+            &instruction_data,
+            signers,
+            &[],
+        )
+    }
+
+    fn registry_try_request_account_rotation(
+        &mut self,
+        sender: AppUser,
+        new_owner: AppUser,
+    ) -> TestResult<TransactionMetadata> {
+        // programs
+        let ProgramId {
+            registry: program_id,
+            ..
+        } = self.program_id;
+
+        // signers
+        let signers = &[sender.keypair()];
+        let payer = sender.pubkey();
+
+        // pda
+        let bump = self.pda.registry_bump();
+        let config = self.pda.registry_config();
+
+        let user_id = self.pda.registry_user_id(payer);
+        let id = self.registry_query_user_id(sender)?.id;
+        let user_rotation_state = self.pda.registry_user_rotation_state(id);
+
+        let accounts = types::request_account_rotation::TestAccounts {
+            sender: payer,
+            bump,
+            config,
+            user_id,
+            user_rotation_state,
+        }
+        .to_account_metas();
+
+        let instruction_data = &types::request_account_rotation::InstructionData {
+            new_owner: sol_to_pin_pubkey(&new_owner.pubkey()),
+        }
+        .serialize()
+        .map_err(TestError::from_raw_error)?;
+
+        send_tx_with_ix(
+            self,
+            &program_id,
+            &accounts,
+            &instruction_data,
+            signers,
+            &[],
+        )
+    }
+
+    fn registry_try_confirm_account_rotation(
+        &mut self,
+        sender: AppUser,
+        prev_owner: AppUser,
+    ) -> TestResult<TransactionMetadata> {
+        // programs
+        let ProgramId {
+            system_program,
+            registry: program_id,
+            ..
+        } = self.program_id;
+
+        // signers
+        let signers = &[sender.keypair()];
+        let payer = sender.pubkey();
+
+        // pda
+        let user_id_pre = self.pda.registry_user_id(prev_owner.pubkey());
+        let user_id = self.pda.registry_user_id(payer);
+        let user_id_value_pre = self.registry_query_user_id(prev_owner)?.id;
+        let user_rotation_state = self.pda.registry_user_rotation_state(user_id_value_pre);
+
+        let accounts = types::confirm_account_rotation::TestAccounts {
+            system_program,
+            sender: payer,
+            user_id_pre,
+            user_id,
+            user_rotation_state,
+        }
+        .to_account_metas();
+
+        let instruction_data = &types::confirm_account_rotation::InstructionData {}
+            .serialize()
+            .map_err(TestError::from_raw_error)?;
 
         send_tx_with_ix(
             self,
