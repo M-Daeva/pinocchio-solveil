@@ -1,19 +1,195 @@
 use {
-    crate::types::{Result, ZeroCopyDeserialize, ZeroCopySerialize},
+    crate::{
+        guards::check_ix_data_len,
+        types::{Result, ZeroCopyDeserialize, ZeroCopySerialize},
+    },
     pinocchio::{program_error::ProgramError, pubkey::Pubkey, ProgramResult},
     std::{mem, slice},
 };
 
-/// for tests
-#[cfg(feature = "dev")]
-pub fn from_u8_option(data: Option<u8>) -> Result<Vec<u8>> {
-    Ok(vec![data.unwrap_or_default()])
+pub struct ByteReader<'a, T> {
+    data: &'a [u8],
+    position: usize,
+    value: T,
 }
 
-/// for tests
-#[cfg(feature = "dev")]
-pub fn from_u8(data: u8) -> Result<Vec<u8>> {
-    Ok(vec![data])
+impl<'a> ByteReader<'a, ()> {
+    #[inline]
+    pub fn new<T: Default>(data: &'a [u8], start_index: usize) -> ByteReader<'a, T> {
+        ByteReader {
+            data,
+            position: start_index,
+            value: T::default(),
+        }
+    }
+}
+
+impl<'a, T> ByteReader<'a, T> {
+    #[inline]
+    pub fn position(&self) -> usize {
+        self.position
+    }
+
+    #[inline]
+    pub fn complete(self) -> Result<(T, usize)> {
+        check_ix_data_len(self.data, self.position)?;
+        Ok((self.value, self.position))
+    }
+
+    // Generic field updater - the core of the fluent interface
+    #[inline]
+    fn update_field<F, V>(
+        mut self,
+        field_getter: F,
+        parser: fn(&[u8], usize) -> Result<(V, usize)>,
+    ) -> Result<Self>
+    where
+        F: FnOnce(&mut T) -> &mut V,
+    {
+        let (value, new_pos) = parser(self.data, self.position)?;
+        *field_getter(&mut self.value) = value;
+        self.position = new_pos;
+        Ok(self)
+    }
+
+    // Convenience methods for common types
+    #[inline]
+    pub fn read_bool<F>(self, field_getter: F) -> Result<Self>
+    where
+        F: FnOnce(&mut T) -> &mut bool,
+    {
+        self.update_field(field_getter, to_bool)
+    }
+
+    #[inline]
+    pub fn read_u8<F>(self, field_getter: F) -> Result<Self>
+    where
+        F: FnOnce(&mut T) -> &mut u8,
+    {
+        self.update_field(field_getter, to_u8)
+    }
+
+    #[inline]
+    pub fn read_u16<F>(self, field_getter: F) -> Result<Self>
+    where
+        F: FnOnce(&mut T) -> &mut u16,
+    {
+        self.update_field(field_getter, to_u16)
+    }
+
+    #[inline]
+    pub fn read_u32<F>(self, field_getter: F) -> Result<Self>
+    where
+        F: FnOnce(&mut T) -> &mut u32,
+    {
+        self.update_field(field_getter, to_u32)
+    }
+
+    #[inline]
+    pub fn read_u64<F>(self, field_getter: F) -> Result<Self>
+    where
+        F: FnOnce(&mut T) -> &mut u64,
+    {
+        self.update_field(field_getter, to_u64)
+    }
+
+    #[inline]
+    pub fn read_u128<F>(self, field_getter: F) -> Result<Self>
+    where
+        F: FnOnce(&mut T) -> &mut u128,
+    {
+        self.update_field(field_getter, to_u128)
+    }
+
+    #[inline]
+    pub fn read_pubkey<F>(self, field_getter: F) -> Result<Self>
+    where
+        F: FnOnce(&mut T) -> &mut Pubkey,
+    {
+        self.update_field(field_getter, to_pubkey)
+    }
+
+    #[inline]
+    pub fn read_string<F>(self, field_getter: F) -> Result<Self>
+    where
+        F: FnOnce(&mut T) -> &mut String,
+    {
+        self.update_field(field_getter, to_string)
+    }
+
+    // For Vec<T> with fixed-size elements
+    #[inline]
+    pub fn read_vec_fixed<V, F, P>(self, field_getter: F, item_parser: P) -> Result<Self>
+    where
+        F: FnOnce(&mut T) -> &mut Vec<V>,
+        P: Fn(&[u8], usize) -> Result<(V, usize)>,
+    {
+        let (value, new_pos) = to_vec_fixed(self.data, self.position, item_parser)?;
+        let mut updated_self = self;
+        *field_getter(&mut updated_self.value) = value;
+        updated_self.position = new_pos;
+        Ok(updated_self)
+    }
+
+    // For Option<T>
+    #[inline]
+    pub fn read_option<V, F, P>(self, field_getter: F, item_parser: P) -> Result<Self>
+    where
+        F: FnOnce(&mut T) -> &mut Option<V>,
+        P: Fn(&[u8], usize) -> Result<(V, usize)>,
+    {
+        let (value, new_pos) = to_option(self.data, self.position, item_parser)?;
+        let mut updated_self = self;
+        *field_getter(&mut updated_self.value) = value;
+        updated_self.position = new_pos;
+        Ok(updated_self)
+    }
+
+    // For arrays [T; N]
+    #[inline]
+    pub fn read_array<V, F, P, const N: usize>(
+        self,
+        field_getter: F,
+        item_parser: P,
+    ) -> Result<Self>
+    where
+        V: Copy + Default,
+        F: FnOnce(&mut T) -> &mut [V; N],
+        P: Fn(&[u8], usize) -> Result<(V, usize)>,
+    {
+        let (value, new_pos) = to_array(self.data, self.position, item_parser)?;
+        let mut updated_self = self;
+        *field_getter(&mut updated_self.value) = value;
+        updated_self.position = new_pos;
+        Ok(updated_self)
+    }
+
+    // For complex types with custom parsers
+    #[inline]
+    pub fn read_with_parser<V, F, P>(self, field_getter: F, parser: P) -> Result<Self>
+    where
+        F: FnOnce(&mut T) -> &mut V,
+        P: Fn(&[u8], usize) -> Result<(V, usize)>,
+    {
+        let (value, new_pos) = parser(self.data, self.position)?;
+        let mut updated_self = self;
+        *field_getter(&mut updated_self.value) = value;
+        updated_self.position = new_pos;
+        Ok(updated_self)
+    }
+
+    // For types that implement ZeroCopyDeserialize
+    #[inline]
+    pub fn read_custom<V: ZeroCopyDeserialize, F>(self, field_getter: F) -> Result<Self>
+    where
+        F: FnOnce(&mut T) -> &mut V,
+    {
+        let (value, new_pos) = V::deserialize_from(self.data, self.position)?;
+        let mut updated_self = self;
+        *field_getter(&mut updated_self.value) = value;
+        updated_self.position = new_pos;
+        Ok(updated_self)
+    }
 }
 
 // Boolean (1 byte: 0 = false, non-zero = true)
@@ -194,6 +370,175 @@ where
     Ok((array, current_index))
 }
 
+pub struct ByteWriter<'a> {
+    buffer: &'a mut [u8],
+    position: usize,
+}
+
+impl<'a> ByteWriter<'a> {
+    #[inline]
+    pub fn new(buffer: &'a mut [u8]) -> Self {
+        Self {
+            buffer,
+            position: 0,
+        }
+    }
+
+    #[inline]
+    pub fn write_custom<T>(mut self, data: &T) -> Result<Self>
+    where
+        T: ZeroCopySerialize + ZeroCopyDeserialize,
+    {
+        let end_pos = self.position + core::mem::size_of::<T>();
+        if end_pos > self.buffer.len() {
+            Err(ProgramError::InvalidInstructionData)?;
+        }
+
+        data.serialize_into(&mut self.buffer[self.position..])?;
+        self.position = end_pos;
+
+        Ok(self)
+    }
+
+    #[inline]
+    pub fn write_option_custom<T>(mut self, value: &Option<T>) -> Result<Self>
+    where
+        T: ZeroCopySerialize + ZeroCopyDeserialize,
+    {
+        match value {
+            Some(inner_value) => {
+                self = self.write_u8(1)?; // is_some = true
+                self = self.write_custom(inner_value)?;
+            }
+            None => {
+                self = self.write_u8(0)?; // is_some = false
+            }
+        }
+        Ok(self)
+    }
+
+    #[inline]
+    pub fn write_option<T, F>(mut self, value: &Option<T>, converter: F) -> Result<Self>
+    where
+        F: FnOnce(&T) -> &[u8],
+    {
+        match value {
+            Some(inner_value) => {
+                self = self.write_u8(1)?; // is_some = true
+                let bytes = converter(inner_value);
+                self = self.write_bytes(bytes)?;
+            }
+            None => {
+                self = self.write_u8(0)?; // is_some = false
+            }
+        }
+        Ok(self)
+    }
+
+    #[inline]
+    pub fn write_bytes(mut self, data: &[u8]) -> Result<Self> {
+        let end_pos = self.position + data.len();
+        if end_pos > self.buffer.len() {
+            Err(ProgramError::InvalidInstructionData)?;
+        }
+
+        self.buffer[self.position..end_pos].copy_from_slice(data);
+        self.position = end_pos;
+
+        Ok(self)
+    }
+
+    #[inline]
+    pub fn write_u8(self, value: u8) -> Result<Self> {
+        self.write_bytes(&[value])
+    }
+
+    #[inline]
+    pub fn write_u16(self, value: u16) -> Result<Self> {
+        self.write_bytes(&value.to_le_bytes())
+    }
+
+    #[inline]
+    pub fn write_u32(self, value: u32) -> Result<Self> {
+        self.write_bytes(&value.to_le_bytes())
+    }
+
+    #[inline]
+    pub fn write_u64(self, value: u64) -> Result<Self> {
+        self.write_bytes(&value.to_le_bytes())
+    }
+
+    #[inline]
+    pub fn write_u128(self, value: u128) -> Result<Self> {
+        self.write_bytes(&value.to_le_bytes())
+    }
+
+    #[inline]
+    pub fn write_bool(self, value: bool) -> Result<Self> {
+        self.write_u8(if value { 1 } else { 0 })
+    }
+
+    #[inline]
+    pub fn write_string(mut self, value: &str) -> Result<Self> {
+        let bytes = value.as_bytes();
+        self = self.write_u32(bytes.len() as u32)?;
+        self.write_bytes(bytes)
+    }
+
+    #[inline]
+    pub fn write_pubkey(self, value: &Pubkey) -> Result<Self> {
+        self.write_bytes(value.as_ref())
+    }
+
+    #[inline]
+    pub fn complete(self) -> ProgramResult {
+        Ok(())
+    }
+
+    #[inline]
+    pub fn position(&self) -> usize {
+        self.position
+    }
+
+    #[inline]
+    pub fn remaining(&self) -> usize {
+        self.buffer.len() - self.position
+    }
+
+    #[inline]
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.buffer[..self.position]
+    }
+}
+
+/// for tests
+#[cfg(feature = "dev")]
+pub trait ByteWriterVecExt<'a> {
+    fn from_vec(buffer: &'a mut Vec<u8>) -> ByteWriter<'a>;
+    fn truncate_buffer(self, buffer: &mut Vec<u8>);
+}
+
+/// for tests
+#[cfg(feature = "dev")]
+impl<'a> ByteWriterVecExt<'a> for ByteWriter<'a> {
+    #[inline]
+    fn from_vec(buffer: &'a mut Vec<u8>) -> ByteWriter<'a> {
+        // Ensure the vec has some initial capacity to avoid immediate reallocation
+        if buffer.capacity() < 256 {
+            buffer.reserve(256);
+        }
+        // Resize to match capacity to avoid bounds checking issues
+        let capacity = buffer.capacity();
+        buffer.resize(capacity, 0);
+        ByteWriter::new(buffer)
+    }
+
+    #[inline]
+    fn truncate_buffer(self, buffer: &mut Vec<u8>) {
+        buffer.truncate(self.position());
+    }
+}
+
 // For types that can be directly interpreted as bytes (zero-copy)
 
 // Boolean (1 byte: 0 = false, 1 = true)
@@ -243,27 +588,6 @@ pub fn pubkey_as_bytes(value: &Pubkey) -> &[u8] {
 pub fn string_as_bytes(value: &str) -> &[u8] {
     value.as_bytes()
 }
-
-// // Arrays of primitive types (zero-copy)
-// #[inline]
-// pub fn array_u8_as_bytes<const N: usize>(value: &[u8; N]) -> &[u8] {
-//     value.as_slice()
-// }
-
-// #[inline]
-// pub fn array_u16_as_bytes<const N: usize>(value: &[u16; N]) -> &[u8] {
-//     unsafe { slice::from_raw_parts(value.as_ptr() as *const u8, N * mem::size_of::<u16>()) }
-// }
-
-// #[inline]
-// pub fn array_u32_as_bytes<const N: usize>(value: &[u32; N]) -> &[u8] {
-//     unsafe { slice::from_raw_parts(value.as_ptr() as *const u8, N * mem::size_of::<u32>()) }
-// }
-
-// #[inline]
-// pub fn array_u64_as_bytes<const N: usize>(value: &[u64; N]) -> &[u8] {
-//     unsafe { slice::from_raw_parts(value.as_ptr() as *const u8, N * mem::size_of::<u64>()) }
-// }
 
 // Slices of primitive types (zero-copy)
 #[inline]
@@ -324,142 +648,4 @@ where
             vec![0u8] // is_some = false, no additional data
         }
     }
-}
-
-// Generic function for any type that can be safely interpreted as bytes
-#[inline]
-pub fn any_as_bytes<T>(value: &T) -> &[u8] {
-    unsafe { slice::from_raw_parts(value as *const T as *const u8, mem::size_of::<T>()) }
-}
-
-// For cases where you need to build complex structures efficiently
-// Use a pre-allocated buffer and write directly into it
-
-pub struct ByteWriter<'a> {
-    buffer: &'a mut [u8],
-    position: usize,
-}
-
-impl<'a> ByteWriter<'a> {
-    #[inline]
-    pub fn new(buffer: &'a mut [u8]) -> Self {
-        Self {
-            buffer,
-            position: 0,
-        }
-    }
-
-    #[inline]
-    pub fn write_custom<T>(&mut self, data: &T) -> ProgramResult
-    where
-        T: ZeroCopySerialize + ZeroCopyDeserialize,
-    {
-        let end_pos = self.position + core::mem::size_of::<T>();
-        if end_pos > self.buffer.len() {
-            Err(ProgramError::InvalidInstructionData)?;
-        }
-
-        data.serialize_into(&mut self.buffer[self.position..])?;
-        self.position = end_pos;
-
-        Ok(())
-    }
-
-    #[inline]
-    pub fn write_option_custom<T>(&mut self, value: &Option<T>) -> ProgramResult
-    where
-        T: ZeroCopySerialize + ZeroCopyDeserialize,
-    {
-        match value {
-            Some(inner_value) => {
-                self.write_u8(1)?; // is_some = true
-                self.write_custom(inner_value)?;
-            }
-            None => {
-                self.write_u8(0)?; // is_some = false
-            }
-        }
-        Ok(())
-    }
-
-    #[inline]
-    pub fn write_bytes(&mut self, data: &[u8]) -> ProgramResult {
-        let end_pos = self.position + data.len();
-        if end_pos > self.buffer.len() {
-            Err(ProgramError::InvalidInstructionData)?;
-        }
-
-        self.buffer[self.position..end_pos].copy_from_slice(data);
-        self.position = end_pos;
-
-        Ok(())
-    }
-
-    #[inline]
-    pub fn write_u8(&mut self, value: u8) -> ProgramResult {
-        self.write_bytes(&[value])
-    }
-
-    #[inline]
-    pub fn write_u16(&mut self, value: u16) -> ProgramResult {
-        self.write_bytes(&value.to_le_bytes())
-    }
-
-    #[inline]
-    pub fn write_u32(&mut self, value: u32) -> ProgramResult {
-        self.write_bytes(&value.to_le_bytes())
-    }
-
-    #[inline]
-    pub fn write_u64(&mut self, value: u64) -> ProgramResult {
-        self.write_bytes(&value.to_le_bytes())
-    }
-
-    #[inline]
-    pub fn write_u128(&mut self, value: u128) -> ProgramResult {
-        self.write_bytes(&value.to_le_bytes())
-    }
-
-    #[inline]
-    pub fn write_bool(&mut self, value: bool) -> ProgramResult {
-        self.write_u8(if value { 1 } else { 0 })
-    }
-
-    #[inline]
-    pub fn write_string(&mut self, value: &str) -> ProgramResult {
-        let bytes = value.as_bytes();
-        self.write_u32(bytes.len() as u32)?;
-        self.write_bytes(bytes)
-    }
-
-    #[inline]
-    pub fn write_pubkey(&mut self, value: &Pubkey) -> ProgramResult {
-        self.write_bytes(value.as_ref())
-    }
-
-    #[inline]
-    pub fn position(&self) -> usize {
-        self.position
-    }
-
-    #[inline]
-    pub fn remaining(&self) -> usize {
-        self.buffer.len() - self.position
-    }
-
-    #[inline]
-    pub fn as_bytes(&self) -> &[u8] {
-        &self.buffer[..self.position]
-    }
-}
-
-// Macro for creating temporary byte arrays on the stack (for small data)
-#[macro_export]
-macro_rules! stack_serialize {
-    ($size:expr, |$writer:ident| $body:expr) => {{
-        let mut buffer = [0u8; $size];
-        let mut $writer = ByteWriter::new(&mut buffer);
-        $body?;
-        Ok($writer.as_bytes())
-    }};
 }

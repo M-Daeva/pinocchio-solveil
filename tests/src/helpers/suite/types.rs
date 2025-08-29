@@ -48,10 +48,12 @@ const PUBKEY_WBTC: &str = "An6eCPnnsspFAy5bUrgnNkU4hkedv9ZDRUJazUTG1ewb";
 
 const PUBKEY_WSOL: &str = "So11111111111111111111111111111111111111112";
 
+/// for extensions
 pub trait SolPubkey {
     fn pubkey(&self) -> solana_pubkey::Pubkey;
 }
 
+/// for actual tests
 pub trait PinPubkey {
     fn pubkey(&self) -> pinocchio::pubkey::Pubkey;
 }

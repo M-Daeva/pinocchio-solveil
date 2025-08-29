@@ -167,6 +167,36 @@ impl Pda {
         )
         .0
     }
+
+    pub fn registry_user_id(&self, user: Pubkey) -> Pubkey {
+        get_pda_and_bump(
+            &seeds![registry_cpi::state::seed::USER_ID, user],
+            &self.registry_program_id,
+        )
+        .0
+    }
+
+    pub fn registry_user_account(&self, user_id: u32) -> Pubkey {
+        get_pda_and_bump(
+            &seeds![
+                registry_cpi::state::seed::USER_ACCOUNT,
+                user_id.to_le_bytes().as_ref()
+            ],
+            &self.registry_program_id,
+        )
+        .0
+    }
+
+    pub fn registry_user_rotation_state(&self, user_id: u32) -> Pubkey {
+        get_pda_and_bump(
+            &seeds![
+                registry_cpi::state::seed::USER_ROTATION_STATE,
+                user_id.to_le_bytes().as_ref()
+            ],
+            &self.registry_program_id,
+        )
+        .0
+    }
 }
 
 pub struct App {

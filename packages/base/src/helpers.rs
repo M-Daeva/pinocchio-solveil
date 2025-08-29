@@ -1,5 +1,6 @@
 use {
     crate::{
+        converters::to_u64,
         guards::check_derived_pda,
         types::{Result, DISCRIMINATOR_SPACE},
     },
@@ -255,4 +256,37 @@ pub fn burn_token_from(
         decimals,
     }
     .invoke()
+}
+
+#[inline]
+pub fn get_ata_balance(ata: &AccountInfo) -> Result<u64> {
+    // Token account data layout (SPL Token format):
+    // - mint: 32 bytes
+    // - owner: 32 bytes
+    // - amount: 8 bytes (offset 64)
+    // - delegate: 36 bytes
+    // - state: 1 byte
+    // - is_native: 12 bytes
+    // - delegated_amount: 8 bytes
+    // - close_authority: 36 bytes
+    const INDEX_START: usize = 64;
+    // const INDEX_END: usize = 72;
+
+    let data = &ata.try_borrow_data()?;
+    // let amount_bytes = &data[INDEX_START..INDEX_END];
+
+    to_u64(data, INDEX_START).map(|(x, _)| x)
+}
+
+#[inline]
+pub fn get_token_decimals(mint: &AccountInfo) -> Result<u8> {
+    // Mint account data layout:
+    // - mint_authority: 36 bytes (32 + 4 for COption)
+    // - supply: 8 bytes
+    // - decimals: 1 byte (offset 44)
+    // - is_initialized: 1 byte
+    // - freeze_authority: 36 bytes
+    const INDEX_START: usize = 44;
+
+    Ok(mint.try_borrow_data()?[INDEX_START])
 }

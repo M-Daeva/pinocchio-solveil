@@ -26,7 +26,6 @@ pub fn init(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult 
     let Accounts {
         system_program,
         token_program,
-        // associated_token_program, // TODO: do we need it?
         sender,
         bump,
         config,
