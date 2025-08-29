@@ -11,8 +11,9 @@ use {
     registry_cpi::{
         error::CustomError,
         state::{
-            Config, RotationState, UserCounter, ACCOUNT_DATA_SIZE_MAX, ACCOUNT_DATA_SIZE_MIN,
-            ACCOUNT_REGISTRATION_FEE_AMOUNT, CLOCK_TIME_MIN, ROTATION_TIMEOUT,
+            Config, RotationState, UserAccount, UserCounter, ACCOUNT_DATA_SIZE_MAX,
+            ACCOUNT_DATA_SIZE_MIN, ACCOUNT_REGISTRATION_FEE_AMOUNT, CLOCK_TIME_MIN,
+            ROTATION_TIMEOUT,
         },
         types::common::{AssetItem, Range},
     },
@@ -227,3 +228,42 @@ fn transfer_admin() -> TestResult<()> {
 
 //     Ok(())
 // }
+
+#[test]
+fn create_and_activate_account_default() -> TestResult<()> {
+    const MAX_DATA_SIZE: u32 = 1_000;
+
+    let mut app = init_app()?;
+
+    app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, None)?;
+
+    // let user_id = app.registry_query_user_id(AppUser::Alice)?;
+    // assert_eq!(user_id.id, 1);
+    // assert_eq!(user_id.is_open, true);
+    // assert_eq!(user_id.is_activated, false);
+
+    // assert_eq!(
+    //     app.registry_query_user_account(AppUser::Alice)?,
+    //     UserAccount {
+    //         data: String::default(),
+    //         nonce: 0,
+    //         max_size: MAX_DATA_SIZE
+    //     }
+    // );
+
+    // let alice_usdc_before = app.get_balance(AppUser::Alice, AppToken::USDC);
+    // app.registry_try_activate_account(AppUser::Alice, None, None)?;
+
+    // let alice_usdc_after = app.get_balance(AppUser::Alice, AppToken::USDC);
+    // assert_eq!(
+    //     alice_usdc_before - alice_usdc_after,
+    //     ACCOUNT_REGISTRATION_FEE_AMOUNT
+    // );
+
+    // let user_id = app.registry_query_user_id(AppUser::Alice)?;
+    // assert_eq!(user_id.id, 1);
+    // assert_eq!(user_id.is_open, true);
+    // assert_eq!(user_id.is_activated, true);
+
+    Ok(())
+}

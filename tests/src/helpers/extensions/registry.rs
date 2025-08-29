@@ -61,6 +61,13 @@ pub trait CounterExtension {
         expected_user_id: Option<u32>, // to test guards
     ) -> TestResult<TransactionMetadata>;
 
+    fn registry_try_activate_account(
+        &mut self,
+        sender: AppUser,
+        user: Option<AppUser>,
+        revenue_asset: Option<AppToken>, // to test guards
+    ) -> TestResult<TransactionMetadata>;
+
     fn registry_query_config(&self) -> TestResult<Config>;
 
     fn registry_query_user_counter(&self) -> TestResult<UserCounter>;
@@ -341,6 +348,72 @@ impl CounterExtension for App {
         let instruction_data = &types::create_account::InstructionData { max_data_size }
             .serialize()
             .map_err(TestError::from_raw_error)?;
+
+        send_tx_with_ix(
+            self,
+            &program_id,
+            &accounts,
+            &instruction_data,
+            signers,
+            &[],
+        )
+    }
+
+    fn registry_try_activate_account(
+        &mut self,
+        sender: AppUser,
+        user: Option<AppUser>,
+        revenue_asset: Option<AppToken>, // to test guards
+    ) -> TestResult<TransactionMetadata> {
+        // programs
+        let ProgramId {
+            system_program,
+            token_program,
+            associated_token_program,
+            registry: program_id,
+            ..
+        } = self.program_id;
+
+        let user = user.unwrap_or(sender).pubkey();
+
+        // signers
+        let signers = &[sender.keypair()];
+        let sender = sender.pubkey();
+
+        // mint
+        let revenue_mint = match revenue_asset {
+            Some(x) => x.pubkey(),
+            _ => pin_to_sol_pubkey(&self.registry_query_config()?.registration_fee.asset),
+        };
+
+        // pda
+        let bump = self.pda.registry_bump();
+        let config = self.pda.registry_config();
+        let user_id = self.pda.registry_user_id(user);
+
+        // ata
+        let revenue_sender_ata = App::get_ata(&sender, &revenue_mint);
+        let revenue_app_ata = App::get_ata(&config, &revenue_mint);
+
+        let accounts = types::activate_account::TestAccounts {
+            system_program,
+            token_program,
+            associated_token_program,
+            sender,
+            bump,
+            config,
+            user_id,
+            revenue_mint,
+            revenue_sender_ata,
+            revenue_app_ata,
+        }
+        .to_account_metas();
+
+        let instruction_data = &types::activate_account::InstructionData {
+            user: sol_to_pin_pubkey(&user),
+        }
+        .serialize()
+        .map_err(TestError::from_raw_error)?;
 
         send_tx_with_ix(
             self,

@@ -4,6 +4,7 @@ pub mod error;
 pub mod state;
 
 pub mod types {
+    pub mod activate_account;
     pub mod common;
     pub mod confirm_admin_rotation;
     pub mod create_account;

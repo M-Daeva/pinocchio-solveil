@@ -101,7 +101,7 @@ impl base::types::InstructionSerialize for InstructionData {
 
         let mut buffer = vec![];
         let position = ByteWriter::from_vec(&mut buffer)
-            .write_u8(DISCRIMINATOR::INIT)?
+            .write_u8(DISCRIMINATOR::CREATE_ACCOUNT)?
             .write_u32(self.max_data_size)?
             .position();
         buffer.truncate(position);

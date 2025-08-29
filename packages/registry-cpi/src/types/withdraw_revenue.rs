@@ -108,7 +108,7 @@ impl base::types::InstructionSerialize for InstructionData {
 
         let mut buffer = vec![];
         let position = ByteWriter::from_vec(&mut buffer)
-            .write_u8(crate::state::discriminator::INIT)?
+            .write_u8(crate::state::discriminator::WITHDRAW_REVENUE)?
             .write_option(&self.amount, u64_as_bytes)?
             .position();
         buffer.truncate(position);

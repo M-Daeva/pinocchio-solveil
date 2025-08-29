@@ -32,7 +32,7 @@ pub fn process_instruction(
                 // 2nd step to to change allocated data space
                 DISCRIMINATOR::REOPEN_ACCOUNT => todo!(),
                 // activates account with fee asset payment
-                DISCRIMINATOR::ACTIVATE_ACCOUNT => todo!(),
+                DISCRIMINATOR::ACTIVATE_ACCOUNT => instructions::activate_account,
                 DISCRIMINATOR::WRITE_DATA => todo!(),
                 DISCRIMINATOR::REQUEST_ACCOUNT_ROTATION => todo!(),
                 // updates address - id pair
