@@ -5,7 +5,10 @@ pub mod state;
 
 pub mod types {
     pub mod common;
+    pub mod confirm_admin_rotation;
     pub mod init;
+    pub mod update_config;
+    pub mod withdraw_revenue;
 }
 
 declare_id!("4ibrEMW5F6hKnkW4jVedswYv6H6VtwPN6ar6dvXDN1nT");

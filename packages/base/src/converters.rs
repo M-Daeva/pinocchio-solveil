@@ -418,6 +418,24 @@ impl<'a> ByteWriter<'a> {
     }
 
     #[inline]
+    pub fn write_option<T, F>(mut self, value: &Option<T>, converter: F) -> Result<Self>
+    where
+        F: FnOnce(&T) -> &[u8],
+    {
+        match value {
+            Some(inner_value) => {
+                self = self.write_u8(1)?; // is_some = true
+                let bytes = converter(inner_value);
+                self = self.write_bytes(bytes)?;
+            }
+            None => {
+                self = self.write_u8(0)?; // is_some = false
+            }
+        }
+        Ok(self)
+    }
+
+    #[inline]
     pub fn write_bytes(mut self, data: &[u8]) -> Result<Self> {
         let end_pos = self.position + data.len();
         if end_pos > self.buffer.len() {

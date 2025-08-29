@@ -11,6 +11,17 @@ use {
 
 pub mod discriminator {
     pub const INIT: u8 = 0;
+    pub const UPDATE_CONFIG: u8 = 1;
+    pub const CONFIRM_ADMIN_ROTATION: u8 = 2;
+    pub const WITHDRAW_REVENUE: u8 = 3;
+
+    pub const CREATE_ACCOUNT: u8 = 4;
+    pub const CLOSE_ACCOUNT: u8 = 5;
+    pub const REOPEN_ACCOUNT: u8 = 6;
+    pub const ACTIVATE_ACCOUNT: u8 = 7;
+    pub const WRITE_DATA: u8 = 8;
+    pub const REQUEST_ACCOUNT_ROTATION: u8 = 9;
+    pub const CONFIRM_ACCOUNT_ROTATION: u8 = 10;
 }
 
 pub mod seed {

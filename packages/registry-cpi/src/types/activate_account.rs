@@ -1,8 +1,5 @@
 use {
-    crate::{
-        state::discriminator as DISCRIMINATOR,
-        types::common::{AssetItem, Range},
-    },
+    crate::types::common::{AssetItem, Range},
     base::{
         accounts::{AccountCheck, MintAccount, SignerAccount, SystemProgram},
         converters::{to_u32, ByteReader},
@@ -20,21 +17,15 @@ pub struct Accounts<'a> {
 
     #[account(signer, writable)]
     pub sender: &'a AccountInfo,
-
     #[account(writable)]
     pub bump: &'a AccountInfo,
-
     #[account(writable)]
     pub config: &'a AccountInfo,
-
     #[account(writable)]
     pub user_counter: &'a AccountInfo,
-
     #[account(writable)]
     pub admin_rotation_state: &'a AccountInfo,
-
     pub revenue_mint: &'a AccountInfo,
-
     #[account(writable)]
     pub revenue_app_ata: &'a AccountInfo,
 }
@@ -103,12 +94,12 @@ impl TryFrom<&[u8]> for InstructionData {
 #[cfg(feature = "dev")]
 impl base::types::InstructionSerialize for InstructionData {
     fn serialize(&self) -> Result<Vec<u8>> {
-        use base::converters::{u32_as_bytes, ByteWriter, ByteWriterVecExt};
+        use base::converters::{option_as_bytes, u32_as_bytes, ByteWriter, ByteWriterVecExt};
 
         let mut buffer = vec![];
         let position = ByteWriter::from_vec(&mut buffer)
-            .write_u8(DISCRIMINATOR::INIT)?
-            .write_option(&self.rotation_timeout, u32_as_bytes)?
+            .write_u8(crate::state::discriminator::INIT)?
+            .write_bytes(&option_as_bytes(&self.rotation_timeout, u32_as_bytes))?
             .write_option_custom(&self.account_registration_fee)?
             .write_option_custom(&self.account_data_size_range)?
             .position();
