@@ -5,7 +5,7 @@ use {
         helpers::get_space,
         types::{Result, Space, ZeroCopyDeserialize, ZeroCopySerialize},
     },
-    pinocchio::pubkey::Pubkey,
+    pinocchio::{pubkey::Pubkey, ProgramResult},
     pinocchio_pubkey::pubkey,
 };
 
@@ -39,7 +39,7 @@ pub const ACCOUNT_DATA_SIZE_MIN: u32 = 100;
 pub const ACCOUNT_DATA_SIZE_MAX: u32 = 10_000;
 
 /// to store bumps for all app accounts
-#[derive(Debug, PartialEq)]
+#[derive(Default, Debug, PartialEq)]
 pub struct Bump {
     pub config: u8,
     pub user_counter: u8,
@@ -47,7 +47,7 @@ pub struct Bump {
 }
 
 impl ZeroCopySerialize for Bump {
-    fn serialize_into(&self, data: &mut [u8]) -> Result<()> {
+    fn serialize_into(&self, data: &mut [u8]) -> ProgramResult {
         ByteWriter::new(data)
             .write_u8(self.config)?
             .write_u8(self.user_counter)?
@@ -58,15 +58,11 @@ impl ZeroCopySerialize for Bump {
 
 impl ZeroCopyDeserialize for Bump {
     fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)> {
-        let mut b = ByteReader::new(data, start_index);
-
-        let data = Self {
-            config: b.read_u8()?,
-            user_counter: b.read_u8()?,
-            rotation_state: b.read_u8()?,
-        };
-
-        Ok((data, b.check_and_get_end_index()?))
+        ByteReader::new::<Self>(data, start_index)
+            .read_u8(|x| &mut x.config)?
+            .read_u8(|x| &mut x.user_counter)?
+            .read_u8(|x| &mut x.rotation_state)?
+            .complete()
     }
 }
 
@@ -76,7 +72,7 @@ impl Space for Bump {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Default, Debug, PartialEq)]
 pub struct Config {
     /// can update the config and execute priveledged instructions
     pub admin: Pubkey,
@@ -87,30 +83,26 @@ pub struct Config {
 }
 
 impl ZeroCopySerialize for Config {
-    fn serialize_into(&self, data: &mut [u8]) -> Result<()> {
+    fn serialize_into(&self, data: &mut [u8]) -> ProgramResult {
         ByteWriter::new(data)
             .write_pubkey(&self.admin)?
             .write_bool(self.is_paused)?
             .write_u32(self.rotation_timeout)?
-            .write_custom::<AssetItem>(&self.registration_fee)?
-            .write_custom::<Range>(&self.data_size_range)?
+            .write_custom(&self.registration_fee)?
+            .write_custom(&self.data_size_range)?
             .complete()
     }
 }
 
 impl ZeroCopyDeserialize for Config {
     fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)> {
-        let mut b = ByteReader::new(data, start_index);
-
-        let data = Self {
-            admin: b.read_pubkey()?,
-            is_paused: b.read_bool()?,
-            rotation_timeout: b.read_u32()?,
-            registration_fee: b.read::<AssetItem>()?,
-            data_size_range: b.read::<Range>()?,
-        };
-
-        Ok((data, b.check_and_get_end_index()?))
+        ByteReader::new::<Self>(data, start_index)
+            .read_pubkey(|x| &mut x.admin)?
+            .read_bool(|x| &mut x.is_paused)?
+            .read_u32(|x| &mut x.rotation_timeout)?
+            .read_custom(|x| &mut x.registration_fee)?
+            .read_custom(|x| &mut x.data_size_range)?
+            .complete()
     }
 }
 
@@ -121,13 +113,13 @@ impl Space for Config {
 }
 
 /// for indexing
-#[derive(Debug, PartialEq, Default)]
+#[derive(Default, Debug, PartialEq)]
 pub struct UserCounter {
     pub last_user_id: u32,
 }
 
 impl ZeroCopySerialize for UserCounter {
-    fn serialize_into(&self, data: &mut [u8]) -> Result<()> {
+    fn serialize_into(&self, data: &mut [u8]) -> ProgramResult {
         ByteWriter::new(data)
             .write_u32(self.last_user_id)?
             .complete()
@@ -136,13 +128,9 @@ impl ZeroCopySerialize for UserCounter {
 
 impl ZeroCopyDeserialize for UserCounter {
     fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)> {
-        let mut b = ByteReader::new(data, start_index);
-
-        let data = Self {
-            last_user_id: b.read_u32()?,
-        };
-
-        Ok((data, b.check_and_get_end_index()?))
+        ByteReader::new::<Self>(data, start_index)
+            .read_u32(|x| &mut x.last_user_id)?
+            .complete()
     }
 }
 
@@ -154,7 +142,7 @@ impl Space for UserCounter {
 
 /// to transfer ownership from one address to another in 2 steps (for security reasons) \
 /// used both for app admin and user accounts
-#[derive(Debug, PartialEq)]
+#[derive(Default, Debug, PartialEq)]
 pub struct RotationState {
     pub owner: Pubkey,
     pub new_owner: Option<Pubkey>,
@@ -162,7 +150,7 @@ pub struct RotationState {
 }
 
 impl ZeroCopySerialize for RotationState {
-    fn serialize_into(&self, data: &mut [u8]) -> Result<()> {
+    fn serialize_into(&self, data: &mut [u8]) -> ProgramResult {
         ByteWriter::new(data)
             .write_pubkey(&self.owner)?
             .write_bytes(&option_as_bytes(&self.new_owner, pubkey_as_bytes))?
@@ -173,15 +161,11 @@ impl ZeroCopySerialize for RotationState {
 
 impl ZeroCopyDeserialize for RotationState {
     fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)> {
-        let mut b = ByteReader::new(data, start_index);
-
-        let data = Self {
-            owner: b.read_pubkey()?,
-            new_owner: b.read_option(to_pubkey)?,
-            expiration_date: b.read_u64()?,
-        };
-
-        Ok((data, b.check_and_get_end_index()?))
+        ByteReader::new::<Self>(data, start_index)
+            .read_pubkey(|x| &mut x.owner)?
+            .read_option(|x| &mut x.new_owner, to_pubkey)?
+            .read_u64(|x| &mut x.expiration_date)?
+            .complete()
     }
 }
 
@@ -192,7 +176,7 @@ impl Space for RotationState {
 }
 
 /// get by user: Pubkey
-#[derive(Debug, PartialEq)]
+#[derive(Default, Debug, PartialEq)]
 pub struct UserId {
     pub id: u32,
     pub is_open: bool,
@@ -202,7 +186,7 @@ pub struct UserId {
 }
 
 impl ZeroCopySerialize for UserId {
-    fn serialize_into(&self, data: &mut [u8]) -> Result<()> {
+    fn serialize_into(&self, data: &mut [u8]) -> ProgramResult {
         ByteWriter::new(data)
             .write_u32(self.id)?
             .write_bool(self.is_open)?
@@ -215,17 +199,13 @@ impl ZeroCopySerialize for UserId {
 
 impl ZeroCopyDeserialize for UserId {
     fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)> {
-        let mut b = ByteReader::new(data, start_index);
-
-        let data = Self {
-            id: b.read_u32()?,
-            is_open: b.read_bool()?,
-            is_activated: b.read_bool()?,
-            account_bump: b.read_u8()?,
-            rotation_state_bump: b.read_u8()?,
-        };
-
-        Ok((data, b.check_and_get_end_index()?))
+        ByteReader::new::<Self>(data, start_index)
+            .read_u32(|x| &mut x.id)?
+            .read_bool(|x| &mut x.is_open)?
+            .read_bool(|x| &mut x.is_activated)?
+            .read_u8(|x| &mut x.account_bump)?
+            .read_u8(|x| &mut x.rotation_state_bump)?
+            .complete()
     }
 }
 
@@ -236,7 +216,7 @@ impl Space for UserId {
 }
 
 /// get by user_id: u32
-#[derive(Debug, PartialEq)]
+#[derive(Default, Debug, PartialEq)]
 pub struct UserAccount {
     /// encrypted user data
     pub data: String,
@@ -247,7 +227,7 @@ pub struct UserAccount {
 }
 
 impl ZeroCopySerialize for UserAccount {
-    fn serialize_into(&self, data: &mut [u8]) -> Result<()> {
+    fn serialize_into(&self, data: &mut [u8]) -> ProgramResult {
         ByteWriter::new(data)
             .write_string(&self.data)?
             .write_u64(self.nonce)?
@@ -258,15 +238,11 @@ impl ZeroCopySerialize for UserAccount {
 
 impl ZeroCopyDeserialize for UserAccount {
     fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)> {
-        let mut b = ByteReader::new(data, start_index);
-
-        let data = Self {
-            data: b.read_string()?,
-            nonce: b.read_u64()?,
-            max_size: b.read_u32()?,
-        };
-
-        Ok((data, b.check_and_get_end_index()?))
+        ByteReader::new::<Self>(data, start_index)
+            .read_string(|x| &mut x.data)?
+            .read_u64(|x| &mut x.nonce)?
+            .read_u32(|x| &mut x.max_size)?
+            .complete()
     }
 }
 

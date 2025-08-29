@@ -67,6 +67,7 @@ impl<'a> TryFrom<&'a [AccountInfo]> for Accounts<'a> {
     }
 }
 
+#[derive(Default)]
 pub struct InstructionData {
     pub rotation_timeout: Option<u32>,
     pub account_registration_fee: Option<AssetItem>,
@@ -77,16 +78,15 @@ impl TryFrom<&[u8]> for InstructionData {
     type Error = ProgramError;
 
     fn try_from(data: &[u8]) -> Result<Self> {
-        let mut b = ByteReader::new(data, 0);
-
-        let data = Self {
-            rotation_timeout: b.read_option(to_u32)?,
-            account_registration_fee: b.read_option(AssetItem::deserialize_from)?,
-            account_data_size_range: b.read_option(Range::deserialize_from)?,
-        };
-        b.check_and_get_end_index()?;
-
-        Ok(data)
+        ByteReader::new::<Self>(data, 0)
+            .read_option(|x| &mut x.rotation_timeout, to_u32)?
+            .read_option(
+                |x| &mut x.account_registration_fee,
+                AssetItem::deserialize_from,
+            )?
+            .read_option(|x| &mut x.account_data_size_range, Range::deserialize_from)?
+            .complete()
+            .map(|(x, _)| x)
     }
 }
 

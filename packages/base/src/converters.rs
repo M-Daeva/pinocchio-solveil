@@ -7,124 +7,188 @@ use {
     std::{mem, slice},
 };
 
-pub struct ByteReader<'a> {
+pub struct ByteReader<'a, T> {
     data: &'a [u8],
     position: usize,
+    value: T,
 }
 
-impl<'a> ByteReader<'a> {
+impl<'a> ByteReader<'a, ()> {
     #[inline]
-    pub fn new(data: &'a [u8], start_index: usize) -> Self {
-        Self {
+    pub fn new<T: Default>(data: &'a [u8], start_index: usize) -> ByteReader<'a, T> {
+        ByteReader {
             data,
             position: start_index,
+            value: T::default(),
         }
     }
+}
 
+impl<'a, T> ByteReader<'a, T> {
     #[inline]
     pub fn position(&self) -> usize {
         self.position
     }
 
     #[inline]
-    pub fn check_and_get_end_index(self) -> Result<usize> {
+    pub fn complete(self) -> Result<(T, usize)> {
         check_ix_data_len(self.data, self.position)?;
-        Ok(self.position)
+        Ok((self.value, self.position))
     }
 
+    // Generic field updater - the core of the fluent interface
     #[inline]
-    pub fn read_bool(&mut self) -> Result<bool> {
-        let (value, new_pos) = to_bool(self.data, self.position)?;
-        self.position = new_pos;
-        Ok(value)
-    }
-
-    #[inline]
-    pub fn read_u8(&mut self) -> Result<u8> {
-        let (value, new_pos) = to_u8(self.data, self.position)?;
-        self.position = new_pos;
-        Ok(value)
-    }
-
-    #[inline]
-    pub fn read_u16(&mut self) -> Result<u16> {
-        let (value, new_pos) = to_u16(self.data, self.position)?;
-        self.position = new_pos;
-        Ok(value)
-    }
-
-    #[inline]
-    pub fn read_u32(&mut self) -> Result<u32> {
-        let (value, new_pos) = to_u32(self.data, self.position)?;
-        self.position = new_pos;
-        Ok(value)
-    }
-
-    #[inline]
-    pub fn read_u64(&mut self) -> Result<u64> {
-        let (value, new_pos) = to_u64(self.data, self.position)?;
-        self.position = new_pos;
-        Ok(value)
-    }
-
-    #[inline]
-    pub fn read_u128(&mut self) -> Result<u128> {
-        let (value, new_pos) = to_u128(self.data, self.position)?;
-        self.position = new_pos;
-        Ok(value)
-    }
-
-    #[inline]
-    pub fn read_pubkey(&mut self) -> Result<Pubkey> {
-        let (value, new_pos) = to_pubkey(self.data, self.position)?;
-        self.position = new_pos;
-        Ok(value)
-    }
-
-    #[inline]
-    pub fn read_string(&mut self) -> Result<String> {
-        let (value, new_pos) = to_string(self.data, self.position)?;
-        self.position = new_pos;
-        Ok(value)
-    }
-
-    #[inline]
-    pub fn read_vec_fixed<T, F>(&mut self, item_parser: F) -> Result<Vec<T>>
+    fn update_field<F, V>(
+        mut self,
+        field_getter: F,
+        parser: fn(&[u8], usize) -> Result<(V, usize)>,
+    ) -> Result<Self>
     where
-        F: Fn(&[u8], usize) -> Result<(T, usize)>,
+        F: FnOnce(&mut T) -> &mut V,
+    {
+        let (value, new_pos) = parser(self.data, self.position)?;
+        *field_getter(&mut self.value) = value;
+        self.position = new_pos;
+        Ok(self)
+    }
+
+    // Convenience methods for common types
+    #[inline]
+    pub fn read_bool<F>(self, field_getter: F) -> Result<Self>
+    where
+        F: FnOnce(&mut T) -> &mut bool,
+    {
+        self.update_field(field_getter, to_bool)
+    }
+
+    #[inline]
+    pub fn read_u8<F>(self, field_getter: F) -> Result<Self>
+    where
+        F: FnOnce(&mut T) -> &mut u8,
+    {
+        self.update_field(field_getter, to_u8)
+    }
+
+    #[inline]
+    pub fn read_u16<F>(self, field_getter: F) -> Result<Self>
+    where
+        F: FnOnce(&mut T) -> &mut u16,
+    {
+        self.update_field(field_getter, to_u16)
+    }
+
+    #[inline]
+    pub fn read_u32<F>(self, field_getter: F) -> Result<Self>
+    where
+        F: FnOnce(&mut T) -> &mut u32,
+    {
+        self.update_field(field_getter, to_u32)
+    }
+
+    #[inline]
+    pub fn read_u64<F>(self, field_getter: F) -> Result<Self>
+    where
+        F: FnOnce(&mut T) -> &mut u64,
+    {
+        self.update_field(field_getter, to_u64)
+    }
+
+    #[inline]
+    pub fn read_u128<F>(self, field_getter: F) -> Result<Self>
+    where
+        F: FnOnce(&mut T) -> &mut u128,
+    {
+        self.update_field(field_getter, to_u128)
+    }
+
+    #[inline]
+    pub fn read_pubkey<F>(self, field_getter: F) -> Result<Self>
+    where
+        F: FnOnce(&mut T) -> &mut Pubkey,
+    {
+        self.update_field(field_getter, to_pubkey)
+    }
+
+    #[inline]
+    pub fn read_string<F>(self, field_getter: F) -> Result<Self>
+    where
+        F: FnOnce(&mut T) -> &mut String,
+    {
+        self.update_field(field_getter, to_string)
+    }
+
+    // For Vec<T> with fixed-size elements
+    #[inline]
+    pub fn read_vec_fixed<V, F, P>(self, field_getter: F, item_parser: P) -> Result<Self>
+    where
+        F: FnOnce(&mut T) -> &mut Vec<V>,
+        P: Fn(&[u8], usize) -> Result<(V, usize)>,
     {
         let (value, new_pos) = to_vec_fixed(self.data, self.position, item_parser)?;
-        self.position = new_pos;
-        Ok(value)
+        let mut updated_self = self;
+        *field_getter(&mut updated_self.value) = value;
+        updated_self.position = new_pos;
+        Ok(updated_self)
     }
 
+    // For Option<T>
     #[inline]
-    pub fn read_option<T, F>(&mut self, item_parser: F) -> Result<Option<T>>
+    pub fn read_option<V, F, P>(self, field_getter: F, item_parser: P) -> Result<Self>
     where
-        F: Fn(&[u8], usize) -> Result<(T, usize)>,
+        F: FnOnce(&mut T) -> &mut Option<V>,
+        P: Fn(&[u8], usize) -> Result<(V, usize)>,
     {
         let (value, new_pos) = to_option(self.data, self.position, item_parser)?;
-        self.position = new_pos;
-        Ok(value)
+        let mut updated_self = self;
+        *field_getter(&mut updated_self.value) = value;
+        updated_self.position = new_pos;
+        Ok(updated_self)
     }
 
+    // For arrays [T; N]
     #[inline]
-    pub fn read_array<T, F, const N: usize>(&mut self, item_parser: F) -> Result<[T; N]>
+    pub fn read_array<V, F, P, const N: usize>(
+        self,
+        field_getter: F,
+        item_parser: P,
+    ) -> Result<Self>
     where
-        T: Copy + Default,
-        F: Fn(&[u8], usize) -> Result<(T, usize)>,
+        V: Copy + Default,
+        F: FnOnce(&mut T) -> &mut [V; N],
+        P: Fn(&[u8], usize) -> Result<(V, usize)>,
     {
         let (value, new_pos) = to_array(self.data, self.position, item_parser)?;
-        self.position = new_pos;
-        Ok(value)
+        let mut updated_self = self;
+        *field_getter(&mut updated_self.value) = value;
+        updated_self.position = new_pos;
+        Ok(updated_self)
+    }
+
+    // For complex types with custom parsers
+    #[inline]
+    pub fn read_with_parser<V, F, P>(self, field_getter: F, parser: P) -> Result<Self>
+    where
+        F: FnOnce(&mut T) -> &mut V,
+        P: Fn(&[u8], usize) -> Result<(V, usize)>,
+    {
+        let (value, new_pos) = parser(self.data, self.position)?;
+        let mut updated_self = self;
+        *field_getter(&mut updated_self.value) = value;
+        updated_self.position = new_pos;
+        Ok(updated_self)
     }
 
     // For types that implement ZeroCopyDeserialize
     #[inline]
-    pub fn read<T: ZeroCopyDeserialize>(&mut self) -> Result<T> {
-        let (value, new_pos) = T::deserialize_from(self.data, self.position)?;
-        self.position = new_pos;
-        Ok(value)
+    pub fn read_custom<V: ZeroCopyDeserialize, F>(self, field_getter: F) -> Result<Self>
+    where
+        F: FnOnce(&mut T) -> &mut V,
+    {
+        let (value, new_pos) = V::deserialize_from(self.data, self.position)?;
+        let mut updated_self = self;
+        *field_getter(&mut updated_self.value) = value;
+        updated_self.position = new_pos;
+        Ok(updated_self)
     }
 }
 

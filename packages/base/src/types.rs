@@ -3,6 +3,7 @@ use {
         account_info::{AccountInfo, RefMut},
         program_error::ProgramError,
         pubkey::Pubkey,
+        ProgramResult,
     },
     pinocchio_pubkey::pubkey,
     std::marker::PhantomData,
@@ -27,7 +28,7 @@ pub trait Space {
 
 // Zero-copy serialization trait
 pub trait ZeroCopySerialize {
-    fn serialize_into(&self, data: &mut [u8]) -> Result<()>;
+    fn serialize_into(&self, data: &mut [u8]) -> ProgramResult;
 }
 
 pub trait ZeroCopyDeserialize: Sized {
@@ -60,12 +61,12 @@ where
     }
 
     #[inline]
-    pub fn save(&mut self, value: T) -> Result<()> {
+    pub fn save(&mut self, value: T) -> ProgramResult {
         value.serialize_into(&mut self.data)
     }
 
     #[inline]
-    pub fn update<F>(&mut self, f: F) -> Result<()>
+    pub fn update<F>(&mut self, f: F) -> ProgramResult
     where
         F: FnOnce(T) -> Result<T>,
     {
