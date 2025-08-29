@@ -3,7 +3,7 @@ use {
         extensions::registry::CounterExtension,
         suite::{
             core::{assert_error, App},
-            types::{AppToken, AppUser, PinPubkey, TestResult},
+            types::{pin_to_sol_pubkey, AppToken, AppUser, PinPubkey, TestResult},
         },
     },
     base::error::AuthError,
@@ -264,6 +264,46 @@ fn create_and_activate_account_default() -> TestResult<()> {
     assert_eq!(user_id.id, 1);
     assert_eq!(user_id.is_open, true);
     assert_eq!(user_id.is_activated, true);
+
+    Ok(())
+}
+
+#[test]
+fn activate_account_guards() -> TestResult<()> {
+    const MAX_DATA_SIZE: u32 = 1_000;
+
+    let mut app = init_app()?;
+
+    // user can't activate nonexistent account
+    app.registry_try_activate_account(AppUser::Alice, None, None)
+        .unwrap_err();
+
+    // user can't activate closed account
+    app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, None)?;
+    app.registry_try_close_account(AppUser::Alice, None)?;
+    let res = app
+        .registry_try_activate_account(AppUser::Alice, None, None)
+        .unwrap_err();
+    assert_error(res, CustomError::AccountIsNotOpened);
+
+    // user can't activate account using wrong token
+    app.registry_try_reopen_account(AppUser::Alice, MAX_DATA_SIZE)?;
+    app.get_or_create_ata(
+        AppUser::Admin,
+        &app.pda.registry_config(),
+        &pin_to_sol_pubkey(&AppToken::PYTH.pubkey()),
+    )?;
+    let res = app
+        .registry_try_activate_account(AppUser::Alice, None, Some(AppToken::PYTH))
+        .unwrap_err();
+    assert_error(res, CustomError::WrongAssetType);
+
+    // user can't activate account twice
+    app.registry_try_activate_account(AppUser::Alice, None, None)?;
+    let res = app
+        .registry_try_activate_account(AppUser::Alice, None, None)
+        .unwrap_err();
+    assert_error(res, CustomError::ActivateAccountTwice);
 
     Ok(())
 }

@@ -61,6 +61,18 @@ pub trait CounterExtension {
         expected_user_id: Option<u32>, // to test guards
     ) -> TestResult<TransactionMetadata>;
 
+    fn registry_try_close_account(
+        &mut self,
+        sender: AppUser,
+        user: Option<AppUser>, // to test guards
+    ) -> TestResult<TransactionMetadata>;
+
+    fn registry_try_reopen_account(
+        &mut self,
+        sender: AppUser,
+        max_data_size: u32,
+    ) -> TestResult<TransactionMetadata>;
+
     fn registry_try_activate_account(
         &mut self,
         sender: AppUser,
@@ -346,6 +358,103 @@ impl CounterExtension for App {
         .to_account_metas();
 
         let instruction_data = &types::create_account::InstructionData { max_data_size }
+            .serialize()
+            .map_err(TestError::from_raw_error)?;
+
+        send_tx_with_ix(
+            self,
+            &program_id,
+            &accounts,
+            &instruction_data,
+            signers,
+            &[],
+        )
+    }
+
+    fn registry_try_close_account(
+        &mut self,
+        sender: AppUser,
+        user: Option<AppUser>, // to test guards
+    ) -> TestResult<TransactionMetadata> {
+        // programs
+        let ProgramId {
+            system_program,
+            registry: program_id,
+            ..
+        } = self.program_id;
+
+        let user = user.unwrap_or(sender);
+
+        // signers
+        let signers = &[sender.keypair()];
+        let sender = sender.pubkey();
+
+        // pda
+        let user_id = self.pda.registry_user_id(user.pubkey());
+        let id = self.registry_query_user_id(user)?.id;
+        let user_account = self.pda.registry_user_account(id);
+        let user_rotation_state = self.pda.registry_user_rotation_state(id);
+
+        let accounts = types::close_account::TestAccounts {
+            system_program,
+            sender,
+            user_id,
+            user_account,
+            user_rotation_state,
+        }
+        .to_account_metas();
+
+        let instruction_data = &types::close_account::InstructionData {}
+            .serialize()
+            .map_err(TestError::from_raw_error)?;
+
+        send_tx_with_ix(
+            self,
+            &program_id,
+            &accounts,
+            &instruction_data,
+            signers,
+            &[],
+        )
+    }
+
+    fn registry_try_reopen_account(
+        &mut self,
+        sender: AppUser,
+        max_data_size: u32,
+    ) -> TestResult<TransactionMetadata> {
+        // programs
+        let ProgramId {
+            system_program,
+            registry: program_id,
+            ..
+        } = self.program_id;
+
+        // signers
+        let signers = &[sender.keypair()];
+        let payer = sender.pubkey();
+
+        // pda
+        let bump = self.pda.registry_bump();
+        let config = self.pda.registry_config();
+
+        let user_id = self.pda.registry_user_id(payer);
+        let id = self.registry_query_user_id(sender)?.id;
+        let user_account = self.pda.registry_user_account(id);
+        let user_rotation_state = self.pda.registry_user_rotation_state(id);
+
+        let accounts = types::reopen_account::TestAccounts {
+            system_program,
+            sender: payer,
+            bump,
+            config,
+            user_id,
+            user_account,
+            user_rotation_state,
+        }
+        .to_account_metas();
+
+        let instruction_data = &types::reopen_account::InstructionData { max_data_size }
             .serialize()
             .map_err(TestError::from_raw_error)?;
 

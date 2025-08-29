@@ -28,9 +28,9 @@ pub fn process_instruction(
                 // creates user PDA account taking rent exempt in SOL
                 DISCRIMINATOR::CREATE_ACCOUNT => instructions::create_account,
                 // 1st step to to change allocated data space or just to redeem rent
-                DISCRIMINATOR::CLOSE_ACCOUNT => todo!(),
+                DISCRIMINATOR::CLOSE_ACCOUNT => instructions::close_account,
                 // 2nd step to to change allocated data space
-                DISCRIMINATOR::REOPEN_ACCOUNT => todo!(),
+                DISCRIMINATOR::REOPEN_ACCOUNT => instructions::reopen_account,
                 // activates account with fee asset payment
                 DISCRIMINATOR::ACTIVATE_ACCOUNT => instructions::activate_account,
                 DISCRIMINATOR::WRITE_DATA => todo!(),

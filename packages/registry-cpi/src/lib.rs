@@ -5,10 +5,12 @@ pub mod state;
 
 pub mod types {
     pub mod activate_account;
+    pub mod close_account;
     pub mod common;
     pub mod confirm_admin_rotation;
     pub mod create_account;
     pub mod init;
+    pub mod reopen_account;
     pub mod update_config;
     pub mod withdraw_revenue;
 }
