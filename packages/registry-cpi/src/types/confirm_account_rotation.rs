@@ -1,11 +1,9 @@
 use {
-    crate::state::{discriminator as DISCRIMINATOR, seed as SEED, UserId},
+    crate::state::discriminator as DISCRIMINATOR,
     base::{
-        accounts::{
-            AccountCheck, ProgramAccount, ProgramAccountCheck, SignerAccount, SystemProgram,
-        },
+        accounts::{AccountCheck, SignerAccount, SystemProgram},
         converters::ByteReader,
-        types::{Result, Space},
+        types::Result,
     },
     pinocchio::{account_info::AccountInfo, program_error::ProgramError},
     r#macro_account::AccountMetas,
@@ -21,6 +19,7 @@ pub struct Accounts<'a> {
     #[account(writable)]
     pub user_id_pre: &'a AccountInfo,
 
+    #[account(writable)]
     pub user_id: &'a AccountInfo,
 
     #[account(writable)]
@@ -38,12 +37,12 @@ impl<'a> TryFrom<&'a [AccountInfo]> for Accounts<'a> {
         SystemProgram::check(system_program)?;
         SignerAccount::check(sender)?;
         // user_id_pre,
-        ProgramAccount::check(
-            user_id,
-            &crate::ID,
-            UserId::get_space(),
-            Some(&[SEED::USER_ID, sender.key()]),
-        )?;
+        // ProgramAccount::check(
+        //     user_id,
+        //     &crate::ID,
+        //     UserId::get_space(),
+        //     Some(&[SEED::USER_ID, sender.key()]),
+        // )?;
         // user_rotation_state, // TODO: should check but not here
 
         Ok(Self {

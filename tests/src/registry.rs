@@ -587,38 +587,38 @@ fn rotate_account() -> TestResult<()> {
         .unwrap_err();
     assert_error(res, AuthError::UselessRotation);
 
-    // // too late to confirm account rotation
-    // app.registry_try_request_account_rotation(AppUser::Alice, AppUser::Bob)?;
-    // app.wait(ROTATION_TIMEOUT as u64);
-    // let res = app
-    //     .registry_try_confirm_account_rotation(AppUser::Bob, AppUser::Alice)
-    //     .unwrap_err();
-    // assert_error(res, AuthError::TransferOwnerDeadline);
+    // too late to confirm account rotation
+    app.registry_try_request_account_rotation(AppUser::Alice, AppUser::Bob)?;
+    app.wait(ROTATION_TIMEOUT as u64);
+    let res = app
+        .registry_try_confirm_account_rotation(AppUser::Bob, AppUser::Alice)
+        .unwrap_err();
+    assert_error(res, AuthError::TransferOwnerDeadline);
 
-    // // only new owner can confirm account rotation
-    // app.registry_try_request_account_rotation(AppUser::Alice, AppUser::Bob)?;
-    // let res = app
-    //     .registry_try_confirm_account_rotation(AppUser::Admin, AppUser::Alice)
-    //     .unwrap_err();
-    // assert_error(res, AuthError::Unauthorized);
+    // only new owner can confirm account rotation
+    app.registry_try_request_account_rotation(AppUser::Alice, AppUser::Bob)?;
+    let res = app
+        .registry_try_confirm_account_rotation(AppUser::Admin, AppUser::Alice)
+        .unwrap_err();
+    assert_error(res, AuthError::Unauthorized);
 
-    // // success
-    // app.registry_try_confirm_account_rotation(AppUser::Bob, AppUser::Alice)?;
+    // success
+    app.registry_try_confirm_account_rotation(AppUser::Bob, AppUser::Alice)?;
     // app.registry_query_user_id(AppUser::Alice).unwrap_err();
-    // assert_eq!(
-    //     app.registry_query_user_account(AppUser::Bob)?,
-    //     UserAccount {
-    //         data: DATA_0.to_string(),
-    //         nonce: NONCE_0,
-    //         max_size: MAX_DATA_SIZE
-    //     }
-    // );
+    assert_eq!(
+        app.registry_query_user_account(AppUser::Bob)?,
+        UserAccount {
+            data: DATA_0.to_string(),
+            nonce: NONCE_0,
+            max_size: MAX_DATA_SIZE
+        }
+    );
 
-    // // new owner isn't specified after rotation
-    // let res = app
-    //     .registry_try_confirm_account_rotation(AppUser::Alice, AppUser::Bob)
-    //     .unwrap_err();
-    // assert_error(res, AuthError::NoNewOwner);
+    // new owner isn't specified after rotation
+    let res = app
+        .registry_try_confirm_account_rotation(AppUser::Alice, AppUser::Bob)
+        .unwrap_err();
+    assert_error(res, AuthError::NoNewOwner);
 
     Ok(())
 }
