@@ -24,6 +24,7 @@ pub fn process_instruction(
                 DISCRIMINATOR::INIT => instructions::init,
                 DISCRIMINATOR::UPDATE_CONFIG => instructions::update_config,
                 DISCRIMINATOR::CONFIRM_ADMIN_ROTATION => instructions::confirm_admin_rotation,
+                DISCRIMINATOR::WITHDRAW_REVENUE => instructions::withdraw_revenue,
                 _ => Err(ProgramError::InvalidInstructionData)?,
             };
 

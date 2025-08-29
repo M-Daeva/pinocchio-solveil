@@ -4,7 +4,10 @@ use {
             extension::{get_data, send_tx_with_ix},
             App, ProgramId,
         },
-        types::{sol_to_pin_pubkey, AppUser, SolPubkey, TestError, TestResult},
+        types::{
+            pin_to_sol_pubkey, sol_to_pin_pubkey, AppToken, AppUser, SolPubkey, TestError,
+            TestResult,
+        },
     },
     base::types::InstructionSerialize,
     litesvm::types::TransactionMetadata,
@@ -39,6 +42,14 @@ pub trait CounterExtension {
     fn registry_try_confirm_admin_rotation(
         &mut self,
         sender: AppUser,
+    ) -> TestResult<TransactionMetadata>;
+
+    fn registry_try_withdraw_revenue(
+        &mut self,
+        sender: AppUser,
+        amount: Option<u64>,
+        recipient: Option<AppUser>,
+        revenue_asset: Option<AppToken>, // to test guards
     ) -> TestResult<TransactionMetadata>;
 
     fn registry_query_config(&self) -> TestResult<Config>;
@@ -195,6 +206,70 @@ impl CounterExtension for App {
         .to_account_metas();
 
         let instruction_data = &types::confirm_admin_rotation::InstructionData {}
+            .serialize()
+            .map_err(TestError::from_raw_error)?;
+
+        send_tx_with_ix(
+            self,
+            &program_id,
+            &accounts,
+            &instruction_data,
+            signers,
+            &[],
+        )
+    }
+
+    fn registry_try_withdraw_revenue(
+        &mut self,
+        sender: AppUser,
+        amount: Option<u64>,
+        recipient: Option<AppUser>,
+        revenue_asset: Option<AppToken>, // to test guards
+    ) -> TestResult<TransactionMetadata> {
+        // programs
+        let ProgramId {
+            system_program,
+            token_program,
+            associated_token_program,
+            registry: program_id,
+            ..
+        } = self.program_id;
+
+        let recipient = recipient.unwrap_or(sender).pubkey();
+
+        // signers
+        let signers = &[sender.keypair()];
+        let sender = sender.pubkey();
+
+        // mint
+        let revenue_mint = match revenue_asset {
+            Some(x) => x.pubkey(),
+            _ => pin_to_sol_pubkey(&self.registry_query_config()?.registration_fee.asset),
+        };
+
+        // pda
+        let bump = self.pda.registry_bump();
+        let config = self.pda.registry_config();
+
+        // ata
+        let revenue_recipient_ata = App::get_ata(&recipient, &revenue_mint);
+        let revenue_app_ata = App::get_ata(&config, &revenue_mint);
+
+        let accounts = types::withdraw_revenue::TestAccounts {
+            system_program,
+            token_program,
+            associated_token_program,
+            sender,
+            recipient,
+            bump,
+            config,
+            revenue_mint,
+            revenue_recipient_ata,
+            revenue_app_ata,
+        }
+        .to_account_metas();
+
+        let instruction_data = &types::withdraw_revenue::InstructionData { amount }
             .serialize()
             .map_err(TestError::from_raw_error)?;
 
