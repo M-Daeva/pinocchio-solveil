@@ -2,8 +2,7 @@ use {
     crate::types::common::{AssetItem, Range},
     base::{
         accounts::{AccountCheck, MintAccount, SignerAccount, SystemProgram},
-        converters::{to_option, to_u32},
-        guards::check_ix_data_len,
+        converters::{to_u32, ByteReader},
         types::{Result, ZeroCopyDeserialize},
     },
     pinocchio::{account_info::AccountInfo, program_error::ProgramError},
@@ -78,18 +77,16 @@ impl TryFrom<&[u8]> for InstructionData {
     type Error = ProgramError;
 
     fn try_from(data: &[u8]) -> Result<Self> {
-        let (rotation_timeout, end_index) = to_option(data, 0, to_u32)?;
-        let (account_registration_fee, end_index) =
-            to_option(data, end_index, AssetItem::deserialize_from)?;
-        let (account_data_size_range, end_index) =
-            to_option(data, end_index, Range::deserialize_from)?;
-        check_ix_data_len(data, end_index)?;
+        let mut b = ByteReader::new(data, 0);
 
-        Ok(Self {
-            rotation_timeout,
-            account_registration_fee,
-            account_data_size_range,
-        })
+        let data = Self {
+            rotation_timeout: b.read_option(to_u32)?,
+            account_registration_fee: b.read_option(AssetItem::deserialize_from)?,
+            account_data_size_range: b.read_option(Range::deserialize_from)?,
+        };
+        b.check_and_get_end_index()?;
+
+        Ok(data)
     }
 }
 

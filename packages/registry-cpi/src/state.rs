@@ -1,11 +1,7 @@
 use {
     crate::types::common::{AssetItem, Range},
     base::{
-        converters::{
-            option_as_bytes, pubkey_as_bytes, to_bool, to_option, to_pubkey, to_string, to_u32,
-            to_u64, to_u8, ByteWriter,
-        },
-        guards::check_ix_data_len,
+        converters::{option_as_bytes, pubkey_as_bytes, to_pubkey, ByteReader, ByteWriter},
         helpers::get_space,
         types::{Result, Space, ZeroCopyDeserialize, ZeroCopySerialize},
     },
@@ -62,19 +58,15 @@ impl ZeroCopySerialize for Bump {
 
 impl ZeroCopyDeserialize for Bump {
     fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)> {
-        let (config, end_index) = to_u8(data, start_index)?;
-        let (user_counter, end_index) = to_u8(data, end_index)?;
-        let (rotation_state, end_index) = to_u8(data, end_index)?;
-        check_ix_data_len(data, end_index)?;
+        let mut b = ByteReader::new(data, start_index);
 
-        Ok((
-            Self {
-                config,
-                user_counter,
-                rotation_state,
-            },
-            end_index,
-        ))
+        let data = Self {
+            config: b.read_u8()?,
+            user_counter: b.read_u8()?,
+            rotation_state: b.read_u8()?,
+        };
+
+        Ok((data, b.check_and_get_end_index()?))
     }
 }
 
@@ -108,23 +100,17 @@ impl ZeroCopySerialize for Config {
 
 impl ZeroCopyDeserialize for Config {
     fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)> {
-        let (admin, end_index) = to_pubkey(data, start_index)?;
-        let (is_paused, end_index) = to_bool(data, end_index)?;
-        let (rotation_timeout, end_index) = to_u32(data, end_index)?;
-        let (registration_fee, end_index) = AssetItem::deserialize_from(data, end_index)?;
-        let (data_size_range, end_index) = Range::deserialize_from(data, end_index)?;
-        check_ix_data_len(data, end_index)?;
+        let mut b = ByteReader::new(data, start_index);
 
-        Ok((
-            Self {
-                admin,
-                is_paused,
-                rotation_timeout,
-                registration_fee,
-                data_size_range,
-            },
-            end_index,
-        ))
+        let data = Self {
+            admin: b.read_pubkey()?,
+            is_paused: b.read_bool()?,
+            rotation_timeout: b.read_u32()?,
+            registration_fee: b.read::<AssetItem>()?,
+            data_size_range: b.read::<Range>()?,
+        };
+
+        Ok((data, b.check_and_get_end_index()?))
     }
 }
 
@@ -150,10 +136,13 @@ impl ZeroCopySerialize for UserCounter {
 
 impl ZeroCopyDeserialize for UserCounter {
     fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)> {
-        let (last_user_id, end_index) = to_u32(data, start_index)?;
-        check_ix_data_len(data, end_index)?;
+        let mut b = ByteReader::new(data, start_index);
 
-        Ok((Self { last_user_id }, end_index))
+        let data = Self {
+            last_user_id: b.read_u32()?,
+        };
+
+        Ok((data, b.check_and_get_end_index()?))
     }
 }
 
@@ -184,19 +173,15 @@ impl ZeroCopySerialize for RotationState {
 
 impl ZeroCopyDeserialize for RotationState {
     fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)> {
-        let (owner, end_index) = to_pubkey(data, start_index)?;
-        let (new_owner, end_index) = to_option(data, end_index, to_pubkey)?;
-        let (expiration_date, end_index) = to_u64(data, end_index)?;
-        check_ix_data_len(data, end_index)?;
+        let mut b = ByteReader::new(data, start_index);
 
-        Ok((
-            Self {
-                owner,
-                new_owner,
-                expiration_date,
-            },
-            end_index,
-        ))
+        let data = Self {
+            owner: b.read_pubkey()?,
+            new_owner: b.read_option(to_pubkey)?,
+            expiration_date: b.read_u64()?,
+        };
+
+        Ok((data, b.check_and_get_end_index()?))
     }
 }
 
@@ -230,23 +215,17 @@ impl ZeroCopySerialize for UserId {
 
 impl ZeroCopyDeserialize for UserId {
     fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)> {
-        let (id, end_index) = to_u32(data, start_index)?;
-        let (is_open, end_index) = to_bool(data, end_index)?;
-        let (is_activated, end_index) = to_bool(data, end_index)?;
-        let (account_bump, end_index) = to_u8(data, end_index)?;
-        let (rotation_state_bump, end_index) = to_u8(data, end_index)?;
-        check_ix_data_len(data, end_index)?;
+        let mut b = ByteReader::new(data, start_index);
 
-        Ok((
-            Self {
-                id,
-                is_open,
-                is_activated,
-                account_bump,
-                rotation_state_bump,
-            },
-            end_index,
-        ))
+        let data = Self {
+            id: b.read_u32()?,
+            is_open: b.read_bool()?,
+            is_activated: b.read_bool()?,
+            account_bump: b.read_u8()?,
+            rotation_state_bump: b.read_u8()?,
+        };
+
+        Ok((data, b.check_and_get_end_index()?))
     }
 }
 
@@ -279,19 +258,15 @@ impl ZeroCopySerialize for UserAccount {
 
 impl ZeroCopyDeserialize for UserAccount {
     fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)> {
-        let (self_data, end_index) = to_string(data, start_index)?;
-        let (nonce, end_index) = to_u64(data, end_index)?;
-        let (max_size, end_index) = to_u32(data, end_index)?;
-        check_ix_data_len(data, end_index)?;
+        let mut b = ByteReader::new(data, start_index);
 
-        Ok((
-            Self {
-                data: self_data,
-                nonce,
-                max_size,
-            },
-            end_index,
-        ))
+        let data = Self {
+            data: b.read_string()?,
+            nonce: b.read_u64()?,
+            max_size: b.read_u32()?,
+        };
+
+        Ok((data, b.check_and_get_end_index()?))
     }
 }
 

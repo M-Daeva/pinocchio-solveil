@@ -1,8 +1,132 @@
 use {
-    crate::types::{Result, ZeroCopyDeserialize, ZeroCopySerialize},
+    crate::{
+        guards::check_ix_data_len,
+        types::{Result, ZeroCopyDeserialize, ZeroCopySerialize},
+    },
     pinocchio::{program_error::ProgramError, pubkey::Pubkey, ProgramResult},
     std::{mem, slice},
 };
+
+pub struct ByteReader<'a> {
+    data: &'a [u8],
+    position: usize,
+}
+
+impl<'a> ByteReader<'a> {
+    #[inline]
+    pub fn new(data: &'a [u8], start_index: usize) -> Self {
+        Self {
+            data,
+            position: start_index,
+        }
+    }
+
+    #[inline]
+    pub fn position(&self) -> usize {
+        self.position
+    }
+
+    #[inline]
+    pub fn check_and_get_end_index(self) -> Result<usize> {
+        check_ix_data_len(self.data, self.position)?;
+        Ok(self.position)
+    }
+
+    #[inline]
+    pub fn read_bool(&mut self) -> Result<bool> {
+        let (value, new_pos) = to_bool(self.data, self.position)?;
+        self.position = new_pos;
+        Ok(value)
+    }
+
+    #[inline]
+    pub fn read_u8(&mut self) -> Result<u8> {
+        let (value, new_pos) = to_u8(self.data, self.position)?;
+        self.position = new_pos;
+        Ok(value)
+    }
+
+    #[inline]
+    pub fn read_u16(&mut self) -> Result<u16> {
+        let (value, new_pos) = to_u16(self.data, self.position)?;
+        self.position = new_pos;
+        Ok(value)
+    }
+
+    #[inline]
+    pub fn read_u32(&mut self) -> Result<u32> {
+        let (value, new_pos) = to_u32(self.data, self.position)?;
+        self.position = new_pos;
+        Ok(value)
+    }
+
+    #[inline]
+    pub fn read_u64(&mut self) -> Result<u64> {
+        let (value, new_pos) = to_u64(self.data, self.position)?;
+        self.position = new_pos;
+        Ok(value)
+    }
+
+    #[inline]
+    pub fn read_u128(&mut self) -> Result<u128> {
+        let (value, new_pos) = to_u128(self.data, self.position)?;
+        self.position = new_pos;
+        Ok(value)
+    }
+
+    #[inline]
+    pub fn read_pubkey(&mut self) -> Result<Pubkey> {
+        let (value, new_pos) = to_pubkey(self.data, self.position)?;
+        self.position = new_pos;
+        Ok(value)
+    }
+
+    #[inline]
+    pub fn read_string(&mut self) -> Result<String> {
+        let (value, new_pos) = to_string(self.data, self.position)?;
+        self.position = new_pos;
+        Ok(value)
+    }
+
+    #[inline]
+    pub fn read_vec_fixed<T, F>(&mut self, item_parser: F) -> Result<Vec<T>>
+    where
+        F: Fn(&[u8], usize) -> Result<(T, usize)>,
+    {
+        let (value, new_pos) = to_vec_fixed(self.data, self.position, item_parser)?;
+        self.position = new_pos;
+        Ok(value)
+    }
+
+    #[inline]
+    pub fn read_option<T, F>(&mut self, item_parser: F) -> Result<Option<T>>
+    where
+        F: Fn(&[u8], usize) -> Result<(T, usize)>,
+    {
+        let (value, new_pos) = to_option(self.data, self.position, item_parser)?;
+        self.position = new_pos;
+        Ok(value)
+    }
+
+    #[inline]
+    pub fn read_array<T, F, const N: usize>(&mut self, item_parser: F) -> Result<[T; N]>
+    where
+        T: Copy + Default,
+        F: Fn(&[u8], usize) -> Result<(T, usize)>,
+    {
+        let (value, new_pos) = to_array(self.data, self.position, item_parser)?;
+        self.position = new_pos;
+        Ok(value)
+    }
+
+    // For types that implement ZeroCopyDeserialize
+    #[inline]
+    pub fn read<T: ZeroCopyDeserialize>(&mut self) -> Result<T> {
+        let (value, new_pos) = T::deserialize_from(self.data, self.position)?;
+        self.position = new_pos;
+        Ok(value)
+    }
+}
 
 // Boolean (1 byte: 0 = false, non-zero = true)
 #[inline]
@@ -182,147 +306,6 @@ where
     Ok((array, current_index))
 }
 
-// For types that can be directly interpreted as bytes (zero-copy)
-
-// Boolean (1 byte: 0 = false, 1 = true)
-#[inline]
-pub fn bool_as_bytes(value: &bool) -> &[u8] {
-    unsafe { slice::from_raw_parts(value as *const bool as *const u8, 1) }
-}
-
-// u8 (1 byte) - already a byte
-#[inline]
-pub fn u8_as_bytes(value: &u8) -> &[u8] {
-    slice::from_ref(value)
-}
-
-// u16 (2 bytes, little-endian)
-#[inline]
-pub fn u16_as_bytes(value: &u16) -> &[u8] {
-    unsafe { slice::from_raw_parts(value as *const u16 as *const u8, mem::size_of::<u16>()) }
-}
-
-// u32 (4 bytes, little-endian)
-#[inline]
-pub fn u32_as_bytes(value: &u32) -> &[u8] {
-    unsafe { slice::from_raw_parts(value as *const u32 as *const u8, mem::size_of::<u32>()) }
-}
-
-// u64 (8 bytes, little-endian)
-#[inline]
-pub fn u64_as_bytes(value: &u64) -> &[u8] {
-    unsafe { slice::from_raw_parts(value as *const u64 as *const u8, mem::size_of::<u64>()) }
-}
-
-// u128 (16 bytes, little-endian)
-#[inline]
-pub fn u128_as_bytes(value: &u128) -> &[u8] {
-    unsafe { slice::from_raw_parts(value as *const u128 as *const u8, mem::size_of::<u128>()) }
-}
-
-// Pubkey (32 bytes) - assuming Pubkey has as_ref() or to_bytes() method
-#[inline]
-pub fn pubkey_as_bytes(value: &Pubkey) -> &[u8] {
-    value.as_ref() // Most Pubkey implementations provide this
-}
-
-// String as UTF-8 bytes (no length prefix - just the content)
-#[inline]
-pub fn string_as_bytes(value: &str) -> &[u8] {
-    value.as_bytes()
-}
-
-// // Arrays of primitive types (zero-copy)
-// #[inline]
-// pub fn array_u8_as_bytes<const N: usize>(value: &[u8; N]) -> &[u8] {
-//     value.as_slice()
-// }
-
-// #[inline]
-// pub fn array_u16_as_bytes<const N: usize>(value: &[u16; N]) -> &[u8] {
-//     unsafe { slice::from_raw_parts(value.as_ptr() as *const u8, N * mem::size_of::<u16>()) }
-// }
-
-// #[inline]
-// pub fn array_u32_as_bytes<const N: usize>(value: &[u32; N]) -> &[u8] {
-//     unsafe { slice::from_raw_parts(value.as_ptr() as *const u8, N * mem::size_of::<u32>()) }
-// }
-
-// #[inline]
-// pub fn array_u64_as_bytes<const N: usize>(value: &[u64; N]) -> &[u8] {
-//     unsafe { slice::from_raw_parts(value.as_ptr() as *const u8, N * mem::size_of::<u64>()) }
-// }
-
-// Slices of primitive types (zero-copy)
-#[inline]
-pub fn slice_u16_as_bytes(value: &[u16]) -> &[u8] {
-    unsafe {
-        slice::from_raw_parts(
-            value.as_ptr() as *const u8,
-            value.len() * mem::size_of::<u16>(),
-        )
-    }
-}
-
-#[inline]
-pub fn slice_u32_as_bytes(value: &[u32]) -> &[u8] {
-    unsafe {
-        slice::from_raw_parts(
-            value.as_ptr() as *const u8,
-            value.len() * mem::size_of::<u32>(),
-        )
-    }
-}
-
-#[inline]
-pub fn slice_u64_as_bytes(value: &[u64]) -> &[u8] {
-    unsafe {
-        slice::from_raw_parts(
-            value.as_ptr() as *const u8,
-            value.len() * mem::size_of::<u64>(),
-        )
-    }
-}
-
-#[inline]
-pub fn slice_u128_as_bytes(value: &[u128]) -> &[u8] {
-    unsafe {
-        slice::from_raw_parts(
-            value.as_ptr() as *const u8,
-            value.len() * mem::size_of::<u128>(),
-        )
-    }
-}
-
-// Option<T> (1 byte discriminant + optional T)
-// Format: [is_some: u8][value: T if is_some != 0]
-#[inline]
-pub fn option_as_bytes<T, F>(value: &Option<T>, item_serializer: F) -> Vec<u8>
-where
-    F: Fn(&T) -> &[u8],
-{
-    match value {
-        Some(inner_value) => {
-            let mut bytes = Vec::new();
-            bytes.push(1u8); // is_some = true
-            bytes.extend_from_slice(item_serializer(inner_value));
-            bytes
-        }
-        None => {
-            vec![0u8] // is_some = false, no additional data
-        }
-    }
-}
-
-// // Generic function for any type that can be safely interpreted as bytes
-// #[inline]
-// pub fn any_as_bytes<T>(value: &T) -> &[u8] {
-//     unsafe { slice::from_raw_parts(value as *const T as *const u8, mem::size_of::<T>()) }
-// }
-
-// For cases where you need to build complex structures efficiently
-// Use a pre-allocated buffer and write directly into it
-
 pub struct ByteWriter<'a> {
     buffer: &'a mut [u8],
     position: usize,
@@ -471,5 +454,116 @@ impl<'a> ByteWriterVecExt<'a> for ByteWriter<'a> {
     #[inline]
     fn truncate_buffer(self, buffer: &mut Vec<u8>) {
         buffer.truncate(self.position());
+    }
+}
+
+// For types that can be directly interpreted as bytes (zero-copy)
+
+// Boolean (1 byte: 0 = false, 1 = true)
+#[inline]
+pub fn bool_as_bytes(value: &bool) -> &[u8] {
+    unsafe { slice::from_raw_parts(value as *const bool as *const u8, 1) }
+}
+
+// u8 (1 byte) - already a byte
+#[inline]
+pub fn u8_as_bytes(value: &u8) -> &[u8] {
+    slice::from_ref(value)
+}
+
+// u16 (2 bytes, little-endian)
+#[inline]
+pub fn u16_as_bytes(value: &u16) -> &[u8] {
+    unsafe { slice::from_raw_parts(value as *const u16 as *const u8, mem::size_of::<u16>()) }
+}
+
+// u32 (4 bytes, little-endian)
+#[inline]
+pub fn u32_as_bytes(value: &u32) -> &[u8] {
+    unsafe { slice::from_raw_parts(value as *const u32 as *const u8, mem::size_of::<u32>()) }
+}
+
+// u64 (8 bytes, little-endian)
+#[inline]
+pub fn u64_as_bytes(value: &u64) -> &[u8] {
+    unsafe { slice::from_raw_parts(value as *const u64 as *const u8, mem::size_of::<u64>()) }
+}
+
+// u128 (16 bytes, little-endian)
+#[inline]
+pub fn u128_as_bytes(value: &u128) -> &[u8] {
+    unsafe { slice::from_raw_parts(value as *const u128 as *const u8, mem::size_of::<u128>()) }
+}
+
+// Pubkey (32 bytes) - assuming Pubkey has as_ref() or to_bytes() method
+#[inline]
+pub fn pubkey_as_bytes(value: &Pubkey) -> &[u8] {
+    value.as_ref() // Most Pubkey implementations provide this
+}
+
+// String as UTF-8 bytes (no length prefix - just the content)
+#[inline]
+pub fn string_as_bytes(value: &str) -> &[u8] {
+    value.as_bytes()
+}
+
+// Slices of primitive types (zero-copy)
+#[inline]
+pub fn slice_u16_as_bytes(value: &[u16]) -> &[u8] {
+    unsafe {
+        slice::from_raw_parts(
+            value.as_ptr() as *const u8,
+            value.len() * mem::size_of::<u16>(),
+        )
+    }
+}
+
+#[inline]
+pub fn slice_u32_as_bytes(value: &[u32]) -> &[u8] {
+    unsafe {
+        slice::from_raw_parts(
+            value.as_ptr() as *const u8,
+            value.len() * mem::size_of::<u32>(),
+        )
+    }
+}
+
+#[inline]
+pub fn slice_u64_as_bytes(value: &[u64]) -> &[u8] {
+    unsafe {
+        slice::from_raw_parts(
+            value.as_ptr() as *const u8,
+            value.len() * mem::size_of::<u64>(),
+        )
+    }
+}
+
+#[inline]
+pub fn slice_u128_as_bytes(value: &[u128]) -> &[u8] {
+    unsafe {
+        slice::from_raw_parts(
+            value.as_ptr() as *const u8,
+            value.len() * mem::size_of::<u128>(),
+        )
+    }
+}
+
+// Option<T> (1 byte discriminant + optional T)
+// Format: [is_some: u8][value: T if is_some != 0]
+#[inline]
+pub fn option_as_bytes<T, F>(value: &Option<T>, item_serializer: F) -> Vec<u8>
+where
+    F: Fn(&T) -> &[u8],
+{
+    match value {
+        Some(inner_value) => {
+            let mut bytes = Vec::new();
+            bytes.push(1u8); // is_some = true
+            bytes.extend_from_slice(item_serializer(inner_value));
+            bytes
+        }
+        None => {
+            vec![0u8] // is_some = false, no additional data
+        }
     }
 }

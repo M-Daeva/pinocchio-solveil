@@ -1,7 +1,6 @@
 use {
     base::{
-        converters::{to_pubkey, to_u32, to_u64, ByteWriter},
-        guards::check_ix_data_len,
+        converters::{ByteReader, ByteWriter},
         types::{Result, ZeroCopyDeserialize, ZeroCopySerialize},
     },
     pinocchio::pubkey::Pubkey,
@@ -24,11 +23,14 @@ impl ZeroCopySerialize for AssetItem {
 
 impl ZeroCopyDeserialize for AssetItem {
     fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)> {
-        let (amount, end_index) = to_u64(data, start_index)?;
-        let (asset, end_index) = to_pubkey(data, end_index)?;
-        check_ix_data_len(data, end_index)?;
+        let mut b = ByteReader::new(data, start_index);
 
-        Ok((Self { amount, asset }, end_index))
+        let data = Self {
+            amount: b.read_u64()?,
+            asset: b.read_pubkey()?,
+        };
+
+        Ok((data, b.check_and_get_end_index()?))
     }
 }
 
@@ -49,10 +51,13 @@ impl ZeroCopySerialize for Range {
 
 impl ZeroCopyDeserialize for Range {
     fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)> {
-        let (min, end_index) = to_u32(data, start_index)?;
-        let (max, end_index) = to_u32(data, end_index)?;
-        check_ix_data_len(data, end_index)?;
+        let mut b = ByteReader::new(data, start_index);
 
-        Ok((Self { min, max }, end_index))
+        let data = Self {
+            min: b.read_u32()?,
+            max: b.read_u32()?,
+        };
+
+        Ok((data, b.check_and_get_end_index()?))
     }
 }
