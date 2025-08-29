@@ -1,80 +1,19 @@
 use {
-    crate::{
-        state::{discriminator as DISCRIMINATOR, seed as SEED, Config, RotationState},
-        types::common::Range,
-    },
-    base::{
-        accounts::{AccountCheck, ProgramAccount, ProgramAccountCheck, SignerAccount},
-        converters::{to_bool, to_pubkey, to_u32, to_u64, ByteReader},
-        types::{Result, Space, ZeroCopyDeserialize},
-    },
-    pinocchio::{account_info::AccountInfo, program_error::ProgramError, pubkey::Pubkey},
-    r#macro_account::AccountMetas,
+    crate::state::discriminator as DISCRIMINATOR,
+    base::{converters::ByteReader, types::Result},
+    pinocchio::program_error::ProgramError,
 };
 
-#[derive(AccountMetas)]
-pub struct Accounts<'a> {
-    #[account(signer, writable)]
-    pub sender: &'a AccountInfo,
-
-    #[account(writable)]
-    pub config: &'a AccountInfo,
-
-    #[account(writable)]
-    pub admin_rotation_state: &'a AccountInfo,
-}
-
-impl<'a> TryFrom<&'a [AccountInfo]> for Accounts<'a> {
-    type Error = ProgramError;
-
-    fn try_from(accounts: &'a [AccountInfo]) -> Result<Self> {
-        let [sender, config, admin_rotation_state] = accounts else {
-            Err(ProgramError::NotEnoughAccountKeys)?
-        };
-
-        SignerAccount::check(sender)?;
-        ProgramAccount::check(
-            config,
-            &crate::ID,
-            Config::get_space(),
-            Some(&[SEED::CONFIG]),
-        )?;
-        ProgramAccount::check(
-            admin_rotation_state,
-            &crate::ID,
-            RotationState::get_space(),
-            Some(&[SEED::ADMIN_ROTATION_STATE]),
-        )?;
-
-        Ok(Self {
-            sender,
-            config,
-            admin_rotation_state,
-        })
-    }
-}
+pub use crate::types::update_config::Accounts;
 
 #[derive(Default)]
-pub struct InstructionData {
-    pub admin: Option<Pubkey>,
-    pub is_paused: Option<bool>,
-    pub rotation_timeout: Option<u32>,
-    pub registration_fee_amount: Option<u64>,
-    pub data_size_range: Option<Range>,
-}
+pub struct InstructionData {}
 
 impl TryFrom<&[u8]> for InstructionData {
     type Error = ProgramError;
 
     fn try_from(data: &[u8]) -> Result<Self> {
-        ByteReader::new::<Self>(data, 0)
-            .read_option(|x| &mut x.admin, to_pubkey)?
-            .read_option(|x| &mut x.is_paused, to_bool)?
-            .read_option(|x| &mut x.rotation_timeout, to_u32)?
-            .read_option(|x| &mut x.registration_fee_amount, to_u64)?
-            .read_option(|x| &mut x.data_size_range, Range::deserialize_from)?
-            .complete()
-            .map(|(x, _)| x)
+        ByteReader::new::<Self>(data, 0).complete().map(|(x, _)| x)
     }
 }
 
@@ -82,19 +21,11 @@ impl TryFrom<&[u8]> for InstructionData {
 #[cfg(feature = "dev")]
 impl base::types::InstructionSerialize for InstructionData {
     fn serialize(&self) -> Result<Vec<u8>> {
-        use base::converters::{
-            bool_as_bytes, pubkey_as_bytes, u32_as_bytes, u64_as_bytes, ByteWriter,
-            ByteWriterVecExt,
-        };
+        use base::converters::{ByteWriter, ByteWriterVecExt};
 
         let mut buffer = vec![];
         let position = ByteWriter::from_vec(&mut buffer)
-            .write_u8(DISCRIMINATOR::UPDATE_CONFIG)?
-            .write_option(&self.admin, pubkey_as_bytes)?
-            .write_option(&self.is_paused, bool_as_bytes)?
-            .write_option(&self.rotation_timeout, u32_as_bytes)?
-            .write_option(&self.registration_fee_amount, u64_as_bytes)?
-            .write_option_custom(&self.data_size_range)?
+            .write_u8(DISCRIMINATOR::CONFIRM_ADMIN_ROTATION)?
             .position();
         buffer.truncate(position);
 

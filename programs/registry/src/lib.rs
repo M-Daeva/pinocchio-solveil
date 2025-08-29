@@ -23,6 +23,7 @@ pub fn process_instruction(
             let instruction = match *discriminator {
                 DISCRIMINATOR::INIT => instructions::init,
                 DISCRIMINATOR::UPDATE_CONFIG => instructions::update_config,
+                DISCRIMINATOR::CONFIRM_ADMIN_ROTATION => instructions::confirm_admin_rotation,
                 _ => Err(ProgramError::InvalidInstructionData)?,
             };
 

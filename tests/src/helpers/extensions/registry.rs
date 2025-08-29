@@ -36,6 +36,11 @@ pub trait CounterExtension {
         data_size_range: Option<Range>,
     ) -> TestResult<TransactionMetadata>;
 
+    fn registry_try_confirm_admin_rotation(
+        &mut self,
+        sender: AppUser,
+    ) -> TestResult<TransactionMetadata>;
+
     fn registry_query_config(&self) -> TestResult<Config>;
 
     fn registry_query_user_counter(&self) -> TestResult<UserCounter>;
@@ -152,6 +157,46 @@ impl CounterExtension for App {
         }
         .serialize()
         .map_err(TestError::from_raw_error)?;
+
+        send_tx_with_ix(
+            self,
+            &program_id,
+            &accounts,
+            &instruction_data,
+            signers,
+            &[],
+        )
+    }
+
+    fn registry_try_confirm_admin_rotation(
+        &mut self,
+        sender: AppUser,
+    ) -> TestResult<TransactionMetadata> {
+        // programs
+        let ProgramId {
+            registry: program_id,
+            ..
+        } = self.program_id;
+
+        // signers
+        let signers = &[sender.keypair()];
+        let sender = sender.pubkey();
+
+        // pda
+        let config = self.pda.registry_config();
+        let admin_rotation_state = self.pda.registry_admin_rotation_state();
+
+        // confirm_admin_rotation uses update_config account
+        let accounts = types::update_config::TestAccounts {
+            sender,
+            config,
+            admin_rotation_state,
+        }
+        .to_account_metas();
+
+        let instruction_data = &types::confirm_admin_rotation::InstructionData {}
+            .serialize()
+            .map_err(TestError::from_raw_error)?;
 
         send_tx_with_ix(
             self,
