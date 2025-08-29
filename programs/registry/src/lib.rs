@@ -25,6 +25,18 @@ pub fn process_instruction(
                 DISCRIMINATOR::UPDATE_CONFIG => instructions::update_config,
                 DISCRIMINATOR::CONFIRM_ADMIN_ROTATION => instructions::confirm_admin_rotation,
                 DISCRIMINATOR::WITHDRAW_REVENUE => instructions::withdraw_revenue,
+                // creates user PDA account taking rent exempt in SOL
+                DISCRIMINATOR::CREATE_ACCOUNT => instructions::create_account,
+                // 1st step to to change allocated data space or just to redeem rent
+                DISCRIMINATOR::CLOSE_ACCOUNT => todo!(),
+                // 2nd step to to change allocated data space
+                DISCRIMINATOR::REOPEN_ACCOUNT => todo!(),
+                // activates account with fee asset payment
+                DISCRIMINATOR::ACTIVATE_ACCOUNT => todo!(),
+                DISCRIMINATOR::WRITE_DATA => todo!(),
+                DISCRIMINATOR::REQUEST_ACCOUNT_ROTATION => todo!(),
+                // updates address - id pair
+                DISCRIMINATOR::CONFIRM_ACCOUNT_ROTATION => todo!(),
                 _ => Err(ProgramError::InvalidInstructionData)?,
             };
 

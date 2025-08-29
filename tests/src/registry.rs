@@ -9,6 +9,7 @@ use {
     base::error::AuthError,
     pretty_assertions::assert_eq,
     registry_cpi::{
+        error::CustomError,
         state::{
             Config, RotationState, UserCounter, ACCOUNT_DATA_SIZE_MAX, ACCOUNT_DATA_SIZE_MIN,
             ACCOUNT_REGISTRATION_FEE_AMOUNT, CLOCK_TIME_MIN, ROTATION_TIMEOUT,
@@ -173,3 +174,56 @@ fn transfer_admin() -> TestResult<()> {
 
     Ok(())
 }
+
+// #[test]
+// fn create_account_guards() -> TestResult<()> {
+//     const MAX_DATA_SIZE: u32 = 1_000;
+
+//     let mut app = init_app()?;
+
+//     // user can't create account with improper user_id
+//     app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, Some(5))
+//         .unwrap_err();
+
+//     // user can't create account with too small data
+//     let res = app
+//         .registry_try_create_account(AppUser::Alice, 1, None)
+//         .unwrap_err();
+//     assert_error(res, CustomError::MaxDataSizeIsOutOfRange);
+
+//     // user can't create account with too much data
+//     let res = app
+//         .registry_try_create_account(AppUser::Alice, ACCOUNT_DATA_SIZE_MAX + 1, None)
+//         .unwrap_err();
+//     assert_error(res, CustomError::MaxDataSizeIsOutOfRange);
+
+//     // user can't create account when program is paused
+//     app.registry_try_update_config(AppUser::Admin, None, Some(true), None, None, None)?;
+//     let res = app
+//         .registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, None)
+//         .unwrap_err();
+//     app.registry_try_update_config(AppUser::Admin, None, Some(false), None, None, None)?;
+//     assert_error(res, CustomError::ContractIsPaused);
+
+//     // user can't create account twice
+//     app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, None)?;
+//     // 1) with the same user_id
+//     app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, Some(1))
+//         .unwrap_err();
+//     // 2) with a new user_id
+//     app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, None)
+//         .unwrap_err();
+//     // 3) even if it's closed
+//     // app.registry_try_close_account(AppUser::Alice, None)?;
+//     // app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, Some(1))
+//     //     .unwrap_err();
+//     // app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, None)
+//     //     .unwrap_err();
+//     // app.registry_try_reopen_account(AppUser::Alice, MAX_DATA_SIZE)?;
+
+//     // // other user can't create account with the same user_id
+//     // app.registry_try_create_account(AppUser::Bob, MAX_DATA_SIZE, Some(1))
+//     //     .unwrap_err();
+
+//     Ok(())
+// }

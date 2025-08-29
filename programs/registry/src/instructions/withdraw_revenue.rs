@@ -65,5 +65,7 @@ pub fn withdraw_revenue(accounts: &[AccountInfo], instruction_data: &[u8]) -> Pr
         get_token_decimals(revenue_mint)?,
     )?;
 
+    // TODO: init_if_needed for revenue_recipient_ata?
+
     Ok(())
 }
