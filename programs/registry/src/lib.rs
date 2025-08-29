@@ -22,6 +22,7 @@ pub fn process_instruction(
         Some((discriminator, data)) => {
             let instruction = match *discriminator {
                 DISCRIMINATOR::INIT => instructions::init,
+                DISCRIMINATOR::UPDATE_CONFIG => instructions::update_config,
                 _ => Err(ProgramError::InvalidInstructionData)?,
             };
 

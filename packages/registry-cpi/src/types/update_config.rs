@@ -1,6 +1,6 @@
 use {
     crate::{
-        state::{discriminator as DISCRIMINATOR, seed as SEED, Bump, Config, RotationState},
+        state::{discriminator as DISCRIMINATOR, seed as SEED, Config, RotationState},
         types::common::Range,
     },
     base::{
@@ -17,8 +17,6 @@ pub struct Accounts<'a> {
     #[account(signer, writable)]
     pub sender: &'a AccountInfo,
 
-    pub bump: &'a AccountInfo,
-
     #[account(writable)]
     pub config: &'a AccountInfo,
 
@@ -30,12 +28,11 @@ impl<'a> TryFrom<&'a [AccountInfo]> for Accounts<'a> {
     type Error = ProgramError;
 
     fn try_from(accounts: &'a [AccountInfo]) -> Result<Self> {
-        let [sender, bump, config, admin_rotation_state] = accounts else {
+        let [sender, config, admin_rotation_state] = accounts else {
             Err(ProgramError::NotEnoughAccountKeys)?
         };
 
         SignerAccount::check(sender)?;
-        ProgramAccount::check(bump, &crate::ID, Bump::get_space(), Some(&[SEED::BUMP]))?;
         ProgramAccount::check(
             config,
             &crate::ID,
@@ -51,7 +48,6 @@ impl<'a> TryFrom<&'a [AccountInfo]> for Accounts<'a> {
 
         Ok(Self {
             sender,
-            bump,
             config,
             admin_rotation_state,
         })

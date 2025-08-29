@@ -55,9 +55,8 @@ where
     }
 
     #[inline]
-    pub fn load(&self) -> Result<(T, usize)> {
-        // TODO: probably start_index must be passed with init and stored in AccountData
-        T::deserialize_from(&self.data, 0)
+    pub fn load(&self) -> Result<T> {
+        T::deserialize_from(&self.data, 0).map(|(x, _)| x)
     }
 
     #[inline]
@@ -70,7 +69,7 @@ where
     where
         F: FnOnce(T) -> Result<T>,
     {
-        let (data, _) = self.load()?;
+        let data = self.load()?;
         let updated_data = f(data)?;
         self.save(updated_data)
     }

@@ -4,7 +4,7 @@ use {
             extension::{get_data, send_tx_with_ix},
             App, ProgramId,
         },
-        types::{AppUser, SolPubkey, TestError, TestResult},
+        types::{sol_to_pin_pubkey, AppUser, SolPubkey, TestError, TestResult},
     },
     base::types::InstructionSerialize,
     litesvm::types::TransactionMetadata,
@@ -24,6 +24,16 @@ pub trait CounterExtension {
         rotation_timeout: Option<u32>,
         account_registration_fee: Option<AssetItem>,
         account_data_size_range: Option<Range>,
+    ) -> TestResult<TransactionMetadata>;
+
+    fn registry_try_update_config(
+        &mut self,
+        sender: AppUser,
+        admin: Option<AppUser>,
+        is_paused: Option<bool>,
+        rotation_timeout: Option<u32>,
+        registration_fee_amount: Option<u64>,
+        data_size_range: Option<Range>,
     ) -> TestResult<TransactionMetadata>;
 
     fn registry_query_config(&self) -> TestResult<Config>;
@@ -89,6 +99,56 @@ impl CounterExtension for App {
             rotation_timeout,
             account_registration_fee,
             account_data_size_range,
+        }
+        .serialize()
+        .map_err(TestError::from_raw_error)?;
+
+        send_tx_with_ix(
+            self,
+            &program_id,
+            &accounts,
+            &instruction_data,
+            signers,
+            &[],
+        )
+    }
+
+    fn registry_try_update_config(
+        &mut self,
+        sender: AppUser,
+        admin: Option<AppUser>,
+        is_paused: Option<bool>,
+        rotation_timeout: Option<u32>,
+        registration_fee_amount: Option<u64>,
+        data_size_range: Option<Range>,
+    ) -> TestResult<TransactionMetadata> {
+        // programs
+        let ProgramId {
+            registry: program_id,
+            ..
+        } = self.program_id;
+
+        // signers
+        let signers = &[sender.keypair()];
+        let sender = sender.pubkey();
+
+        // pda
+        let config = self.pda.registry_config();
+        let admin_rotation_state = self.pda.registry_admin_rotation_state();
+
+        let accounts = types::update_config::TestAccounts {
+            sender,
+            config,
+            admin_rotation_state,
+        }
+        .to_account_metas();
+
+        let instruction_data = &types::update_config::InstructionData {
+            admin: admin.map(|x| sol_to_pin_pubkey(&x.pubkey())),
+            is_paused,
+            rotation_timeout,
+            registration_fee_amount,
+            data_size_range,
         }
         .serialize()
         .map_err(TestError::from_raw_error)?;

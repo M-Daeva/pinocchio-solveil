@@ -64,3 +64,39 @@ fn init_default() -> TestResult<()> {
 
     Ok(())
 }
+
+#[test]
+fn update_config_default() -> TestResult<()> {
+    let mut app = init_app()?;
+
+    app.registry_try_update_config(
+        AppUser::Admin,
+        None,
+        None,
+        None,
+        None,
+        Some(Range {
+            min: 2 * ACCOUNT_DATA_SIZE_MIN,
+            max: ACCOUNT_DATA_SIZE_MAX,
+        }),
+    )?;
+
+    assert_eq!(
+        app.registry_query_config()?,
+        Config {
+            admin: AppUser::Admin.pubkey(),
+            is_paused: false,
+            rotation_timeout: ROTATION_TIMEOUT,
+            registration_fee: AssetItem {
+                amount: ACCOUNT_REGISTRATION_FEE_AMOUNT,
+                asset: AppToken::USDC.pubkey(),
+            },
+            data_size_range: Range {
+                min: 2 * ACCOUNT_DATA_SIZE_MIN,
+                max: ACCOUNT_DATA_SIZE_MAX,
+            }
+        }
+    );
+
+    Ok(())
+}

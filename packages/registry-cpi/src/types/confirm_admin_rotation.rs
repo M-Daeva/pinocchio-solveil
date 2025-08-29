@@ -1,77 +1,66 @@
 use {
-    crate::types::common::{AssetItem, Range},
-    base::{
-        accounts::{AccountCheck, MintAccount, SignerAccount, SystemProgram},
-        converters::{to_u32, ByteReader},
-        types::{Result, ZeroCopyDeserialize},
+    crate::{
+        state::{discriminator as DISCRIMINATOR, seed as SEED, Config, RotationState},
+        types::common::Range,
     },
-    pinocchio::{account_info::AccountInfo, program_error::ProgramError},
+    base::{
+        accounts::{AccountCheck, ProgramAccount, ProgramAccountCheck, SignerAccount},
+        converters::{to_bool, to_pubkey, to_u32, to_u64, ByteReader},
+        types::{Result, Space, ZeroCopyDeserialize},
+    },
+    pinocchio::{account_info::AccountInfo, program_error::ProgramError, pubkey::Pubkey},
     r#macro_account::AccountMetas,
 };
 
 #[derive(AccountMetas)]
 pub struct Accounts<'a> {
-    pub system_program: &'a AccountInfo,
-    pub token_program: &'a AccountInfo,
-    pub associated_token_program: &'a AccountInfo,
-
     #[account(signer, writable)]
     pub sender: &'a AccountInfo,
-    #[account(writable)]
-    pub bump: &'a AccountInfo,
+
     #[account(writable)]
     pub config: &'a AccountInfo,
-    #[account(writable)]
-    pub user_counter: &'a AccountInfo,
+
     #[account(writable)]
     pub admin_rotation_state: &'a AccountInfo,
-    pub revenue_mint: &'a AccountInfo,
-    #[account(writable)]
-    pub revenue_app_ata: &'a AccountInfo,
 }
 
 impl<'a> TryFrom<&'a [AccountInfo]> for Accounts<'a> {
     type Error = ProgramError;
 
     fn try_from(accounts: &'a [AccountInfo]) -> Result<Self> {
-        let [system_program, token_program, associated_token_program, sender, bump, config, user_counter, admin_rotation_state, revenue_mint, revenue_app_ata] =
-            accounts
-        else {
+        let [sender, config, admin_rotation_state] = accounts else {
             Err(ProgramError::NotEnoughAccountKeys)?
         };
 
-        SystemProgram::check(system_program)?;
-        // token_program
-        // associated_token_program
-
         SignerAccount::check(sender)?;
-        // bump
-        // config
-        // user_counter
-        // admin_rotation_state
-        MintAccount::check(revenue_mint)?;
-        // revenue_app_ata
+        ProgramAccount::check(
+            config,
+            &crate::ID,
+            Config::get_space(),
+            Some(&[SEED::CONFIG]),
+        )?;
+        ProgramAccount::check(
+            admin_rotation_state,
+            &crate::ID,
+            RotationState::get_space(),
+            Some(&[SEED::ADMIN_ROTATION_STATE]),
+        )?;
 
         Ok(Self {
-            system_program,
-            token_program,
-            associated_token_program,
             sender,
-            bump,
             config,
-            user_counter,
             admin_rotation_state,
-            revenue_mint,
-            revenue_app_ata,
         })
     }
 }
 
 #[derive(Default)]
 pub struct InstructionData {
+    pub admin: Option<Pubkey>,
+    pub is_paused: Option<bool>,
     pub rotation_timeout: Option<u32>,
-    pub account_registration_fee: Option<AssetItem>,
-    pub account_data_size_range: Option<Range>,
+    pub registration_fee_amount: Option<u64>,
+    pub data_size_range: Option<Range>,
 }
 
 impl TryFrom<&[u8]> for InstructionData {
@@ -79,12 +68,11 @@ impl TryFrom<&[u8]> for InstructionData {
 
     fn try_from(data: &[u8]) -> Result<Self> {
         ByteReader::new::<Self>(data, 0)
+            .read_option(|x| &mut x.admin, to_pubkey)?
+            .read_option(|x| &mut x.is_paused, to_bool)?
             .read_option(|x| &mut x.rotation_timeout, to_u32)?
-            .read_option(
-                |x| &mut x.account_registration_fee,
-                AssetItem::deserialize_from,
-            )?
-            .read_option(|x| &mut x.account_data_size_range, Range::deserialize_from)?
+            .read_option(|x| &mut x.registration_fee_amount, to_u64)?
+            .read_option(|x| &mut x.data_size_range, Range::deserialize_from)?
             .complete()
             .map(|(x, _)| x)
     }
@@ -94,14 +82,19 @@ impl TryFrom<&[u8]> for InstructionData {
 #[cfg(feature = "dev")]
 impl base::types::InstructionSerialize for InstructionData {
     fn serialize(&self) -> Result<Vec<u8>> {
-        use base::converters::{option_as_bytes, u32_as_bytes, ByteWriter, ByteWriterVecExt};
+        use base::converters::{
+            bool_as_bytes, pubkey_as_bytes, u32_as_bytes, u64_as_bytes, ByteWriter,
+            ByteWriterVecExt,
+        };
 
         let mut buffer = vec![];
         let position = ByteWriter::from_vec(&mut buffer)
-            .write_u8(crate::state::discriminator::INIT)?
-            .write_bytes(&option_as_bytes(&self.rotation_timeout, u32_as_bytes))?
-            .write_option_custom(&self.account_registration_fee)?
-            .write_option_custom(&self.account_data_size_range)?
+            .write_u8(DISCRIMINATOR::UPDATE_CONFIG)?
+            .write_option(&self.admin, pubkey_as_bytes)?
+            .write_option(&self.is_paused, bool_as_bytes)?
+            .write_option(&self.rotation_timeout, u32_as_bytes)?
+            .write_option(&self.registration_fee_amount, u64_as_bytes)?
+            .write_option_custom(&self.data_size_range)?
             .position();
         buffer.truncate(position);
 
