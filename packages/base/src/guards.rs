@@ -7,6 +7,8 @@ use {
     },
 };
 
+// TODO: use custom guard errors for simpler debugging
+
 #[inline]
 pub fn check_signer(sender: &AccountInfo) -> ProgramResult {
     if !sender.is_signer() {
@@ -68,15 +70,6 @@ pub fn check_ix_data_len(data: &[u8], end_index: usize) -> ProgramResult {
 
     Ok(())
 }
-
-// pub fn check_account_data_len(data: &[u8]) -> ProgramResult {
-//     // TODO: is 1 correct always?
-//     if data.len() < DISCRIMINATOR_SPACE + 1 {
-//         Err(ProgramError::AccountDataTooSmall)?;
-//     }
-
-//     Ok(())
-// }
 
 #[inline]
 pub fn check_derived_pda(pda: &Pubkey, account: &AccountInfo) -> ProgramResult {

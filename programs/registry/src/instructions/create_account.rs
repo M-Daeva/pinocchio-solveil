@@ -15,7 +15,6 @@ use {
 pub fn create_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult {
     let Accounts {
         sender,
-        bump,
         config,
         user_counter,
         user_id,
@@ -50,17 +49,12 @@ pub fn create_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Prog
     let user_id_seeds = &[SEED::USER_ID, sender.key()];
     let (_user_id_pda, user_id_bump) = get_and_check_pda(user_id_seeds, &crate::ID, Some(user_id))?;
 
-    let user_account_seeds = &[
-        SEED::USER_ACCOUNT,
-        &(user_counter.last_user_id + 1).to_le_bytes(),
-    ];
+    let user_seed_id = &current_user_id.to_le_bytes();
+    let user_account_seeds = &[SEED::USER_ACCOUNT, user_seed_id];
     let (_user_account_pda, user_account_bump) =
         get_and_check_pda(user_account_seeds, &crate::ID, Some(user_account))?;
 
-    let user_rotation_state_seeds = &[
-        SEED::USER_ROTATION_STATE,
-        &(user_counter.last_user_id + 1).to_le_bytes(),
-    ];
+    let user_rotation_state_seeds = &[SEED::USER_ROTATION_STATE, user_seed_id];
     let (_user_rotation_state_pda, user_rotation_state_bump) = get_and_check_pda(
         user_rotation_state_seeds,
         &crate::ID,
@@ -70,7 +64,7 @@ pub fn create_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Prog
     // create and write pda
     //
     let bump_ref = &[user_id_bump];
-    let signer_seeds = &seeds!(SEED::USER_ID, bump_ref);
+    let signer_seeds = &seeds!(SEED::USER_ID, sender.key(), bump_ref);
     ProgramAccount::init(
         sender,
         user_id,
@@ -78,7 +72,7 @@ pub fn create_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Prog
         signer_seeds,
         &crate::ID,
     )?;
-    AccountData::init(bump)?.save(UserId {
+    AccountData::init(user_id)?.save(UserId {
         id: current_user_id,
         is_open: true,
         is_activated: false,
@@ -87,7 +81,7 @@ pub fn create_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Prog
     })?;
 
     let bump_ref = &[user_account_bump];
-    let signer_seeds = &seeds!(SEED::USER_ACCOUNT, bump_ref);
+    let signer_seeds = &seeds!(SEED::USER_ACCOUNT, user_seed_id, bump_ref);
     ProgramAccount::init(
         sender,
         user_account,
@@ -95,14 +89,14 @@ pub fn create_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Prog
         signer_seeds,
         &crate::ID,
     )?;
-    AccountData::init(bump)?.save(UserAccount {
+    AccountData::init(user_account)?.save(UserAccount {
         data: String::default(),
         nonce: 0,
         max_size: max_data_size,
     })?;
 
     let bump_ref = &[user_rotation_state_bump];
-    let signer_seeds = &seeds!(SEED::USER_ROTATION_STATE, bump_ref);
+    let signer_seeds = &seeds!(SEED::USER_ROTATION_STATE, user_seed_id, bump_ref);
     ProgramAccount::init(
         sender,
         user_rotation_state,
@@ -110,7 +104,7 @@ pub fn create_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Prog
         signer_seeds,
         &crate::ID,
     )?;
-    AccountData::init(bump)?.save(RotationState {
+    AccountData::init(user_rotation_state)?.save(RotationState {
         owner: *sender.key(),
         new_owner: None,
         expiration_date: get_clock_time()?,

@@ -55,7 +55,7 @@ impl<'a> TryFrom<&'a [AccountInfo]> for Accounts<'a> {
             Some(&[SEED::CONFIG]),
         )?;
         ProgramAccount::check(
-            config,
+            user_counter,
             &crate::ID,
             UserCounter::get_space(),
             Some(&[SEED::USER_COUNTER]),
