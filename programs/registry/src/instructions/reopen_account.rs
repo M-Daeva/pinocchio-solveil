@@ -1,8 +1,8 @@
 use {
     base::{
         accounts::{ProgramAccount, ProgramAccountInit},
-        helpers::get_clock_time,
-        types::{AccountData, Space},
+        helpers::{create_account_with_signer, get_clock_time},
+        types::AccountData,
     },
     pinocchio::{account_info::AccountInfo, seeds, ProgramResult},
     registry_cpi::{
@@ -47,13 +47,8 @@ pub fn reopen_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Prog
     //
     let bump_ref = &[user_id.account_bump];
     let signer_seeds = &seeds!(SEED::USER_ACCOUNT, user_seed_id, bump_ref);
-    ProgramAccount::init(
-        sender,
-        user_account,
-        UserAccount::get_space(max_data_size) as u64,
-        signer_seeds,
-        &crate::ID,
-    )?;
+    let space = UserAccount::get_space(max_data_size) as u64;
+    create_account_with_signer(sender, user_account, space, signer_seeds, &crate::ID)?;
     AccountData::init(user_account)?.save(UserAccount {
         data: String::default(),
         nonce: 0,
@@ -62,13 +57,7 @@ pub fn reopen_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Prog
 
     let bump_ref = &[user_id.rotation_state_bump];
     let signer_seeds = &seeds!(SEED::USER_ROTATION_STATE, user_seed_id, bump_ref);
-    ProgramAccount::init(
-        sender,
-        user_rotation_state,
-        RotationState::get_space(),
-        signer_seeds,
-        &crate::ID,
-    )?;
+    ProgramAccount::init::<RotationState>(sender, user_rotation_state, signer_seeds, &crate::ID)?;
     AccountData::init(user_rotation_state)?.save(RotationState {
         owner: *sender.key(),
         new_owner: None,

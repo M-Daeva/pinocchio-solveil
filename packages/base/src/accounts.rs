@@ -8,7 +8,7 @@ use {
             create_account, create_account_with_signer, create_ata, get_and_check_pda,
             init_mint_account, init_token_account,
         },
-        types::TOKEN_2022_PROGRAM_ID,
+        types::{Space, TOKEN_2022_PROGRAM_ID},
     },
     pinocchio::{
         account_info::AccountInfo, instruction::Seed, program_error::ProgramError, pubkey::Pubkey,
@@ -68,30 +68,26 @@ pub trait AssociatedTokenAccountInit {
 }
 
 pub trait ProgramAccountCheck {
-    fn check(
+    fn check<T: Space>(
         account: &AccountInfo,
         program_id: &Pubkey,
-        program_account_len: u64,
         seeds: Option<&[&[u8]]>,
     ) -> ProgramResult;
 }
 
 pub trait ProgramAccountInit {
-    fn init(
+    fn init<T: Space>(
         payer: &AccountInfo,
         account: &AccountInfo,
-        space: u64,
         signer_seeds: &[Seed],
         owner: &Pubkey,
     ) -> ProgramResult;
 
-    fn init_if_needed(
+    fn init_if_needed<T: Space>(
         payer: &AccountInfo,
         account: &AccountInfo,
         program_id: &Pubkey,
-        program_account_len: u64,
         seeds: Option<&[&[u8]]>,
-        space: u64,
         signer_seeds: &[Seed],
         owner: &Pubkey,
     ) -> ProgramResult;
@@ -384,14 +380,14 @@ impl AssociatedTokenAccountInit for AssociatedTokenAccount {
 pub struct ProgramAccount;
 
 impl ProgramAccountCheck for ProgramAccount {
-    fn check(
+    // TODO make seeds required and return (pda, bump)
+    fn check<T: Space>(
         account: &AccountInfo,
         program_id: &Pubkey,
-        program_account_len: u64,
         seeds: Option<&[&[u8]]>,
     ) -> ProgramResult {
         check_account_owner(account, program_id)?;
-        check_account_data_len(account, program_account_len as usize)?;
+        check_account_data_len(account, T::get_space() as usize)?;
 
         if let Some(seeds) = seeds {
             get_and_check_pda(seeds, program_id, Some(account))?;
@@ -402,29 +398,27 @@ impl ProgramAccountCheck for ProgramAccount {
 }
 
 impl ProgramAccountInit for ProgramAccount {
-    fn init(
+    fn init<T: Space>(
         payer: &AccountInfo,
         account: &AccountInfo,
-        space: u64,
         signer_seeds: &[Seed],
         owner: &Pubkey,
     ) -> ProgramResult {
+        let space = T::get_space();
         create_account_with_signer(payer, account, space, signer_seeds, owner)
     }
 
-    fn init_if_needed(
+    fn init_if_needed<T: Space>(
         payer: &AccountInfo,
         account: &AccountInfo,
         program_id: &Pubkey,
-        program_account_len: u64,
         seeds: Option<&[&[u8]]>,
-        space: u64,
         signer_seeds: &[Seed],
         owner: &Pubkey,
     ) -> ProgramResult {
-        match Self::check(account, program_id, program_account_len, seeds) {
+        match Self::check::<T>(account, program_id, seeds) {
             Ok(_) => Ok(()),
-            Err(_) => Self::init(payer, account, space, signer_seeds, owner),
+            Err(_) => Self::init::<T>(payer, account, signer_seeds, owner),
         }
     }
 }

@@ -5,7 +5,7 @@ use {
             AccountCheck, ProgramAccount, ProgramAccountCheck, SignerAccount, SystemProgram,
         },
         converters::ByteReader,
-        types::{Result, Space},
+        types::Result,
     },
     pinocchio::{account_info::AccountInfo, program_error::ProgramError},
     r#macro_account::AccountMetas,
@@ -38,12 +38,7 @@ impl<'a> TryFrom<&'a [AccountInfo]> for Accounts<'a> {
 
         SystemProgram::check(system_program)?;
         SignerAccount::check(sender)?;
-        ProgramAccount::check(
-            user_id,
-            &crate::ID,
-            UserId::get_space(),
-            Some(&[SEED::USER_ID, sender.key()]),
-        )?;
+        ProgramAccount::check::<UserId>(user_id, &crate::ID, Some(&[SEED::USER_ID, sender.key()]))?;
         // user_account, // TODO: should check but not here
         // user_rotation_state,
 

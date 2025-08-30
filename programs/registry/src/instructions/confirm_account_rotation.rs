@@ -3,7 +3,7 @@ use {
         accounts::{AccountClose, ProgramAccount, ProgramAccountInit},
         error::AuthError,
         helpers::{get_and_check_pda, get_clock_time},
-        types::{AccountData, Space},
+        types::AccountData,
     },
     pinocchio::{account_info::AccountInfo, seeds, ProgramResult},
     registry_cpi::{
@@ -33,13 +33,7 @@ pub fn confirm_account_rotation(
 
     let bump_ref = &[user_id_bump];
     let signer_seeds = &seeds!(SEED::USER_ID, sender.key(), bump_ref);
-    ProgramAccount::init(
-        sender,
-        user_id,
-        UserId::get_space(),
-        signer_seeds,
-        &crate::ID,
-    )?;
+    ProgramAccount::init::<UserId>(sender, user_id, signer_seeds, &crate::ID)?;
     let mut user_id_storage = AccountData::<UserId>::init(user_id)?;
 
     // get storages

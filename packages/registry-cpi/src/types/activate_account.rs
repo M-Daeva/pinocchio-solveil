@@ -6,7 +6,7 @@ use {
             ProgramAccount, ProgramAccountCheck, SignerAccount, SystemProgram,
         },
         converters::ByteReader,
-        types::{Result, Space},
+        types::Result,
     },
     pinocchio::{account_info::AccountInfo, program_error::ProgramError, pubkey::Pubkey},
     r#macro_account::AccountMetas,
@@ -47,17 +47,13 @@ impl<'a> TryFrom<&'a [AccountInfo]> for Accounts<'a> {
             Err(ProgramError::NotEnoughAccountKeys)?
         };
 
+        // TODO: move guards to instruction handler
         SystemProgram::check(system_program)?;
         // token_program,
         // associated_token_program,
         SignerAccount::check(sender)?;
-        ProgramAccount::check(bump, &crate::ID, Bump::get_space(), Some(&[SEED::BUMP]))?;
-        ProgramAccount::check(
-            config,
-            &crate::ID,
-            Config::get_space(),
-            Some(&[SEED::CONFIG]),
-        )?;
+        ProgramAccount::check::<Bump>(bump, &crate::ID, Some(&[SEED::BUMP]))?;
+        ProgramAccount::check::<Config>(config, &crate::ID, Some(&[SEED::CONFIG]))?;
         // ProgramAccount::check( // TODO: check with user instead of sender
         //     user_id,
         //     &crate::ID,
