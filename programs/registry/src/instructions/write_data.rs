@@ -17,12 +17,14 @@ pub fn write_data(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramR
 
     let InstructionData { data, nonce } = InstructionData::try_from(instruction_data)?;
 
-    // get storages
-    //
+    // === load storages ===
+
     let user_id = AccountData::<UserId>::init(user_id)?.load()?;
 
     let mut user_account_storage = AccountData::<UserAccount>::init(user_account)?;
     let mut user_account = user_account_storage.load()?;
+
+    // === use guards ===
 
     if !user_id.is_activated {
         Err(AnyError::Custom(CustomError::AccountIsNotActivated))?;
@@ -35,6 +37,8 @@ pub fn write_data(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramR
     if nonce == user_account.nonce {
         Err(AnyError::Custom(CustomError::BadNonce))?;
     }
+
+    // === save storages ===
 
     user_account.data = data;
     user_account.nonce = nonce;

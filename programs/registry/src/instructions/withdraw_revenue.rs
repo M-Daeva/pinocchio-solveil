@@ -25,9 +25,15 @@ pub fn withdraw_revenue(accounts: &[AccountInfo], instruction_data: &[u8]) -> Pr
 
     let InstructionData { amount } = InstructionData::try_from(instruction_data)?;
 
-    // get storages
-    //
+    let app_balance = get_ata_balance(revenue_app_ata)?;
+    let amount = amount.unwrap_or(app_balance);
+
+    // === load storages ===
+
+    let bump = AccountData::<Bump>::init(bump)?.load()?;
     let config = AccountData::<Config>::init(config_acc)?.load()?;
+
+    // === use guards ===
 
     // check sender
     if sender.key() != &config.admin {
@@ -39,9 +45,6 @@ pub fn withdraw_revenue(accounts: &[AccountInfo], instruction_data: &[u8]) -> Pr
         Err(AnyError::Custom(CustomError::WrongAssetType))?;
     }
 
-    let app_balance = get_ata_balance(revenue_app_ata)?;
-    let amount = amount.unwrap_or(app_balance);
-
     // lower limit of amount to withdraw
     if amount == 0 {
         Err(AnyError::Custom(CustomError::ZeroAmount))?;
@@ -52,20 +55,17 @@ pub fn withdraw_revenue(accounts: &[AccountInfo], instruction_data: &[u8]) -> Pr
         Err(AnyError::Custom(CustomError::ExceededAvailableAssetAmount))?;
     }
 
-    let bump = AccountData::<Bump>::init(bump)?.load()?;
-    let bump_ref = &[bump.config];
-    let signer_seeds = &seeds!(SEED::CONFIG, bump_ref);
+    // === transfer tokens from app to sender ===
+
     transfer_token_from_program(
         amount,
         revenue_mint,
         revenue_app_ata,
         revenue_recipient_ata,
-        signer_seeds,
+        &seeds!(SEED::CONFIG, &[bump.config]),
         config_acc,
         get_token_decimals(revenue_mint)?,
     )?;
-
-    // TODO: init_if_needed for revenue_recipient_ata?
 
     Ok(())
 }

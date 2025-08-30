@@ -46,6 +46,8 @@ pub fn init(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult 
 
     let clock_time = get_clock_time()?;
 
+    // === use guards ===
+
     // devnet/mainnet program must be initialized by specified address
     if clock_time > CLOCK_TIME_MIN && sender.key() != &MAINNET_ADMIN {
         Err(AnyError::Auth(AuthError::Unauthorized))?;
@@ -53,7 +55,7 @@ pub fn init(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult 
 
     // === init and write pda ===
 
-    // config pda
+    // config
     let (_, config_bump) = get_and_check_pda(&[SEED::CONFIG], &crate::ID, Some(config))?;
     ProgramAccount::init::<Config>(
         sender,
@@ -75,7 +77,7 @@ pub fn init(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult 
         }),
     })?;
 
-    // user_counter pda
+    // user_counter
     let (_, user_counter_bump) =
         get_and_check_pda(&[SEED::USER_COUNTER], &crate::ID, Some(user_counter))?;
     ProgramAccount::init::<UserCounter>(
@@ -86,7 +88,7 @@ pub fn init(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult 
     )?;
     AccountData::init(user_counter)?.save(UserCounter::default())?;
 
-    // admin_rotation_state pda
+    // admin_rotation_state
     let (_, admin_rotation_state_bump) = get_and_check_pda(
         &[SEED::ADMIN_ROTATION_STATE],
         &crate::ID,
@@ -104,7 +106,7 @@ pub fn init(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult 
         expiration_date: clock_time,
     })?;
 
-    // bump pda
+    // bump
     let (_, bump_bump) = get_and_check_pda(&[SEED::BUMP], &crate::ID, Some(bump))?;
     ProgramAccount::init::<Bump>(sender, bump, &seeds!(SEED::BUMP, &[bump_bump]), &crate::ID)?;
     AccountData::init(bump)?.save(Bump {

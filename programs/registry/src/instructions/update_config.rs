@@ -23,8 +23,11 @@ pub fn update_config(accounts: &[AccountInfo], instruction_data: &[u8]) -> Progr
         data_size_range,
     } = InstructionData::try_from(instruction_data)?;
 
-    // get storages
-    //
+    let mut is_config_updated = false;
+    let mut is_admin_rotation_state_updated = false;
+
+    // === load storages ===
+
     let mut config_storage = AccountData::<Config>::init(config)?;
     let mut config = config_storage.load()?;
 
@@ -32,13 +35,12 @@ pub fn update_config(accounts: &[AccountInfo], instruction_data: &[u8]) -> Progr
         AccountData::<RotationState>::init(admin_rotation_state)?;
     let mut admin_rotation_state = admin_rotation_state_storage.load()?;
 
+    // === use guards ===
+
     // check sender
     if sender.key() != &config.admin {
         Err(AnyError::Auth(AuthError::Unauthorized))?;
     }
-
-    let mut is_config_updated = false;
-    let mut is_admin_rotation_state_updated = false;
 
     if let Some(new_admin) = admin {
         if &new_admin == sender.key() {
@@ -74,6 +76,8 @@ pub fn update_config(accounts: &[AccountInfo], instruction_data: &[u8]) -> Progr
     if !is_config_updated && !is_admin_rotation_state_updated {
         Err(AnyError::Custom(CustomError::NoParameters))?;
     }
+
+    // === save storages ===
 
     if is_config_updated {
         config_storage.save(config)?;
