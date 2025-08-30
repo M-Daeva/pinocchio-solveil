@@ -84,6 +84,17 @@ pub trait ProgramAccountInit {
         signer_seeds: &[Seed],
         owner: &Pubkey,
     ) -> ProgramResult;
+
+    fn init_if_needed(
+        payer: &AccountInfo,
+        account: &AccountInfo,
+        program_id: &Pubkey,
+        program_account_len: u64,
+        seeds: Option<&[&[u8]]>,
+        space: u64,
+        signer_seeds: &[Seed],
+        owner: &Pubkey,
+    ) -> ProgramResult;
 }
 
 pub trait AccountClose {
@@ -401,7 +412,21 @@ impl ProgramAccountInit for ProgramAccount {
         create_account_with_signer(payer, account, space, signer_seeds, owner)
     }
 
-    // TODO: add init_if_needed
+    fn init_if_needed(
+        payer: &AccountInfo,
+        account: &AccountInfo,
+        program_id: &Pubkey,
+        program_account_len: u64,
+        seeds: Option<&[&[u8]]>,
+        space: u64,
+        signer_seeds: &[Seed],
+        owner: &Pubkey,
+    ) -> ProgramResult {
+        match Self::check(account, program_id, program_account_len, seeds) {
+            Ok(_) => Ok(()),
+            Err(_) => Self::init(payer, account, space, signer_seeds, owner),
+        }
+    }
 }
 
 impl AccountClose for ProgramAccount {
