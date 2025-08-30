@@ -24,15 +24,18 @@ pub fn activate_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Pr
 
     let InstructionData { .. } = InstructionData::try_from(instruction_data)?;
 
-    // get storages
-    //
+    // === load storages ===
+
     let config = AccountData::<Config>::init(config)?.load()?;
 
     let mut user_id_storage = AccountData::<UserId>::init(user_id)?;
     let mut user_id = user_id_storage.load()?;
 
+    // === use guards ===
+
     // only open account can be activated
     if !user_id.is_open {
+        // TODO: Err(CustomError::AccountIsNotOpened)?;
         Err(AnyError::Custom(CustomError::AccountIsNotOpened))?;
     }
 
@@ -46,8 +49,12 @@ pub fn activate_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Pr
         Err(AnyError::Custom(CustomError::WrongAssetType))?;
     }
 
+    // === save storages ===
+
     user_id.is_activated = true;
     user_id_storage.save(user_id)?;
+
+    // === transfer tokens from user to app ===
 
     transfer_token_from_user(
         config.registration_fee.amount,

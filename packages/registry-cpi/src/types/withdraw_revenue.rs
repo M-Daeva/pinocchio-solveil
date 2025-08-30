@@ -6,7 +6,7 @@ use {
             ProgramAccount, ProgramAccountCheck, SignerAccount, SystemProgram,
         },
         converters::{to_u64, ByteReader},
-        types::{Result, Space},
+        types::Result,
     },
     pinocchio::{account_info::AccountInfo, program_error::ProgramError},
     r#macro_account::AccountMetas,
@@ -53,13 +53,8 @@ impl<'a> TryFrom<&'a [AccountInfo]> for Accounts<'a> {
         // associated_token_program,
         SignerAccount::check(sender)?;
         // recipient,
-        ProgramAccount::check(bump, &crate::ID, Bump::get_space(), Some(&[SEED::BUMP]))?;
-        ProgramAccount::check(
-            config,
-            &crate::ID,
-            Config::get_space(),
-            Some(&[SEED::CONFIG]),
-        )?;
+        ProgramAccount::check::<Bump>(bump, &crate::ID, Some(&[SEED::BUMP]))?;
+        ProgramAccount::check::<Config>(config, &crate::ID, Some(&[SEED::CONFIG]))?;
         MintAccount::check(revenue_mint)?;
         AssociatedTokenAccount::check(
             revenue_recipient_ata,

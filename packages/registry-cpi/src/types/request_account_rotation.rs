@@ -3,7 +3,7 @@ use {
     base::{
         accounts::{AccountCheck, ProgramAccount, ProgramAccountCheck, SignerAccount},
         converters::ByteReader,
-        types::{Result, Space},
+        types::Result,
     },
     pinocchio::{account_info::AccountInfo, program_error::ProgramError, pubkey::Pubkey},
     r#macro_account::AccountMetas,
@@ -33,19 +33,9 @@ impl<'a> TryFrom<&'a [AccountInfo]> for Accounts<'a> {
         };
 
         SignerAccount::check(sender)?;
-        ProgramAccount::check(bump, &crate::ID, Bump::get_space(), Some(&[SEED::BUMP]))?;
-        ProgramAccount::check(
-            config,
-            &crate::ID,
-            Config::get_space(),
-            Some(&[SEED::CONFIG]),
-        )?;
-        ProgramAccount::check(
-            user_id,
-            &crate::ID,
-            UserId::get_space(),
-            Some(&[SEED::USER_ID, sender.key()]),
-        )?;
+        ProgramAccount::check::<Bump>(bump, &crate::ID, Some(&[SEED::BUMP]))?;
+        ProgramAccount::check::<Config>(config, &crate::ID, Some(&[SEED::CONFIG]))?;
+        ProgramAccount::check::<UserId>(user_id, &crate::ID, Some(&[SEED::USER_ID, sender.key()]))?;
         // user_rotation_state, // TODO: should check but not here
 
         Ok(Self {

@@ -5,7 +5,7 @@ use {
         },
         error::AuthError,
         helpers::{get_and_check_pda, get_clock_time},
-        types::{AccountData, Space},
+        types::AccountData,
     },
     pinocchio::{account_info::AccountInfo, seeds, ProgramResult},
     registry_cpi::{
@@ -46,48 +46,21 @@ pub fn init(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult 
 
     let clock_time = get_clock_time()?;
 
+    // === use guards ===
+
     // devnet/mainnet program must be initialized by specified address
     if clock_time > CLOCK_TIME_MIN && sender.key() != &MAINNET_ADMIN {
         Err(AnyError::Auth(AuthError::Unauthorized))?;
     }
 
-    // get bumps
-    //
-    let bump_seeds = &[SEED::BUMP];
-    let (_bump_pda, bump_bump) = get_and_check_pda(bump_seeds, &crate::ID, Some(bump))?;
+    // === init and write pda ===
 
-    let config_seeds = &[SEED::CONFIG];
-    let (_config_pda, config_bump) = get_and_check_pda(config_seeds, &crate::ID, Some(config))?;
-
-    let user_counter_seeds = &[SEED::USER_COUNTER];
-    let (_user_counter_pda, user_counter_bump) =
-        get_and_check_pda(user_counter_seeds, &crate::ID, Some(user_counter))?;
-
-    let admin_rotation_state_seeds = &[SEED::ADMIN_ROTATION_STATE];
-    let (_admin_rotation_state_pda, admin_rotation_state_bump) = get_and_check_pda(
-        admin_rotation_state_seeds,
-        &crate::ID,
-        Some(admin_rotation_state),
-    )?;
-
-    // create and write pda
-    //
-    let bump_ref = &[bump_bump];
-    let signer_seeds = &seeds!(SEED::BUMP, bump_ref);
-    ProgramAccount::init(sender, bump, Bump::get_space(), signer_seeds, &crate::ID)?;
-    AccountData::init(bump)?.save(Bump {
-        config: config_bump,
-        user_counter: user_counter_bump,
-        rotation_state: admin_rotation_state_bump,
-    })?;
-
-    let bump_ref = &[config_bump];
-    let signer_seeds = &seeds!(SEED::CONFIG, bump_ref);
-    ProgramAccount::init(
+    // config
+    let (_, config_bump) = get_and_check_pda(&[SEED::CONFIG], &crate::ID, Some(config))?;
+    ProgramAccount::init::<Config>(
         sender,
         config,
-        Config::get_space(),
-        signer_seeds,
+        &seeds!(SEED::CONFIG, &[config_bump]),
         &crate::ID,
     )?;
     AccountData::init(config)?.save(Config {
@@ -104,24 +77,27 @@ pub fn init(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult 
         }),
     })?;
 
-    let bump_ref = &[user_counter_bump];
-    let signer_seeds = &seeds!(SEED::USER_COUNTER, bump_ref);
-    ProgramAccount::init(
+    // user_counter
+    let (_, user_counter_bump) =
+        get_and_check_pda(&[SEED::USER_COUNTER], &crate::ID, Some(user_counter))?;
+    ProgramAccount::init::<UserCounter>(
         sender,
         user_counter,
-        UserCounter::get_space(),
-        signer_seeds,
+        &seeds!(SEED::USER_COUNTER, &[user_counter_bump]),
         &crate::ID,
     )?;
     AccountData::init(user_counter)?.save(UserCounter::default())?;
 
-    let bump_ref = &[admin_rotation_state_bump];
-    let signer_seeds = &seeds!(SEED::ADMIN_ROTATION_STATE, bump_ref);
-    ProgramAccount::init(
+    // admin_rotation_state
+    let (_, admin_rotation_state_bump) = get_and_check_pda(
+        &[SEED::ADMIN_ROTATION_STATE],
+        &crate::ID,
+        Some(admin_rotation_state),
+    )?;
+    ProgramAccount::init::<RotationState>(
         sender,
         admin_rotation_state,
-        RotationState::get_space(),
-        signer_seeds,
+        &seeds!(SEED::ADMIN_ROTATION_STATE, &[admin_rotation_state_bump]),
         &crate::ID,
     )?;
     AccountData::init(admin_rotation_state)?.save(RotationState {
@@ -130,8 +106,18 @@ pub fn init(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult 
         expiration_date: clock_time,
     })?;
 
-    // create ata
-    //
+    // bump
+    let (_, bump_bump) = get_and_check_pda(&[SEED::BUMP], &crate::ID, Some(bump))?;
+    ProgramAccount::init::<Bump>(sender, bump, &seeds!(SEED::BUMP, &[bump_bump]), &crate::ID)?;
+    AccountData::init(bump)?.save(Bump {
+        config: config_bump,
+        user_counter: user_counter_bump,
+        rotation_state: admin_rotation_state_bump,
+    })?;
+
+    // === init ata ===
+
+    // revenue_app_ata
     AssociatedTokenAccount::init(
         sender,
         revenue_app_ata,

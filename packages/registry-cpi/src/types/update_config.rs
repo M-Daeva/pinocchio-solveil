@@ -6,7 +6,7 @@ use {
     base::{
         accounts::{AccountCheck, ProgramAccount, ProgramAccountCheck, SignerAccount},
         converters::{to_bool, to_pubkey, to_u32, to_u64, ByteReader},
-        types::{Result, Space, ZeroCopyDeserialize},
+        types::{Result, ZeroCopyDeserialize},
     },
     pinocchio::{account_info::AccountInfo, program_error::ProgramError, pubkey::Pubkey},
     r#macro_account::AccountMetas,
@@ -33,16 +33,10 @@ impl<'a> TryFrom<&'a [AccountInfo]> for Accounts<'a> {
         };
 
         SignerAccount::check(sender)?;
-        ProgramAccount::check(
-            config,
-            &crate::ID,
-            Config::get_space(),
-            Some(&[SEED::CONFIG]),
-        )?;
-        ProgramAccount::check(
+        ProgramAccount::check::<Config>(config, &crate::ID, Some(&[SEED::CONFIG]))?;
+        ProgramAccount::check::<RotationState>(
             admin_rotation_state,
             &crate::ID,
-            RotationState::get_space(),
             Some(&[SEED::ADMIN_ROTATION_STATE]),
         )?;
 

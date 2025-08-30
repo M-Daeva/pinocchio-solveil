@@ -17,19 +17,21 @@ pub fn confirm_admin_rotation(accounts: &[AccountInfo], instruction_data: &[u8])
 
     let InstructionData {} = InstructionData::try_from(instruction_data)?;
 
-    // get storages
-    //
+    // === load storages ===
+
     let mut config_storage = AccountData::<Config>::init(config)?;
 
     let mut admin_rotation_state_storage =
         AccountData::<RotationState>::init(admin_rotation_state)?;
     let admin_rotation_state = admin_rotation_state_storage.load()?;
 
-    let clock_time = get_clock_time()?;
+    // === use guards ===
 
     match admin_rotation_state.new_owner {
         None => Err(AnyError::Auth(AuthError::NoNewOwner))?,
         Some(new_admin) => {
+            let clock_time = get_clock_time()?;
+
             if sender.key() != &new_admin {
                 Err(AnyError::Auth(AuthError::Unauthorized))?;
             }
@@ -37,6 +39,8 @@ pub fn confirm_admin_rotation(accounts: &[AccountInfo], instruction_data: &[u8])
             if clock_time >= admin_rotation_state.expiration_date {
                 Err(AnyError::Auth(AuthError::TransferOwnerDeadline))?;
             }
+
+            // === save storages ===
 
             config_storage.update(|mut x| {
                 x.admin = new_admin;

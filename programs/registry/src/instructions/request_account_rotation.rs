@@ -21,16 +21,20 @@ pub fn request_account_rotation(
 
     let InstructionData { new_owner } = InstructionData::try_from(instruction_data)?;
 
-    // get storages
-    //
+    // === load storages ===
+
     let config = AccountData::<Config>::init(config)?.load()?;
 
     let mut user_rotation_state_storage = AccountData::<RotationState>::init(user_rotation_state)?;
     let mut user_rotation_state = user_rotation_state_storage.load()?;
 
+    // === use guards ===
+
     if &new_owner == sender.key() {
         Err(AnyError::Auth(AuthError::UselessRotation))?;
     }
+
+    // === save storages ===
 
     user_rotation_state.new_owner = Some(new_owner);
     user_rotation_state.expiration_date = get_clock_time()? + config.rotation_timeout as u64;
