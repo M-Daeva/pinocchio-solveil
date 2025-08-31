@@ -4,16 +4,16 @@ use {
         types::common::{AssetItem, Range},
     },
     base::{
-        accounts::{AccountCheck, MintAccount, SignerAccount, SystemProgram},
         converters::{to_u32, ByteReader},
         types::{Result, ZeroCopyDeserialize},
     },
+    macro_try_from::AccountTryFrom,
     pinocchio::{account_info::AccountInfo, program_error::ProgramError},
     r#macro_account::AccountMetas,
 };
 
 #[repr(C)]
-#[derive(AccountMetas)]
+#[derive(AccountMetas, AccountTryFrom)]
 pub struct Accounts<'a> {
     pub system_program: &'a AccountInfo,
     pub token_program: &'a AccountInfo,
@@ -38,43 +38,6 @@ pub struct Accounts<'a> {
 
     #[account(writable)]
     pub revenue_app_ata: &'a AccountInfo,
-}
-
-impl<'a> TryFrom<&'a [AccountInfo]> for Accounts<'a> {
-    type Error = ProgramError;
-
-    fn try_from(accounts: &'a [AccountInfo]) -> Result<Self> {
-        let [system_program, token_program, associated_token_program, sender, bump, config, user_counter, admin_rotation_state, revenue_mint, revenue_app_ata] =
-            accounts
-        else {
-            Err(ProgramError::NotEnoughAccountKeys)?
-        };
-
-        SystemProgram::check(system_program)?;
-        // token_program
-        // associated_token_program
-
-        SignerAccount::check(sender)?;
-        // bump
-        // config
-        // user_counter
-        // admin_rotation_state
-        MintAccount::check(revenue_mint)?;
-        // revenue_app_ata
-
-        Ok(Self {
-            system_program,
-            token_program,
-            associated_token_program,
-            sender,
-            bump,
-            config,
-            user_counter,
-            admin_rotation_state,
-            revenue_mint,
-            revenue_app_ata,
-        })
-    }
 }
 
 #[repr(C)]
