@@ -78,7 +78,7 @@ impl ZeroCopyDeserialize for Bump {
 }
 
 impl Space for Bump {
-    fn get_space() -> u64 {
+    fn get_space() -> usize {
         get_space::<Self>()
     }
 }
@@ -118,7 +118,7 @@ impl ZeroCopyDeserialize for Config {
 }
 
 impl Space for Config {
-    fn get_space() -> u64 {
+    fn get_space() -> usize {
         get_space::<Self>()
     }
 }
@@ -146,7 +146,7 @@ impl ZeroCopyDeserialize for UserCounter {
 }
 
 impl Space for UserCounter {
-    fn get_space() -> u64 {
+    fn get_space() -> usize {
         get_space::<Self>()
     }
 }
@@ -181,7 +181,7 @@ impl ZeroCopyDeserialize for RotationState {
 }
 
 impl Space for RotationState {
-    fn get_space() -> u64 {
+    fn get_space() -> usize {
         get_space::<Self>()
     }
 }
@@ -221,7 +221,7 @@ impl ZeroCopyDeserialize for UserId {
 }
 
 impl Space for UserId {
-    fn get_space() -> u64 {
+    fn get_space() -> usize {
         get_space::<Self>()
     }
 }
@@ -258,7 +258,7 @@ impl ZeroCopyDeserialize for UserAccount {
 }
 
 impl UserAccount {
-    pub fn get_space(max_size: u32) -> u64 {
+    pub fn get_space(max_size: u32) -> usize {
         // String: 4 bytes length + content
         let data: usize = 4 + max_size as usize;
         // u64
@@ -266,6 +266,6 @@ impl UserAccount {
         // u32
         const MAX_SIZE: usize = 4;
 
-        (data + NONCE + MAX_SIZE) as u64
+        data + NONCE + MAX_SIZE
     }
 }

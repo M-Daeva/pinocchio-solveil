@@ -21,7 +21,7 @@ pub trait ErrorIndexOffset {
 }
 
 pub trait Space {
-    fn get_space() -> u64;
+    fn get_space() -> usize;
 }
 
 // Zero-copy serialization trait

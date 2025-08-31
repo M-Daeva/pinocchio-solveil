@@ -30,13 +30,13 @@ pub fn get_clock_time() -> Result<u64> {
 }
 
 #[inline]
-pub fn get_space<T>() -> u64 {
-    core::mem::size_of::<T>() as u64
+pub fn get_space<T>() -> usize {
+    core::mem::size_of::<T>()
 }
 
 #[inline]
-pub fn get_rent_exempt(space: u64) -> Result<u64> {
-    Ok(Rent::get()?.minimum_balance(space as usize))
+pub fn get_rent_exempt(space: usize) -> Result<u64> {
+    Ok(Rent::get()?.minimum_balance(space))
 }
 
 #[inline]
@@ -58,7 +58,7 @@ pub fn get_and_check_pda(
 pub fn create_account_with_signer(
     payer: &AccountInfo,
     account: &AccountInfo,
-    space: u64,
+    space: usize,
     signer_seeds: &[Seed],
     owner: &Pubkey,
 ) -> ProgramResult {
@@ -69,7 +69,7 @@ pub fn create_account_with_signer(
         from: payer,
         to: account,
         lamports,
-        space,
+        space: space as u64,
         owner,
     })
     .invoke_signed(signers)
@@ -79,7 +79,7 @@ pub fn create_account_with_signer(
 pub fn create_account(
     payer: &AccountInfo,
     account: &AccountInfo,
-    space: u64,
+    space: usize,
     owner: &Pubkey,
 ) -> ProgramResult {
     let lamports = get_rent_exempt(space)?;
@@ -88,7 +88,7 @@ pub fn create_account(
         from: payer,
         to: account,
         lamports,
-        space,
+        space: space as u64,
         owner,
     })
     .invoke()

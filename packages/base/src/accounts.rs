@@ -141,7 +141,7 @@ impl MintInit for MintAccount {
         create_account(
             payer,
             account,
-            pinocchio_token::state::Mint::LEN as u64,
+            pinocchio_token::state::Mint::LEN,
             &pinocchio_token::ID,
         )?;
 
@@ -197,7 +197,7 @@ impl AccountInit for TokenAccount {
         create_account(
             payer,
             account,
-            pinocchio_token::state::TokenAccount::LEN as u64,
+            pinocchio_token::state::TokenAccount::LEN,
             &pinocchio_token::ID,
         )?;
 
@@ -237,7 +237,7 @@ impl MintInit for Mint2022Account {
         create_account(
             payer,
             account,
-            pinocchio_token::state::Mint::LEN as u64,
+            pinocchio_token::state::Mint::LEN,
             &TOKEN_2022_PROGRAM_ID,
         )?;
 
@@ -277,7 +277,7 @@ impl AccountInit for TokenAccount2022Account {
         create_account(
             payer,
             account,
-            pinocchio_token::state::TokenAccount::LEN as u64,
+            pinocchio_token::state::TokenAccount::LEN,
             &TOKEN_2022_PROGRAM_ID,
         )?;
 
@@ -388,7 +388,7 @@ impl ProgramAccountCheck for ProgramAccount {
         seeds: Option<&[&[u8]]>,
     ) -> ProgramResult {
         check_account_owner(account, program_id)?;
-        check_account_data_len(account, T::get_space() as usize)?;
+        check_account_data_len(account, T::get_space())?;
 
         if let Some(seeds) = seeds {
             get_and_check_pda(seeds, program_id, Some(account))?;
@@ -405,8 +405,7 @@ impl ProgramAccountInit for ProgramAccount {
         signer_seeds: &[Seed],
         owner: &Pubkey,
     ) -> ProgramResult {
-        let space = T::get_space();
-        create_account_with_signer(payer, account, space, signer_seeds, owner)
+        create_account_with_signer(payer, account, T::get_space(), signer_seeds, owner)
     }
 
     fn init_if_needed<T: Space>(
