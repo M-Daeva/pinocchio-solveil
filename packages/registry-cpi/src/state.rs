@@ -50,6 +50,7 @@ pub const ACCOUNT_DATA_SIZE_MIN: u32 = 100;
 pub const ACCOUNT_DATA_SIZE_MAX: u32 = 10_000;
 
 /// to store bumps for all app accounts
+#[repr(C)]
 #[derive(Default, Debug, PartialEq)]
 pub struct Bump {
     pub config: u8,
@@ -78,11 +79,12 @@ impl ZeroCopyDeserialize for Bump {
 }
 
 impl Space for Bump {
-    fn get_space() -> u64 {
+    fn get_space() -> usize {
         get_space::<Self>()
     }
 }
 
+#[repr(C)]
 #[derive(Default, Debug, PartialEq)]
 pub struct Config {
     /// can update the config and execute priveledged instructions
@@ -118,12 +120,13 @@ impl ZeroCopyDeserialize for Config {
 }
 
 impl Space for Config {
-    fn get_space() -> u64 {
+    fn get_space() -> usize {
         get_space::<Self>()
     }
 }
 
 /// for indexing
+#[repr(C)]
 #[derive(Default, Debug, PartialEq)]
 pub struct UserCounter {
     pub last_user_id: u32,
@@ -146,13 +149,14 @@ impl ZeroCopyDeserialize for UserCounter {
 }
 
 impl Space for UserCounter {
-    fn get_space() -> u64 {
+    fn get_space() -> usize {
         get_space::<Self>()
     }
 }
 
 /// to transfer ownership from one address to another in 2 steps (for security reasons) \
 /// used both for app admin and user accounts
+#[repr(C)]
 #[derive(Default, Debug, PartialEq)]
 pub struct RotationState {
     pub owner: Pubkey,
@@ -181,12 +185,13 @@ impl ZeroCopyDeserialize for RotationState {
 }
 
 impl Space for RotationState {
-    fn get_space() -> u64 {
+    fn get_space() -> usize {
         get_space::<Self>()
     }
 }
 
 /// get by user: Pubkey
+#[repr(C)]
 #[derive(Default, Debug, PartialEq)]
 pub struct UserId {
     pub id: u32,
@@ -221,12 +226,13 @@ impl ZeroCopyDeserialize for UserId {
 }
 
 impl Space for UserId {
-    fn get_space() -> u64 {
+    fn get_space() -> usize {
         get_space::<Self>()
     }
 }
 
 /// get by user_id: u32
+#[repr(C)]
 #[derive(Default, Debug, PartialEq)]
 pub struct UserAccount {
     /// encrypted user data
@@ -259,9 +265,13 @@ impl ZeroCopyDeserialize for UserAccount {
 
 impl UserAccount {
     pub fn get_space(max_size: u32) -> usize {
-        8 +   // discriminator
-        4 + max_size as usize + // data (String: 4 bytes length + content)
-        8 +   // nonce (u64)
-        4 // max_size (u32)
+        // String: 4 bytes length + content
+        let data: usize = 4 + max_size as usize;
+        // u64
+        const NONCE: usize = 8;
+        // u32
+        const MAX_SIZE: usize = 4;
+
+        data + NONCE + MAX_SIZE
     }
 }

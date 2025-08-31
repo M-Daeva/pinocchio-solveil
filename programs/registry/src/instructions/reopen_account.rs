@@ -1,28 +1,40 @@
 use {
     base::{
-        accounts::{ProgramAccount, ProgramAccountInit},
+        accounts::{
+            AccountCheck, ProgramAccount, ProgramAccountCheck, ProgramAccountInit, SignerAccount,
+            SystemProgram,
+        },
         helpers::{create_account_with_signer, get_clock_time},
         types::AccountData,
     },
     pinocchio::{account_info::AccountInfo, seeds, ProgramResult},
     registry_cpi::{
         error::{AnyError, CustomError},
-        state::{seed as SEED, Config, RotationState, UserAccount, UserId},
+        state::{seed as SEED, Bump, Config, RotationState, UserAccount, UserId},
         types::reopen_account::{Accounts, InstructionData},
     },
 };
 
 pub fn reopen_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult {
+    let InstructionData { max_data_size } = InstructionData::try_from(instruction_data)?;
+
     let Accounts {
+        system_program,
         sender,
+        bump,
         config,
         user_id,
         user_account,
         user_rotation_state,
-        ..
     } = Accounts::try_from(accounts)?;
 
-    let InstructionData { max_data_size } = InstructionData::try_from(instruction_data)?;
+    SystemProgram::check(system_program)?;
+    SignerAccount::check(sender)?;
+    ProgramAccount::check::<Bump>(bump, &crate::ID, Some(&[SEED::BUMP]))?;
+    ProgramAccount::check::<Config>(config, &crate::ID, Some(&[SEED::CONFIG]))?;
+    ProgramAccount::check::<UserId>(user_id, &crate::ID, Some(&[SEED::USER_ID, sender.key()]))?;
+    // user_account,
+    // user_rotation_state,
 
     // === load storages ===
 
@@ -51,7 +63,7 @@ pub fn reopen_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Prog
     create_account_with_signer(
         sender,
         user_account,
-        UserAccount::get_space(max_data_size) as u64,
+        UserAccount::get_space(max_data_size),
         &seeds!(SEED::USER_ACCOUNT, user_seed_id, &[user_id.account_bump]),
         &crate::ID,
     )?;

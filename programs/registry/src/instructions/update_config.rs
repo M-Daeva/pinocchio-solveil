@@ -1,20 +1,20 @@
 use {
-    base::{error::AuthError, helpers::get_clock_time, types::AccountData},
+    base::{
+        accounts::{AccountCheck, ProgramAccount, ProgramAccountCheck, SignerAccount},
+        error::AuthError,
+        helpers::get_clock_time,
+        types::AccountData,
+    },
     pinocchio::{account_info::AccountInfo, ProgramResult},
     registry_cpi::{
         error::{AnyError, CustomError},
+        state::seed as SEED,
         state::{Config, RotationState},
         types::update_config::{Accounts, InstructionData},
     },
 };
 
 pub fn update_config(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult {
-    let Accounts {
-        sender,
-        config,
-        admin_rotation_state,
-    } = Accounts::try_from(accounts)?;
-
     let InstructionData {
         admin,
         is_paused,
@@ -22,6 +22,20 @@ pub fn update_config(accounts: &[AccountInfo], instruction_data: &[u8]) -> Progr
         registration_fee_amount,
         data_size_range,
     } = InstructionData::try_from(instruction_data)?;
+
+    let Accounts {
+        sender,
+        config,
+        admin_rotation_state,
+    } = Accounts::try_from(accounts)?;
+
+    SignerAccount::check(sender)?;
+    ProgramAccount::check::<Config>(config, &crate::ID, Some(&[SEED::CONFIG]))?;
+    ProgramAccount::check::<RotationState>(
+        admin_rotation_state,
+        &crate::ID,
+        Some(&[SEED::ADMIN_ROTATION_STATE]),
+    )?;
 
     let mut is_config_updated = false;
     let mut is_admin_rotation_state_updated = false;

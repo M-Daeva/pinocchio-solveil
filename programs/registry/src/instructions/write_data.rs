@@ -1,21 +1,28 @@
 use {
-    base::types::AccountData,
+    base::{
+        accounts::{AccountCheck, ProgramAccount, ProgramAccountCheck, SignerAccount},
+        types::AccountData,
+    },
     pinocchio::{account_info::AccountInfo, ProgramResult},
     registry_cpi::{
         error::{AnyError, CustomError},
-        state::{UserAccount, UserId},
+        state::{seed as SEED, UserAccount, UserId},
         types::write_data::{Accounts, InstructionData},
     },
 };
 
 pub fn write_data(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult {
+    let InstructionData { data, nonce } = InstructionData::try_from(instruction_data)?;
+
     let Accounts {
+        sender,
         user_id,
         user_account,
-        ..
     } = Accounts::try_from(accounts)?;
 
-    let InstructionData { data, nonce } = InstructionData::try_from(instruction_data)?;
+    SignerAccount::check(sender)?;
+    ProgramAccount::check::<UserId>(user_id, &crate::ID, Some(&[SEED::USER_ID, sender.key()]))?;
+    // user_account, // TODO: should check
 
     // === load storages ===
 

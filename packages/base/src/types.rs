@@ -14,8 +14,6 @@ pub const TOKEN_2022_MINT_DISCRIMINATOR: u8 = 0x01;
 pub const TOKEN_2022_TOKEN_ACCOUNT_DISCRIMINATOR: u8 = 0x02;
 pub const TOKEN_2022_PROGRAM_ID: Pubkey = pubkey!("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb");
 
-pub const DISCRIMINATOR_SPACE: usize = 8;
-
 pub type Result<T> = std::result::Result<T, ProgramError>;
 
 pub trait ErrorIndexOffset {
@@ -23,7 +21,7 @@ pub trait ErrorIndexOffset {
 }
 
 pub trait Space {
-    fn get_space() -> u64;
+    fn get_space() -> usize;
 }
 
 // Zero-copy serialization trait
@@ -37,6 +35,7 @@ pub trait ZeroCopyDeserialize: Sized {
 }
 
 // Account data wrapper for typed access
+#[repr(C)]
 pub struct AccountData<'a, T> {
     data: RefMut<'a, [u8]>,
     _phantom: PhantomData<T>,

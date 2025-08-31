@@ -1,19 +1,28 @@
 use {
     base::{
+        accounts::{
+            AccountCheck, AssociatedTokenAccount, AssociatedTokenAccountCheck, MintAccount,
+            ProgramAccount, ProgramAccountCheck, SignerAccount, SystemProgram,
+        },
         helpers::{get_token_decimals, transfer_token_from_user},
         types::AccountData,
     },
     pinocchio::{account_info::AccountInfo, ProgramResult},
     registry_cpi::{
         error::{AnyError, CustomError},
-        state::{Config, UserId},
+        state::{seed as SEED, Bump, Config, UserId},
         types::activate_account::{Accounts, InstructionData},
     },
 };
 
 pub fn activate_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult {
+    let InstructionData { .. } = InstructionData::try_from(instruction_data)?;
+
     let Accounts {
+        system_program,
+        token_program,
         sender,
+        bump,
         config,
         user_id,
         revenue_mint,
@@ -22,7 +31,21 @@ pub fn activate_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Pr
         ..
     } = Accounts::try_from(accounts)?;
 
-    let InstructionData { .. } = InstructionData::try_from(instruction_data)?;
+    SystemProgram::check(system_program)?;
+    // token_program,
+    // associated_token_program,
+    SignerAccount::check(sender)?;
+    ProgramAccount::check::<Bump>(bump, &crate::ID, Some(&[SEED::BUMP]))?;
+    ProgramAccount::check::<Config>(config, &crate::ID, Some(&[SEED::CONFIG]))?;
+    // ProgramAccount::check( // TODO: check with user instead of sender
+    //     user_id,
+    //     &crate::ID,
+    //     UserId::get_space(),
+    //     Some(&[SEED::USER_ID, sender.key()]),
+    // )?;
+    MintAccount::check(revenue_mint)?;
+    AssociatedTokenAccount::check(revenue_sender_ata, sender, revenue_mint, token_program)?;
+    AssociatedTokenAccount::check(revenue_app_ata, config, revenue_mint, token_program)?;
 
     // === load storages ===
 

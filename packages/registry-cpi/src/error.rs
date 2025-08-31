@@ -10,6 +10,7 @@ any_error! {
     AuthError => Auth
 }
 
+#[repr(u8)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq, EnumIter)]
 pub enum CustomError {
     // "Parameters are not provided!"

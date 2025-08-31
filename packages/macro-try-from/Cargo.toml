@@ -1,0 +1,20 @@
+[package]
+name = "macro-try-from"
+version = "1.0.0"
+description = "Macro to generate accounts try-from implementation"
+repository = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[lib]
+proc-macro = true
+
+[features]
+default = []
+std = []
+
+[dependencies]
+proc-macro2 = { workspace = true }
+quote = { workspace = true }
+syn = { workspace = true, features = ["full"] }

@@ -1,5 +1,6 @@
 use {crate::types::ErrorIndexOffset, strum_macros::EnumIter};
 
+#[repr(u8)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq, EnumIter)]
 pub enum AuthError {
     // "Sender doesn't have access permissions!"
@@ -13,5 +14,5 @@ pub enum AuthError {
 }
 
 impl ErrorIndexOffset for AuthError {
-    const OFFSET: u32 = 10_000;
+    const OFFSET: u32 = 1_000;
 }

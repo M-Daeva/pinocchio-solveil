@@ -1,26 +1,35 @@
 use {
     base::{
-        accounts::{AccountClose, ProgramAccount},
+        accounts::{
+            AccountCheck, AccountClose, ProgramAccount, ProgramAccountCheck, SignerAccount,
+            SystemProgram,
+        },
         types::AccountData,
     },
     pinocchio::{account_info::AccountInfo, ProgramResult},
     registry_cpi::{
         error::{AnyError, CustomError},
-        state::UserId,
+        state::{seed as SEED, UserId},
         types::close_account::{Accounts, InstructionData},
     },
 };
 
 pub fn close_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult {
+    let InstructionData {} = InstructionData::try_from(instruction_data)?;
+
     let Accounts {
+        system_program,
         sender,
         user_id,
         user_account,
         user_rotation_state,
-        ..
     } = Accounts::try_from(accounts)?;
 
-    let InstructionData {} = InstructionData::try_from(instruction_data)?;
+    SystemProgram::check(system_program)?;
+    SignerAccount::check(sender)?;
+    ProgramAccount::check::<UserId>(user_id, &crate::ID, Some(&[SEED::USER_ID, sender.key()]))?;
+    // user_account, // TODO: should check
+    // user_rotation_state,
 
     // === load storages ===
 

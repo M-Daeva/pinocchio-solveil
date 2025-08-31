@@ -1,15 +1,13 @@
 use {
-    crate::state::{discriminator as DISCRIMINATOR, seed as SEED, UserId},
-    base::{
-        accounts::{AccountCheck, ProgramAccount, ProgramAccountCheck, SignerAccount},
-        converters::ByteReader,
-        types::Result,
-    },
+    crate::state::discriminator as DISCRIMINATOR,
+    base::{converters::ByteReader, types::Result},
+    macro_try_from::AccountTryFrom,
     pinocchio::{account_info::AccountInfo, program_error::ProgramError},
     r#macro_account::AccountMetas,
 };
 
-#[derive(AccountMetas)]
+#[repr(C)]
+#[derive(AccountMetas, AccountTryFrom)]
 pub struct Accounts<'a> {
     #[account(signer, writable)]
     pub sender: &'a AccountInfo,
@@ -20,26 +18,7 @@ pub struct Accounts<'a> {
     pub user_account: &'a AccountInfo,
 }
 
-impl<'a> TryFrom<&'a [AccountInfo]> for Accounts<'a> {
-    type Error = ProgramError;
-
-    fn try_from(accounts: &'a [AccountInfo]) -> Result<Self> {
-        let [sender, user_id, user_account] = accounts else {
-            Err(ProgramError::NotEnoughAccountKeys)?
-        };
-
-        SignerAccount::check(sender)?;
-        ProgramAccount::check::<UserId>(user_id, &crate::ID, Some(&[SEED::USER_ID, sender.key()]))?;
-        // user_account, // TODO: should check but not here
-
-        Ok(Self {
-            sender,
-            user_id,
-            user_account,
-        })
-    }
-}
-
+#[repr(C)]
 #[derive(Default)]
 pub struct InstructionData {
     pub data: String,

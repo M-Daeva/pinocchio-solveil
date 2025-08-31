@@ -1,18 +1,16 @@
 use {
-    crate::{
-        state::{discriminator as DISCRIMINATOR, seed as SEED, Config, RotationState},
-        types::common::Range,
-    },
+    crate::{state::discriminator as DISCRIMINATOR, types::common::Range},
     base::{
-        accounts::{AccountCheck, ProgramAccount, ProgramAccountCheck, SignerAccount},
         converters::{to_bool, to_pubkey, to_u32, to_u64, ByteReader},
         types::{Result, ZeroCopyDeserialize},
     },
+    macro_try_from::AccountTryFrom,
     pinocchio::{account_info::AccountInfo, program_error::ProgramError, pubkey::Pubkey},
     r#macro_account::AccountMetas,
 };
 
-#[derive(AccountMetas)]
+#[repr(C)]
+#[derive(AccountMetas, AccountTryFrom)]
 pub struct Accounts<'a> {
     #[account(signer, writable)]
     pub sender: &'a AccountInfo,
@@ -24,30 +22,7 @@ pub struct Accounts<'a> {
     pub admin_rotation_state: &'a AccountInfo,
 }
 
-impl<'a> TryFrom<&'a [AccountInfo]> for Accounts<'a> {
-    type Error = ProgramError;
-
-    fn try_from(accounts: &'a [AccountInfo]) -> Result<Self> {
-        let [sender, config, admin_rotation_state] = accounts else {
-            Err(ProgramError::NotEnoughAccountKeys)?
-        };
-
-        SignerAccount::check(sender)?;
-        ProgramAccount::check::<Config>(config, &crate::ID, Some(&[SEED::CONFIG]))?;
-        ProgramAccount::check::<RotationState>(
-            admin_rotation_state,
-            &crate::ID,
-            Some(&[SEED::ADMIN_ROTATION_STATE]),
-        )?;
-
-        Ok(Self {
-            sender,
-            config,
-            admin_rotation_state,
-        })
-    }
-}
-
+#[repr(C)]
 #[derive(Default)]
 pub struct InstructionData {
     pub admin: Option<Pubkey>,

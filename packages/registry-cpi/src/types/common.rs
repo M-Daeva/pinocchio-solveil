@@ -6,6 +6,7 @@ use {
     pinocchio::{pubkey::Pubkey, ProgramResult},
 };
 
+#[repr(C)]
 #[derive(Default, Debug, PartialEq)]
 pub struct AssetItem {
     pub amount: u64,
@@ -30,6 +31,7 @@ impl ZeroCopyDeserialize for AssetItem {
     }
 }
 
+#[repr(C)]
 #[derive(Default, Debug, PartialEq)]
 pub struct Range {
     pub min: u32,

@@ -1,5 +1,9 @@
 use {
     base::{
+        accounts::{
+            AccountCheck, AssociatedTokenAccount, AssociatedTokenAccountCheck, MintAccount,
+            ProgramAccount, ProgramAccountCheck, SignerAccount, SystemProgram,
+        },
         error::AuthError,
         helpers::{get_ata_balance, get_token_decimals, transfer_token_from_program},
         types::AccountData,
@@ -13,18 +17,38 @@ use {
 };
 
 pub fn withdraw_revenue(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult {
+    let InstructionData { amount } = InstructionData::try_from(instruction_data)?;
+
     let Accounts {
+        system_program,
+        token_program,
         sender,
+        recipient,
         bump,
-        config: config_acc,
+        config,
         revenue_mint,
         revenue_recipient_ata,
         revenue_app_ata,
         ..
     } = Accounts::try_from(accounts)?;
 
-    let InstructionData { amount } = InstructionData::try_from(instruction_data)?;
+    SystemProgram::check(system_program)?;
+    // token_program,
+    // associated_token_program,
+    SignerAccount::check(sender)?;
+    // recipient,
+    ProgramAccount::check::<Bump>(bump, &crate::ID, Some(&[SEED::BUMP]))?;
+    ProgramAccount::check::<Config>(config, &crate::ID, Some(&[SEED::CONFIG]))?;
+    MintAccount::check(revenue_mint)?;
+    AssociatedTokenAccount::check(
+        revenue_recipient_ata,
+        recipient,
+        revenue_mint,
+        token_program,
+    )?;
+    AssociatedTokenAccount::check(revenue_app_ata, config, revenue_mint, token_program)?;
 
+    let config_acc = config;
     let app_balance = get_ata_balance(revenue_app_ata)?;
     let amount = amount.unwrap_or(app_balance);
 

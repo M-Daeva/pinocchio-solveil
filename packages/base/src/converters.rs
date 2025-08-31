@@ -7,6 +7,7 @@ use {
     std::{mem, slice},
 };
 
+#[repr(C)]
 pub struct ByteReader<'a, T> {
     data: &'a [u8],
     position: usize,
@@ -370,6 +371,7 @@ where
     Ok((array, current_index))
 }
 
+#[repr(C)]
 pub struct ByteWriter<'a> {
     buffer: &'a mut [u8],
     position: usize,

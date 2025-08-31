@@ -1,17 +1,12 @@
 use {
-    crate::state::{seed as SEED, UserId},
-    base::{
-        accounts::{
-            AccountCheck, ProgramAccount, ProgramAccountCheck, SignerAccount, SystemProgram,
-        },
-        converters::ByteReader,
-        types::Result,
-    },
+    base::{converters::ByteReader, types::Result},
+    macro_try_from::AccountTryFrom,
     pinocchio::{account_info::AccountInfo, program_error::ProgramError},
     r#macro_account::AccountMetas,
 };
 
-#[derive(AccountMetas)]
+#[repr(C)]
+#[derive(AccountMetas, AccountTryFrom)]
 pub struct Accounts<'a> {
     pub system_program: &'a AccountInfo,
 
@@ -28,30 +23,7 @@ pub struct Accounts<'a> {
     pub user_rotation_state: &'a AccountInfo,
 }
 
-impl<'a> TryFrom<&'a [AccountInfo]> for Accounts<'a> {
-    type Error = ProgramError;
-
-    fn try_from(accounts: &'a [AccountInfo]) -> Result<Self> {
-        let [system_program, sender, user_id, user_account, user_rotation_state] = accounts else {
-            Err(ProgramError::NotEnoughAccountKeys)?
-        };
-
-        SystemProgram::check(system_program)?;
-        SignerAccount::check(sender)?;
-        ProgramAccount::check::<UserId>(user_id, &crate::ID, Some(&[SEED::USER_ID, sender.key()]))?;
-        // user_account, // TODO: should check but not here
-        // user_rotation_state,
-
-        Ok(Self {
-            system_program,
-            sender,
-            user_id,
-            user_account,
-            user_rotation_state,
-        })
-    }
-}
-
+#[repr(C)]
 #[derive(Default)]
 pub struct InstructionData {}
 
