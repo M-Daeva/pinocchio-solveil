@@ -1,7 +1,8 @@
 use {
     base::{
         accounts::{
-            AssociatedTokenAccount, AssociatedTokenAccountInit, ProgramAccount, ProgramAccountInit,
+            AccountCheck, AssociatedTokenAccount, AssociatedTokenAccountInit, MintAccount,
+            ProgramAccount, ProgramAccountInit, SignerAccount, SystemProgram,
         },
         error::AuthError,
         helpers::{get_and_check_pda, get_clock_time},
@@ -23,6 +24,14 @@ use {
 };
 
 pub fn init(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult {
+    let InstructionData {
+        // bumps, // TODO: do we need it?
+        rotation_timeout,
+        account_registration_fee,
+        account_data_size_range,
+        ..
+    } = InstructionData::try_from(instruction_data)?;
+
     let Accounts {
         system_program,
         token_program,
@@ -36,13 +45,16 @@ pub fn init(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult 
         ..
     } = Accounts::try_from(accounts)?;
 
-    let InstructionData {
-        // bumps, // TODO: do we need it?
-        rotation_timeout,
-        account_registration_fee,
-        account_data_size_range,
-        ..
-    } = InstructionData::try_from(instruction_data)?;
+    SystemProgram::check(system_program)?;
+    // token_program
+    // associated_token_program
+    SignerAccount::check(sender)?;
+    // bump
+    // config
+    // user_counter
+    // admin_rotation_state
+    MintAccount::check(revenue_mint)?;
+    // revenue_app_ata
 
     let clock_time = get_clock_time()?;
 
