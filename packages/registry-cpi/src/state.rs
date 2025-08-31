@@ -50,6 +50,7 @@ pub const ACCOUNT_DATA_SIZE_MIN: u32 = 100;
 pub const ACCOUNT_DATA_SIZE_MAX: u32 = 10_000;
 
 /// to store bumps for all app accounts
+#[repr(C)]
 #[derive(Default, Debug, PartialEq)]
 pub struct Bump {
     pub config: u8,
@@ -83,6 +84,7 @@ impl Space for Bump {
     }
 }
 
+#[repr(C)]
 #[derive(Default, Debug, PartialEq)]
 pub struct Config {
     /// can update the config and execute priveledged instructions
@@ -124,6 +126,7 @@ impl Space for Config {
 }
 
 /// for indexing
+#[repr(C)]
 #[derive(Default, Debug, PartialEq)]
 pub struct UserCounter {
     pub last_user_id: u32,
@@ -153,6 +156,7 @@ impl Space for UserCounter {
 
 /// to transfer ownership from one address to another in 2 steps (for security reasons) \
 /// used both for app admin and user accounts
+#[repr(C)]
 #[derive(Default, Debug, PartialEq)]
 pub struct RotationState {
     pub owner: Pubkey,
@@ -187,6 +191,7 @@ impl Space for RotationState {
 }
 
 /// get by user: Pubkey
+#[repr(C)]
 #[derive(Default, Debug, PartialEq)]
 pub struct UserId {
     pub id: u32,
@@ -227,6 +232,7 @@ impl Space for UserId {
 }
 
 /// get by user_id: u32
+#[repr(C)]
 #[derive(Default, Debug, PartialEq)]
 pub struct UserAccount {
     /// encrypted user data

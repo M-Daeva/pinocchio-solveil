@@ -35,6 +35,7 @@ pub trait ZeroCopyDeserialize: Sized {
 }
 
 // Account data wrapper for typed access
+#[repr(C)]
 pub struct AccountData<'a, T> {
     data: RefMut<'a, [u8]>,
     _phantom: PhantomData<T>,

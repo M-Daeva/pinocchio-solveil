@@ -6,6 +6,7 @@ use {
 
 pub use crate::types::update_config::Accounts;
 
+#[repr(C)]
 #[derive(Default)]
 pub struct InstructionData {}
 

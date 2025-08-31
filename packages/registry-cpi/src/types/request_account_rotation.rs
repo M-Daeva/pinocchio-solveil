@@ -9,6 +9,7 @@ use {
     r#macro_account::AccountMetas,
 };
 
+#[repr(C)]
 #[derive(AccountMetas)]
 pub struct Accounts<'a> {
     #[account(signer, writable)]
@@ -48,6 +49,7 @@ impl<'a> TryFrom<&'a [AccountInfo]> for Accounts<'a> {
     }
 }
 
+#[repr(C)]
 #[derive(Default)]
 pub struct InstructionData {
     pub new_owner: Pubkey,

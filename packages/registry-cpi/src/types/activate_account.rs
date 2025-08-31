@@ -12,6 +12,7 @@ use {
     r#macro_account::AccountMetas,
 };
 
+#[repr(C)]
 #[derive(AccountMetas)]
 pub struct Accounts<'a> {
     pub system_program: &'a AccountInfo,
@@ -79,6 +80,7 @@ impl<'a> TryFrom<&'a [AccountInfo]> for Accounts<'a> {
     }
 }
 
+#[repr(C)]
 #[derive(Default)]
 pub struct InstructionData {
     pub user: Pubkey,
