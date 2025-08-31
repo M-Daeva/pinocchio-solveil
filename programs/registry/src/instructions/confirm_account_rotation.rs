@@ -1,6 +1,9 @@
 use {
     base::{
-        accounts::{AccountClose, ProgramAccount, ProgramAccountInit},
+        accounts::{
+            AccountCheck, AccountClose, ProgramAccount, ProgramAccountInit, SignerAccount,
+            SystemProgram,
+        },
         error::AuthError,
         helpers::{get_and_check_pda, get_clock_time},
         types::AccountData,
@@ -17,15 +20,28 @@ pub fn confirm_account_rotation(
     accounts: &[AccountInfo],
     instruction_data: &[u8],
 ) -> ProgramResult {
+    let InstructionData {} = InstructionData::try_from(instruction_data)?;
+
     let Accounts {
+        system_program,
         sender,
-        user_id_pre: user_id_pre_acc,
+        user_id_pre,
         user_id,
         user_rotation_state,
-        ..
     } = Accounts::try_from(accounts)?;
 
-    let InstructionData {} = InstructionData::try_from(instruction_data)?;
+    SystemProgram::check(system_program)?;
+    SignerAccount::check(sender)?;
+    // user_id_pre,
+    // ProgramAccount::check(
+    //     user_id,
+    //     &crate::ID,
+    //     UserId::get_space(),
+    //     Some(&[SEED::USER_ID, sender.key()]),
+    // )?;
+    // user_rotation_state, // TODO: should check
+
+    let user_id_pre_acc = user_id_pre;
 
     // === load storages ===
 

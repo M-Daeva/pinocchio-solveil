@@ -1,19 +1,15 @@
 use {
-    crate::state::{seed as SEED, Bump, Config},
     base::{
-        accounts::{
-            AccountCheck, AssociatedTokenAccount, AssociatedTokenAccountCheck, MintAccount,
-            ProgramAccount, ProgramAccountCheck, SignerAccount, SystemProgram,
-        },
         converters::{to_u64, ByteReader},
         types::Result,
     },
+    macro_try_from::AccountTryFrom,
     pinocchio::{account_info::AccountInfo, program_error::ProgramError},
     r#macro_account::AccountMetas,
 };
 
 #[repr(C)]
-#[derive(AccountMetas)]
+#[derive(AccountMetas, AccountTryFrom)]
 pub struct Accounts<'a> {
     pub system_program: &'a AccountInfo,
     pub token_program: &'a AccountInfo,
@@ -37,47 +33,6 @@ pub struct Accounts<'a> {
 
     #[account(writable)]
     pub revenue_app_ata: &'a AccountInfo,
-}
-
-impl<'a> TryFrom<&'a [AccountInfo]> for Accounts<'a> {
-    type Error = ProgramError;
-
-    fn try_from(accounts: &'a [AccountInfo]) -> Result<Self> {
-        let [system_program, token_program, associated_token_program, sender, recipient, bump, config, revenue_mint, revenue_recipient_ata, revenue_app_ata] =
-            accounts
-        else {
-            Err(ProgramError::NotEnoughAccountKeys)?
-        };
-
-        SystemProgram::check(system_program)?;
-        // token_program,
-        // associated_token_program,
-        SignerAccount::check(sender)?;
-        // recipient,
-        ProgramAccount::check::<Bump>(bump, &crate::ID, Some(&[SEED::BUMP]))?;
-        ProgramAccount::check::<Config>(config, &crate::ID, Some(&[SEED::CONFIG]))?;
-        MintAccount::check(revenue_mint)?;
-        AssociatedTokenAccount::check(
-            revenue_recipient_ata,
-            recipient,
-            revenue_mint,
-            token_program,
-        )?;
-        AssociatedTokenAccount::check(revenue_app_ata, config, revenue_mint, token_program)?;
-
-        Ok(Self {
-            system_program,
-            token_program,
-            associated_token_program,
-            sender,
-            recipient,
-            bump,
-            config,
-            revenue_mint,
-            revenue_recipient_ata,
-            revenue_app_ata,
-        })
-    }
 }
 
 #[repr(C)]

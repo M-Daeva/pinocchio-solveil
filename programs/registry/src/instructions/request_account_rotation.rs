@@ -1,9 +1,14 @@
 use {
-    base::{error::AuthError, helpers::get_clock_time, types::AccountData},
+    base::{
+        accounts::{AccountCheck, ProgramAccount, ProgramAccountCheck, SignerAccount},
+        error::AuthError,
+        helpers::get_clock_time,
+        types::AccountData,
+    },
     pinocchio::{account_info::AccountInfo, ProgramResult},
     registry_cpi::{
         error::AnyError,
-        state::{Config, RotationState},
+        state::{seed as SEED, Bump, Config, RotationState, UserId},
         types::request_account_rotation::{Accounts, InstructionData},
     },
 };
@@ -12,14 +17,21 @@ pub fn request_account_rotation(
     accounts: &[AccountInfo],
     instruction_data: &[u8],
 ) -> ProgramResult {
+    let InstructionData { new_owner } = InstructionData::try_from(instruction_data)?;
+
     let Accounts {
         sender,
+        bump,
         config,
+        user_id,
         user_rotation_state,
-        ..
     } = Accounts::try_from(accounts)?;
 
-    let InstructionData { new_owner } = InstructionData::try_from(instruction_data)?;
+    SignerAccount::check(sender)?;
+    ProgramAccount::check::<Bump>(bump, &crate::ID, Some(&[SEED::BUMP]))?;
+    ProgramAccount::check::<Config>(config, &crate::ID, Some(&[SEED::CONFIG]))?;
+    ProgramAccount::check::<UserId>(user_id, &crate::ID, Some(&[SEED::USER_ID, sender.key()]))?;
+    // user_rotation_state, // TODO: should check
 
     // === load storages ===
 
