@@ -258,10 +258,14 @@ impl ZeroCopyDeserialize for UserAccount {
 }
 
 impl UserAccount {
-    pub fn get_space(max_size: u32) -> usize {
-        8 +   // discriminator
-        4 + max_size as usize + // data (String: 4 bytes length + content)
-        8 +   // nonce (u64)
-        4 // max_size (u32)
+    pub fn get_space(max_size: u32) -> u64 {
+        // String: 4 bytes length + content
+        let data: usize = 4 + max_size as usize;
+        // u64
+        const NONCE: usize = 8;
+        // u32
+        const MAX_SIZE: usize = 4;
+
+        (data + NONCE + MAX_SIZE) as u64
     }
 }

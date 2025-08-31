@@ -60,7 +60,7 @@ pub fn create_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Prog
     create_account_with_signer(
         sender,
         user_account,
-        UserAccount::get_space(max_data_size) as u64,
+        UserAccount::get_space(max_data_size),
         &seeds!(SEED::USER_ACCOUNT, user_seed_id, &[user_account_bump]),
         &crate::ID,
     )?;

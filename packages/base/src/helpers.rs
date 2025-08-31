@@ -1,9 +1,5 @@
 use {
-    crate::{
-        converters::to_u64,
-        guards::check_derived_pda,
-        types::{Result, DISCRIMINATOR_SPACE},
-    },
+    crate::{converters::to_u64, guards::check_derived_pda, types::Result},
     pinocchio::{
         account_info::AccountInfo,
         instruction::{Seed, Signer},
@@ -35,7 +31,7 @@ pub fn get_clock_time() -> Result<u64> {
 
 #[inline]
 pub fn get_space<T>() -> u64 {
-    (DISCRIMINATOR_SPACE + core::mem::size_of::<T>()) as u64
+    core::mem::size_of::<T>() as u64
 }
 
 #[inline]

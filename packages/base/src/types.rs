@@ -14,8 +14,6 @@ pub const TOKEN_2022_MINT_DISCRIMINATOR: u8 = 0x01;
 pub const TOKEN_2022_TOKEN_ACCOUNT_DISCRIMINATOR: u8 = 0x02;
 pub const TOKEN_2022_PROGRAM_ID: Pubkey = pubkey!("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb");
 
-pub const DISCRIMINATOR_SPACE: usize = 8;
-
 pub type Result<T> = std::result::Result<T, ProgramError>;
 
 pub trait ErrorIndexOffset {
