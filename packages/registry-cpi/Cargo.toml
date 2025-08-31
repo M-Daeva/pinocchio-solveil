@@ -26,5 +26,6 @@ strum = { workspace = true }
 strum_macros = { workspace = true }
 
 macro-account = { workspace = true }
+macro-zc-serde = { workspace = true }
 macro-error = { workspace = true }
 base = { workspace = true }

@@ -1,0 +1,23 @@
+[package]
+name = "macro-zc-serde"
+version = "1.0.0"
+description = "Macro to generate zc serde implementations"
+repository = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[lib]
+proc-macro = true
+
+[features]
+default = []
+std = []
+
+[dependencies]
+proc-macro2 = { workspace = true }
+quote = { workspace = true }
+syn = { workspace = true, features = ["full"] }
+
+solana-instruction = { workspace = true }
+solana-pubkey = { workspace = true }

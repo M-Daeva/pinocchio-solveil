@@ -5,6 +5,7 @@ use {
         helpers::get_space,
         types::{Result, Space, ZeroCopyDeserialize, ZeroCopySerialize},
     },
+    macro_zc_serde::{ZCDeserialize, ZCSerialize},
     pinocchio::{pubkey::Pubkey, ProgramResult},
     pinocchio_pubkey::pubkey,
 };
@@ -85,7 +86,7 @@ impl Space for Bump {
 }
 
 #[repr(C)]
-#[derive(Default, Debug, PartialEq)]
+#[derive(Default, Debug, PartialEq, ZCSerialize, ZCDeserialize)]
 pub struct Config {
     /// can update the config and execute priveledged instructions
     pub admin: Pubkey,
@@ -95,29 +96,29 @@ pub struct Config {
     pub data_size_range: Range,
 }
 
-impl ZeroCopySerialize for Config {
-    fn serialize_into(&self, data: &mut [u8]) -> ProgramResult {
-        ByteWriter::new(data)
-            .write_pubkey(&self.admin)?
-            .write_bool(self.is_paused)?
-            .write_u32(self.rotation_timeout)?
-            .write_custom(&self.registration_fee)?
-            .write_custom(&self.data_size_range)?
-            .complete()
-    }
-}
+// impl ZeroCopySerialize for Config {
+//     fn serialize_into(&self, data: &mut [u8]) -> ProgramResult {
+//         ByteWriter::new(data)
+//             .write_pubkey(&self.admin)?
+//             .write_bool(self.is_paused)?
+//             .write_u32(self.rotation_timeout)?
+//             .write_custom(&self.registration_fee)?
+//             .write_custom(&self.data_size_range)?
+//             .complete()
+//     }
+// }
 
-impl ZeroCopyDeserialize for Config {
-    fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)> {
-        ByteReader::new::<Self>(data, start_index)
-            .read_pubkey(|x| &mut x.admin)?
-            .read_bool(|x| &mut x.is_paused)?
-            .read_u32(|x| &mut x.rotation_timeout)?
-            .read_custom(|x| &mut x.registration_fee)?
-            .read_custom(|x| &mut x.data_size_range)?
-            .complete()
-    }
-}
+// impl ZeroCopyDeserialize for Config {
+//     fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)> {
+//         ByteReader::new::<Self>(data, start_index)
+//             .read_pubkey(|x| &mut x.admin)?
+//             .read_bool(|x| &mut x.is_paused)?
+//             .read_u32(|x| &mut x.rotation_timeout)?
+//             .read_custom(|x| &mut x.registration_fee)?
+//             .read_custom(|x| &mut x.data_size_range)?
+//             .complete()
+//     }
+// }
 
 impl Space for Config {
     fn get_space() -> usize {
