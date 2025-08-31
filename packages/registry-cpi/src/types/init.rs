@@ -12,6 +12,7 @@ use {
     r#macro_account::AccountMetas,
 };
 
+// TODO: implement rest accounts
 #[repr(C)]
 #[derive(AccountMetas, AccountTryFrom)]
 pub struct Accounts<'a> {
