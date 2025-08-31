@@ -1,7 +1,7 @@
 use {
     crate::types::common::{AssetItem, Range},
     base::{
-        converters::{option_as_bytes, pubkey_as_bytes, to_pubkey, ByteReader, ByteWriter},
+        converters::{to_pubkey, ByteReader, ByteWriter},
         helpers::get_space,
         types::{Result, Space, ZeroCopyDeserialize, ZeroCopySerialize},
     },
@@ -51,7 +51,7 @@ pub const ACCOUNT_DATA_SIZE_MIN: u32 = 100;
 pub const ACCOUNT_DATA_SIZE_MAX: u32 = 10_000;
 
 /// to store bumps for all app accounts
-// #[repr(C)]
+#[repr(C)]
 #[derive(Default, Debug, PartialEq, ZCSerialize)]
 pub struct Bump {
     pub config: u8,
@@ -86,7 +86,7 @@ impl Space for Bump {
 }
 
 #[repr(C)]
-#[derive(Default, Debug, PartialEq)]
+#[derive(Default, Debug, PartialEq, ZCSerialize)]
 pub struct Config {
     /// can update the config and execute priveledged instructions
     pub admin: Pubkey,
@@ -96,17 +96,17 @@ pub struct Config {
     pub data_size_range: Range,
 }
 
-impl ZeroCopySerialize for Config {
-    fn serialize_into(&self, data: &mut [u8]) -> ProgramResult {
-        ByteWriter::new(data)
-            .write_pubkey(&self.admin)?
-            .write_bool(self.is_paused)?
-            .write_u32(self.rotation_timeout)?
-            .write_custom(&self.registration_fee)?
-            .write_custom(&self.data_size_range)?
-            .complete()
-    }
-}
+// impl ZeroCopySerialize for Config {
+//     fn serialize_into(&self, data: &mut [u8]) -> ProgramResult {
+//         ByteWriter::new(data)
+//             .write_pubkey(&self.admin)?
+//             .write_bool(self.is_paused)?
+//             .write_u32(self.rotation_timeout)?
+//             .write_custom(&self.registration_fee)?
+//             .write_custom(&self.data_size_range)?
+//             .complete()
+//     }
+// }
 
 impl ZeroCopyDeserialize for Config {
     fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)> {
@@ -128,18 +128,18 @@ impl Space for Config {
 
 /// for indexing
 #[repr(C)]
-#[derive(Default, Debug, PartialEq)]
+#[derive(Default, Debug, PartialEq, ZCSerialize)]
 pub struct UserCounter {
     pub last_user_id: u32,
 }
 
-impl ZeroCopySerialize for UserCounter {
-    fn serialize_into(&self, data: &mut [u8]) -> ProgramResult {
-        ByteWriter::new(data)
-            .write_u32(self.last_user_id)?
-            .complete()
-    }
-}
+// impl ZeroCopySerialize for UserCounter {
+//     fn serialize_into(&self, data: &mut [u8]) -> ProgramResult {
+//         ByteWriter::new(data)
+//             .write_u32(self.last_user_id)?
+//             .complete()
+//     }
+// }
 
 impl ZeroCopyDeserialize for UserCounter {
     fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)> {
@@ -158,22 +158,22 @@ impl Space for UserCounter {
 /// to transfer ownership from one address to another in 2 steps (for security reasons) \
 /// used both for app admin and user accounts
 #[repr(C)]
-#[derive(Default, Debug, PartialEq)]
+#[derive(Default, Debug, PartialEq, ZCSerialize)]
 pub struct RotationState {
     pub owner: Pubkey,
     pub new_owner: Option<Pubkey>,
     pub expiration_date: u64,
 }
 
-impl ZeroCopySerialize for RotationState {
-    fn serialize_into(&self, data: &mut [u8]) -> ProgramResult {
-        ByteWriter::new(data)
-            .write_pubkey(&self.owner)?
-            .write_bytes(&option_as_bytes(&self.new_owner, pubkey_as_bytes))?
-            .write_u64(self.expiration_date)?
-            .complete()
-    }
-}
+// impl ZeroCopySerialize for RotationState {
+//     fn serialize_into(&self, data: &mut [u8]) -> ProgramResult {
+//         ByteWriter::new(data)
+//             .write_pubkey(&self.owner)?
+//             .write_bytes(&option_as_bytes(&self.new_owner, pubkey_as_bytes))?
+//             .write_u64(self.expiration_date)?
+//             .complete()
+//     }
+// }
 
 impl ZeroCopyDeserialize for RotationState {
     fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)> {
@@ -193,7 +193,7 @@ impl Space for RotationState {
 
 /// get by user: Pubkey
 #[repr(C)]
-#[derive(Default, Debug, PartialEq)]
+#[derive(Default, Debug, PartialEq, ZCSerialize)]
 pub struct UserId {
     pub id: u32,
     pub is_open: bool,
@@ -202,17 +202,17 @@ pub struct UserId {
     pub rotation_state_bump: u8,
 }
 
-impl ZeroCopySerialize for UserId {
-    fn serialize_into(&self, data: &mut [u8]) -> ProgramResult {
-        ByteWriter::new(data)
-            .write_u32(self.id)?
-            .write_bool(self.is_open)?
-            .write_bool(self.is_activated)?
-            .write_u8(self.account_bump)?
-            .write_u8(self.rotation_state_bump)?
-            .complete()
-    }
-}
+// impl ZeroCopySerialize for UserId {
+//     fn serialize_into(&self, data: &mut [u8]) -> ProgramResult {
+//         ByteWriter::new(data)
+//             .write_u32(self.id)?
+//             .write_bool(self.is_open)?
+//             .write_bool(self.is_activated)?
+//             .write_u8(self.account_bump)?
+//             .write_u8(self.rotation_state_bump)?
+//             .complete()
+//     }
+// }
 
 impl ZeroCopyDeserialize for UserId {
     fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)> {
@@ -234,7 +234,7 @@ impl Space for UserId {
 
 /// get by user_id: u32
 #[repr(C)]
-#[derive(Default, Debug, PartialEq)]
+#[derive(Default, Debug, PartialEq, ZCSerialize)]
 pub struct UserAccount {
     /// encrypted user data
     pub data: String,
@@ -244,15 +244,15 @@ pub struct UserAccount {
     pub max_size: u32,
 }
 
-impl ZeroCopySerialize for UserAccount {
-    fn serialize_into(&self, data: &mut [u8]) -> ProgramResult {
-        ByteWriter::new(data)
-            .write_string(&self.data)?
-            .write_u64(self.nonce)?
-            .write_u32(self.max_size)?
-            .complete()
-    }
-}
+// impl ZeroCopySerialize for UserAccount {
+//     fn serialize_into(&self, data: &mut [u8]) -> ProgramResult {
+//         ByteWriter::new(data)
+//             .write_string(&self.data)?
+//             .write_u64(self.nonce)?
+//             .write_u32(self.max_size)?
+//             .complete()
+//     }
+// }
 
 impl ZeroCopyDeserialize for UserAccount {
     fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)> {
