@@ -1647,6 +1647,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "macro-zc-serde"
+version = "1.0.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.106",
+]
+
+[[package]]
 name = "memchr"
 version = "2.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2255,6 +2264,7 @@ dependencies = [
  "macro-account",
  "macro-error",
  "macro-try-from",
+ "macro-zc-serde",
  "pinocchio",
  "pinocchio-log",
  "pinocchio-pubkey",

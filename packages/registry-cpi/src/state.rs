@@ -5,6 +5,7 @@ use {
         helpers::get_space,
         types::{Result, Space, ZeroCopyDeserialize, ZeroCopySerialize},
     },
+    macro_zc_serde::ZCSerialize,
     pinocchio::{pubkey::Pubkey, ProgramResult},
     pinocchio_pubkey::pubkey,
 };
@@ -50,23 +51,23 @@ pub const ACCOUNT_DATA_SIZE_MIN: u32 = 100;
 pub const ACCOUNT_DATA_SIZE_MAX: u32 = 10_000;
 
 /// to store bumps for all app accounts
-#[repr(C)]
-#[derive(Default, Debug, PartialEq)]
+// #[repr(C)]
+#[derive(Default, Debug, PartialEq, ZCSerialize)]
 pub struct Bump {
     pub config: u8,
     pub user_counter: u8,
     pub rotation_state: u8,
 }
 
-impl ZeroCopySerialize for Bump {
-    fn serialize_into(&self, data: &mut [u8]) -> ProgramResult {
-        ByteWriter::new(data)
-            .write_u8(self.config)?
-            .write_u8(self.user_counter)?
-            .write_u8(self.rotation_state)?
-            .complete()
-    }
-}
+// impl ZeroCopySerialize for Bump {
+//     fn serialize_into(&self, data: &mut [u8]) -> ProgramResult {
+//         ByteWriter::new(data)
+//             .write_u8(self.config)?
+//             .write_u8(self.user_counter)?
+//             .write_u8(self.rotation_state)?
+//             .complete()
+//     }
+// }
 
 impl ZeroCopyDeserialize for Bump {
     fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)> {
