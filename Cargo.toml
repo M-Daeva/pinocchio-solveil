@@ -52,6 +52,8 @@ spl-token = "8.0.0"
 solana-kite = "0.1.4"
 
 macro-account = { path = "./packages/macro-account" }
+macro-zc-serde = { path = "./packages/macro-zc-serde" }
+macro-test-ser = { path = "./packages/macro-test-ser" }
 macro-try-from = { path = "./packages/macro-try-from" }
 macro-error = { path = "./packages/macro-error" }
 base = { path = "./packages/base" }

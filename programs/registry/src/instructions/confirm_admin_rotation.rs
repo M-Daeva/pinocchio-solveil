@@ -1,5 +1,9 @@
 use {
-    base::{error::AuthError, helpers::get_clock_time, types::AccountData},
+    base::{
+        error::AuthError,
+        helpers::get_clock_time,
+        types::{AccountData, ZeroCopyDeserialize},
+    },
     pinocchio::{account_info::AccountInfo, ProgramResult},
     registry_cpi::{
         error::AnyError,
@@ -9,13 +13,13 @@ use {
 };
 
 pub fn confirm_admin_rotation(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult {
+    let InstructionData {} = InstructionData::deserialize_from(instruction_data, 0)?.0;
+
     let Accounts {
         sender,
         config,
         admin_rotation_state,
     } = Accounts::try_from(accounts)?;
-
-    let InstructionData {} = InstructionData::try_from(instruction_data)?;
 
     // === load storages ===
 

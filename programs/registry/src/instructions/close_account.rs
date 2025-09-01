@@ -4,7 +4,7 @@ use {
             AccountCheck, AccountClose, ProgramAccount, ProgramAccountCheck, SignerAccount,
             SystemProgram,
         },
-        types::AccountData,
+        types::{AccountData, ZeroCopyDeserialize},
     },
     pinocchio::{account_info::AccountInfo, ProgramResult},
     registry_cpi::{
@@ -15,7 +15,7 @@ use {
 };
 
 pub fn close_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult {
-    let InstructionData {} = InstructionData::try_from(instruction_data)?;
+    let InstructionData {} = InstructionData::deserialize_from(instruction_data, 0)?.0;
 
     let Accounts {
         system_program,

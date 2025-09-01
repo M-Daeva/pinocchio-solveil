@@ -1,10 +1,11 @@
 use {
     crate::types::common::{AssetItem, Range},
     base::{
-        converters::{option_as_bytes, pubkey_as_bytes, to_pubkey, ByteReader, ByteWriter},
+        converters::{to_pubkey, ByteReader, ByteWriter},
         helpers::get_space,
         types::{Result, Space, ZeroCopyDeserialize, ZeroCopySerialize},
     },
+    macro_zc_serde::{ZCDeserialize, ZCSerialize},
     pinocchio::{pubkey::Pubkey, ProgramResult},
     pinocchio_pubkey::pubkey,
 };
@@ -51,32 +52,32 @@ pub const ACCOUNT_DATA_SIZE_MAX: u32 = 10_000;
 
 /// to store bumps for all app accounts
 #[repr(C)]
-#[derive(Default, Debug, PartialEq)]
+#[derive(Default, Debug, PartialEq, ZCSerialize, ZCDeserialize)]
 pub struct Bump {
     pub config: u8,
     pub user_counter: u8,
     pub rotation_state: u8,
 }
 
-impl ZeroCopySerialize for Bump {
-    fn serialize_into(&self, data: &mut [u8]) -> ProgramResult {
-        ByteWriter::new(data)
-            .write_u8(self.config)?
-            .write_u8(self.user_counter)?
-            .write_u8(self.rotation_state)?
-            .complete()
-    }
-}
+// impl ZeroCopySerialize for Bump {
+//     fn serialize_into(&self, data: &mut [u8]) -> ProgramResult {
+//         ByteWriter::new(data)
+//             .write_u8(self.config)?
+//             .write_u8(self.user_counter)?
+//             .write_u8(self.rotation_state)?
+//             .complete()
+//     }
+// }
 
-impl ZeroCopyDeserialize for Bump {
-    fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)> {
-        ByteReader::new::<Self>(data, start_index)
-            .read_u8(|x| &mut x.config)?
-            .read_u8(|x| &mut x.user_counter)?
-            .read_u8(|x| &mut x.rotation_state)?
-            .complete()
-    }
-}
+// impl ZeroCopyDeserialize for Bump {
+//     fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)> {
+//         ByteReader::new::<Self>(data, start_index)
+//             .read_u8(|x| &mut x.config)?
+//             .read_u8(|x| &mut x.user_counter)?
+//             .read_u8(|x| &mut x.rotation_state)?
+//             .complete()
+//     }
+// }
 
 impl Space for Bump {
     fn get_space() -> usize {
@@ -85,7 +86,7 @@ impl Space for Bump {
 }
 
 #[repr(C)]
-#[derive(Default, Debug, PartialEq)]
+#[derive(Default, Debug, PartialEq, ZCSerialize, ZCDeserialize)]
 pub struct Config {
     /// can update the config and execute priveledged instructions
     pub admin: Pubkey,
@@ -95,29 +96,29 @@ pub struct Config {
     pub data_size_range: Range,
 }
 
-impl ZeroCopySerialize for Config {
-    fn serialize_into(&self, data: &mut [u8]) -> ProgramResult {
-        ByteWriter::new(data)
-            .write_pubkey(&self.admin)?
-            .write_bool(self.is_paused)?
-            .write_u32(self.rotation_timeout)?
-            .write_custom(&self.registration_fee)?
-            .write_custom(&self.data_size_range)?
-            .complete()
-    }
-}
+// impl ZeroCopySerialize for Config {
+//     fn serialize_into(&self, data: &mut [u8]) -> ProgramResult {
+//         ByteWriter::new(data)
+//             .write_pubkey(&self.admin)?
+//             .write_bool(self.is_paused)?
+//             .write_u32(self.rotation_timeout)?
+//             .write_custom(&self.registration_fee)?
+//             .write_custom(&self.data_size_range)?
+//             .complete()
+//     }
+// }
 
-impl ZeroCopyDeserialize for Config {
-    fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)> {
-        ByteReader::new::<Self>(data, start_index)
-            .read_pubkey(|x| &mut x.admin)?
-            .read_bool(|x| &mut x.is_paused)?
-            .read_u32(|x| &mut x.rotation_timeout)?
-            .read_custom(|x| &mut x.registration_fee)?
-            .read_custom(|x| &mut x.data_size_range)?
-            .complete()
-    }
-}
+// impl ZeroCopyDeserialize for Config {
+//     fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)> {
+//         ByteReader::new::<Self>(data, start_index)
+//             .read_pubkey(|x| &mut x.admin)?
+//             .read_bool(|x| &mut x.is_paused)?
+//             .read_u32(|x| &mut x.rotation_timeout)?
+//             .read_custom(|x| &mut x.registration_fee)?
+//             .read_custom(|x| &mut x.data_size_range)?
+//             .complete()
+//     }
+// }
 
 impl Space for Config {
     fn get_space() -> usize {
@@ -127,26 +128,26 @@ impl Space for Config {
 
 /// for indexing
 #[repr(C)]
-#[derive(Default, Debug, PartialEq)]
+#[derive(Default, Debug, PartialEq, ZCSerialize, ZCDeserialize)]
 pub struct UserCounter {
     pub last_user_id: u32,
 }
 
-impl ZeroCopySerialize for UserCounter {
-    fn serialize_into(&self, data: &mut [u8]) -> ProgramResult {
-        ByteWriter::new(data)
-            .write_u32(self.last_user_id)?
-            .complete()
-    }
-}
+// impl ZeroCopySerialize for UserCounter {
+//     fn serialize_into(&self, data: &mut [u8]) -> ProgramResult {
+//         ByteWriter::new(data)
+//             .write_u32(self.last_user_id)?
+//             .complete()
+//     }
+// }
 
-impl ZeroCopyDeserialize for UserCounter {
-    fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)> {
-        ByteReader::new::<Self>(data, start_index)
-            .read_u32(|x| &mut x.last_user_id)?
-            .complete()
-    }
-}
+// impl ZeroCopyDeserialize for UserCounter {
+//     fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)> {
+//         ByteReader::new::<Self>(data, start_index)
+//             .read_u32(|x| &mut x.last_user_id)?
+//             .complete()
+//     }
+// }
 
 impl Space for UserCounter {
     fn get_space() -> usize {
@@ -157,32 +158,32 @@ impl Space for UserCounter {
 /// to transfer ownership from one address to another in 2 steps (for security reasons) \
 /// used both for app admin and user accounts
 #[repr(C)]
-#[derive(Default, Debug, PartialEq)]
+#[derive(Default, Debug, PartialEq, ZCSerialize, ZCDeserialize)]
 pub struct RotationState {
     pub owner: Pubkey,
     pub new_owner: Option<Pubkey>,
     pub expiration_date: u64,
 }
 
-impl ZeroCopySerialize for RotationState {
-    fn serialize_into(&self, data: &mut [u8]) -> ProgramResult {
-        ByteWriter::new(data)
-            .write_pubkey(&self.owner)?
-            .write_bytes(&option_as_bytes(&self.new_owner, pubkey_as_bytes))?
-            .write_u64(self.expiration_date)?
-            .complete()
-    }
-}
+// impl ZeroCopySerialize for RotationState {
+//     fn serialize_into(&self, data: &mut [u8]) -> ProgramResult {
+//         ByteWriter::new(data)
+//             .write_pubkey(&self.owner)?
+//             .write_bytes(&option_as_bytes(&self.new_owner, pubkey_as_bytes))?
+//             .write_u64(self.expiration_date)?
+//             .complete()
+//     }
+// }
 
-impl ZeroCopyDeserialize for RotationState {
-    fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)> {
-        ByteReader::new::<Self>(data, start_index)
-            .read_pubkey(|x| &mut x.owner)?
-            .read_option(|x| &mut x.new_owner, to_pubkey)?
-            .read_u64(|x| &mut x.expiration_date)?
-            .complete()
-    }
-}
+// impl ZeroCopyDeserialize for RotationState {
+//     fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)> {
+//         ByteReader::new::<Self>(data, start_index)
+//             .read_pubkey(|x| &mut x.owner)?
+//             .read_option(|x| &mut x.new_owner, to_pubkey)?
+//             .read_u64(|x| &mut x.expiration_date)?
+//             .complete()
+//     }
+// }
 
 impl Space for RotationState {
     fn get_space() -> usize {
@@ -192,7 +193,7 @@ impl Space for RotationState {
 
 /// get by user: Pubkey
 #[repr(C)]
-#[derive(Default, Debug, PartialEq)]
+#[derive(Default, Debug, PartialEq, ZCSerialize, ZCDeserialize)]
 pub struct UserId {
     pub id: u32,
     pub is_open: bool,
@@ -201,29 +202,29 @@ pub struct UserId {
     pub rotation_state_bump: u8,
 }
 
-impl ZeroCopySerialize for UserId {
-    fn serialize_into(&self, data: &mut [u8]) -> ProgramResult {
-        ByteWriter::new(data)
-            .write_u32(self.id)?
-            .write_bool(self.is_open)?
-            .write_bool(self.is_activated)?
-            .write_u8(self.account_bump)?
-            .write_u8(self.rotation_state_bump)?
-            .complete()
-    }
-}
+// impl ZeroCopySerialize for UserId {
+//     fn serialize_into(&self, data: &mut [u8]) -> ProgramResult {
+//         ByteWriter::new(data)
+//             .write_u32(self.id)?
+//             .write_bool(self.is_open)?
+//             .write_bool(self.is_activated)?
+//             .write_u8(self.account_bump)?
+//             .write_u8(self.rotation_state_bump)?
+//             .complete()
+//     }
+// }
 
-impl ZeroCopyDeserialize for UserId {
-    fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)> {
-        ByteReader::new::<Self>(data, start_index)
-            .read_u32(|x| &mut x.id)?
-            .read_bool(|x| &mut x.is_open)?
-            .read_bool(|x| &mut x.is_activated)?
-            .read_u8(|x| &mut x.account_bump)?
-            .read_u8(|x| &mut x.rotation_state_bump)?
-            .complete()
-    }
-}
+// impl ZeroCopyDeserialize for UserId {
+//     fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)> {
+//         ByteReader::new::<Self>(data, start_index)
+//             .read_u32(|x| &mut x.id)?
+//             .read_bool(|x| &mut x.is_open)?
+//             .read_bool(|x| &mut x.is_activated)?
+//             .read_u8(|x| &mut x.account_bump)?
+//             .read_u8(|x| &mut x.rotation_state_bump)?
+//             .complete()
+//     }
+// }
 
 impl Space for UserId {
     fn get_space() -> usize {
@@ -233,7 +234,7 @@ impl Space for UserId {
 
 /// get by user_id: u32
 #[repr(C)]
-#[derive(Default, Debug, PartialEq)]
+#[derive(Default, Debug, PartialEq, ZCSerialize, ZCDeserialize)]
 pub struct UserAccount {
     /// encrypted user data
     pub data: String,
@@ -243,25 +244,25 @@ pub struct UserAccount {
     pub max_size: u32,
 }
 
-impl ZeroCopySerialize for UserAccount {
-    fn serialize_into(&self, data: &mut [u8]) -> ProgramResult {
-        ByteWriter::new(data)
-            .write_string(&self.data)?
-            .write_u64(self.nonce)?
-            .write_u32(self.max_size)?
-            .complete()
-    }
-}
+// impl ZeroCopySerialize for UserAccount {
+//     fn serialize_into(&self, data: &mut [u8]) -> ProgramResult {
+//         ByteWriter::new(data)
+//             .write_string(&self.data)?
+//             .write_u64(self.nonce)?
+//             .write_u32(self.max_size)?
+//             .complete()
+//     }
+// }
 
-impl ZeroCopyDeserialize for UserAccount {
-    fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)> {
-        ByteReader::new::<Self>(data, start_index)
-            .read_string(|x| &mut x.data)?
-            .read_u64(|x| &mut x.nonce)?
-            .read_u32(|x| &mut x.max_size)?
-            .complete()
-    }
-}
+// impl ZeroCopyDeserialize for UserAccount {
+//     fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)> {
+//         ByteReader::new::<Self>(data, start_index)
+//             .read_string(|x| &mut x.data)?
+//             .read_u64(|x| &mut x.nonce)?
+//             .read_u32(|x| &mut x.max_size)?
+//             .complete()
+//     }
+// }
 
 impl UserAccount {
     pub fn get_space(max_size: u32) -> usize {

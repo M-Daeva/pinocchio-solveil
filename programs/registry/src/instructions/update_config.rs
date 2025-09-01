@@ -3,13 +3,12 @@ use {
         accounts::{AccountCheck, ProgramAccount, ProgramAccountCheck, SignerAccount},
         error::AuthError,
         helpers::get_clock_time,
-        types::AccountData,
+        types::{AccountData, ZeroCopyDeserialize},
     },
     pinocchio::{account_info::AccountInfo, ProgramResult},
     registry_cpi::{
         error::{AnyError, CustomError},
-        state::seed as SEED,
-        state::{Config, RotationState},
+        state::{seed as SEED, Config, RotationState},
         types::update_config::{Accounts, InstructionData},
     },
 };
@@ -21,7 +20,7 @@ pub fn update_config(accounts: &[AccountInfo], instruction_data: &[u8]) -> Progr
         rotation_timeout,
         registration_fee_amount,
         data_size_range,
-    } = InstructionData::try_from(instruction_data)?;
+    } = InstructionData::deserialize_from(instruction_data, 0)?.0;
 
     let Accounts {
         sender,

@@ -3,7 +3,7 @@ use {
         accounts::{AccountCheck, ProgramAccount, ProgramAccountCheck, SignerAccount},
         error::AuthError,
         helpers::get_clock_time,
-        types::AccountData,
+        types::{AccountData, ZeroCopyDeserialize},
     },
     pinocchio::{account_info::AccountInfo, ProgramResult},
     registry_cpi::{
@@ -17,7 +17,7 @@ pub fn request_account_rotation(
     accounts: &[AccountInfo],
     instruction_data: &[u8],
 ) -> ProgramResult {
-    let InstructionData { new_owner } = InstructionData::try_from(instruction_data)?;
+    let InstructionData { new_owner } = InstructionData::deserialize_from(instruction_data, 0)?.0;
 
     let Accounts {
         sender,

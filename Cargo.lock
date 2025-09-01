@@ -1638,7 +1638,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "macro-test-ser"
+version = "1.0.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.106",
+]
+
+[[package]]
 name = "macro-try-from"
+version = "1.0.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.106",
+]
+
+[[package]]
+name = "macro-zc-serde"
 version = "1.0.0"
 dependencies = [
  "proc-macro2",
@@ -2254,7 +2272,9 @@ dependencies = [
  "base",
  "macro-account",
  "macro-error",
+ "macro-test-ser",
  "macro-try-from",
+ "macro-zc-serde",
  "pinocchio",
  "pinocchio-log",
  "pinocchio-pubkey",

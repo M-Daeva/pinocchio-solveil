@@ -7,6 +7,14 @@ use {
     std::{mem, slice},
 };
 
+// TODO: implement converters for
+// pub struct MoreTypes<'a, T> {
+//     pub a: &'a [T],
+//     pub b: Option<&'a [T]>,
+//     pub c: &'a [Option<T>],
+//     pub d: Option<&'a T>,
+// }
+
 #[repr(C)]
 pub struct ByteReader<'a, T> {
     data: &'a [u8],
@@ -417,6 +425,22 @@ impl<'a> ByteWriter<'a> {
             }
         }
         Ok(self)
+    }
+
+    #[inline]
+    pub fn write_option_primitive<T, F>(mut self, value: &Option<T>, writer_fn: F) -> Result<Self>
+    where
+        F: FnOnce(Self, &T) -> Result<Self>,
+    {
+        match value {
+            Some(inner_value) => {
+                self = self.write_u8(1)?; // is_some = true
+                writer_fn(self, inner_value)
+            }
+            None => {
+                self.write_u8(0) // is_some = false
+            }
+        }
     }
 
     #[inline]

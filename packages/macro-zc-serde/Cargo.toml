@@ -1,0 +1,20 @@
+[package]
+name = "macro-zc-serde"
+version = "1.0.0"
+description = "Macro to implement Zero Copy ser/de for accounts"
+repository = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[lib]
+proc-macro = true
+
+[features]
+default = []
+std = []
+
+[dependencies]
+proc-macro2 = { workspace = true }
+quote = { workspace = true }
+syn = { workspace = true, features = ["full"] }

@@ -7,13 +7,16 @@ use {
         converters::{to_u32, ByteReader},
         types::{Result, ZeroCopyDeserialize},
     },
+    macro_test_ser::test_serialize,
     macro_try_from::AccountTryFrom,
+    macro_zc_serde::ZCDeserialize,
     pinocchio::{account_info::AccountInfo, program_error::ProgramError},
     r#macro_account::AccountMetas,
 };
 
+// TODO: implement rest accounts
 #[repr(C)]
-#[derive(AccountMetas, AccountTryFrom)]
+#[derive(AccountTryFrom, AccountMetas)]
 pub struct Accounts<'a> {
     pub system_program: &'a AccountInfo,
     pub token_program: &'a AccountInfo,
@@ -41,44 +44,39 @@ pub struct Accounts<'a> {
 }
 
 #[repr(C)]
-#[derive(Default)]
+#[derive(Default, ZCDeserialize)]
+#[test_serialize(DISCRIMINATOR::INIT)]
 pub struct InstructionData {
     pub rotation_timeout: Option<u32>,
     pub account_registration_fee: Option<AssetItem>,
     pub account_data_size_range: Option<Range>,
 }
 
-impl TryFrom<&[u8]> for InstructionData {
-    type Error = ProgramError;
+// impl ZeroCopySerialize for InstructionData {
+//     fn serialize_into(&self, data: &mut [u8]) -> ProgramResult {
+//         ByteWriter::new(data)
+//             .write_option(&self.rotation_timeout, u32_as_bytes)?
+//             .write_option_custom(&self.account_registration_fee)?
+//             .write_option_custom(&self.account_data_size_range)?
+//             .complete()
+//     }
+// }
 
-    fn try_from(data: &[u8]) -> Result<Self> {
-        ByteReader::new::<Self>(data, 0)
-            .read_option(|x| &mut x.rotation_timeout, to_u32)?
-            .read_option(
-                |x| &mut x.account_registration_fee,
-                AssetItem::deserialize_from,
-            )?
-            .read_option(|x| &mut x.account_data_size_range, Range::deserialize_from)?
-            .complete()
-            .map(|(x, _)| x)
-    }
-}
+// /// for tests
+// #[cfg(feature = "dev")]
+// impl base::types::InstructionSerialize for InstructionData {
+//     fn serialize(&self) -> Result<Vec<u8>> {
+//         use base::converters::{u32_as_bytes, ByteWriter, ByteWriterVecExt};
 
-/// for tests
-#[cfg(feature = "dev")]
-impl base::types::InstructionSerialize for InstructionData {
-    fn serialize(&self) -> Result<Vec<u8>> {
-        use base::converters::{u32_as_bytes, ByteWriter, ByteWriterVecExt};
+//         let mut buffer = vec![];
+//         let position = ByteWriter::from_vec(&mut buffer)
+//             .write_u8(DISCRIMINATOR::INIT)?
+//             .write_option(&self.rotation_timeout, u32_as_bytes)?
+//             .write_option_custom(&self.account_registration_fee)?
+//             .write_option_custom(&self.account_data_size_range)?
+//             .position();
+//         buffer.truncate(position);
 
-        let mut buffer = vec![];
-        let position = ByteWriter::from_vec(&mut buffer)
-            .write_u8(DISCRIMINATOR::INIT)?
-            .write_option(&self.rotation_timeout, u32_as_bytes)?
-            .write_option_custom(&self.account_registration_fee)?
-            .write_option_custom(&self.account_data_size_range)?
-            .position();
-        buffer.truncate(position);
-
-        Ok(buffer)
-    }
-}
+//         Ok(buffer)
+//     }
+// }
