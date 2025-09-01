@@ -13,7 +13,7 @@ use {
 };
 
 #[repr(C)]
-#[derive(AccountMetas, AccountTryFrom)]
+#[derive(AccountTryFrom, AccountMetas)]
 pub struct Accounts<'a> {
     pub system_program: &'a AccountInfo,
     pub token_program: &'a AccountInfo,
