@@ -1,14 +1,16 @@
 use {
     crate::{state::discriminator as DISCRIMINATOR, types::common::Range},
     base::{
-        converters::{to_bool, to_pubkey, to_u32, to_u64, ByteReader, ByteWriter},
-        types::{Result, ZeroCopyDeserialize, ZeroCopySerialize},
+        converters::{
+            bool_as_bytes, pubkey_as_bytes, to_bool, to_pubkey, to_u32, to_u64, u64_as_bytes,
+            ByteReader,
+        },
+        types::{Result, ZeroCopyDeserialize},
     },
+    macro_test_ser::test_serialize,
     macro_try_from::AccountTryFrom,
-    macro_zc_serde::{ZCDeserialize, ZCSerialize},
-    pinocchio::{
-        account_info::AccountInfo, program_error::ProgramError, pubkey::Pubkey, ProgramResult,
-    },
+    macro_zc_serde::ZCDeserialize,
+    pinocchio::{account_info::AccountInfo, program_error::ProgramError, pubkey::Pubkey},
     r#macro_account::AccountMetas,
 };
 
@@ -26,7 +28,8 @@ pub struct Accounts<'a> {
 }
 
 #[repr(C)]
-#[derive(Default, ZCSerialize, ZCDeserialize)]
+#[derive(Default, ZCDeserialize)]
+#[test_serialize(DISCRIMINATOR::UPDATE_CONFIG)]
 pub struct InstructionData {
     pub admin: Option<Pubkey>,
     pub is_paused: Option<bool>,
@@ -50,26 +53,26 @@ pub struct InstructionData {
 //     }
 // }
 
-/// for tests
-#[cfg(feature = "dev")]
-impl base::types::InstructionSerialize for InstructionData {
-    fn serialize(&self) -> Result<Vec<u8>> {
-        use base::converters::{
-            bool_as_bytes, pubkey_as_bytes, u32_as_bytes, u64_as_bytes, ByteWriter,
-            ByteWriterVecExt,
-        };
+// /// for tests
+// #[cfg(feature = "dev")]
+// impl base::types::InstructionSerialize for InstructionData {
+//     fn serialize(&self) -> Result<Vec<u8>> {
+//         use base::converters::{
+//             bool_as_bytes, pubkey_as_bytes, u32_as_bytes, u64_as_bytes, ByteWriter,
+//             ByteWriterVecExt,
+//         };
 
-        let mut buffer = vec![];
-        let position = ByteWriter::from_vec(&mut buffer)
-            .write_u8(DISCRIMINATOR::UPDATE_CONFIG)?
-            .write_option(&self.admin, pubkey_as_bytes)?
-            .write_option(&self.is_paused, bool_as_bytes)?
-            .write_option(&self.rotation_timeout, u32_as_bytes)?
-            .write_option(&self.registration_fee_amount, u64_as_bytes)?
-            .write_option_custom(&self.data_size_range)?
-            .position();
-        buffer.truncate(position);
+//         let mut buffer = vec![];
+//         let position = ByteWriter::from_vec(&mut buffer)
+//             .write_u8(DISCRIMINATOR::UPDATE_CONFIG)?
+//             .write_option(&self.admin, pubkey_as_bytes)?
+//             .write_option(&self.is_paused, bool_as_bytes)?
+//             .write_option(&self.rotation_timeout, u32_as_bytes)?
+//             .write_option(&self.registration_fee_amount, u64_as_bytes)?
+//             .write_option_custom(&self.data_size_range)?
+//             .position();
+//         buffer.truncate(position);
 
-        Ok(buffer)
-    }
-}
+//         Ok(buffer)
+//     }
+// }

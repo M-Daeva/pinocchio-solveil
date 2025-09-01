@@ -129,26 +129,25 @@ fn generate_test_option_write_call(field_name: &syn::Ident, inner_type: &Type) -
 
             match type_name.as_str() {
                 "u32" => {
-                    // Special case for u32 as shown in your example
                     quote! { .write_option(&self.#field_name, u32_as_bytes)? }
                 }
                 "u8" => {
-                    quote! { .write_option(&self.#field_name, |v| [*v])? }
+                    quote! { .write_option(&self.#field_name, |v| &[*v])? }
                 }
                 "u16" => {
-                    quote! { .write_option(&self.#field_name, |v| v.to_le_bytes())? }
+                    quote! { .write_option(&self.#field_name, |v| &v.to_le_bytes())? }
                 }
                 "u64" => {
-                    quote! { .write_option(&self.#field_name, |v| v.to_le_bytes())? }
+                    quote! { .write_option(&self.#field_name, u64_as_bytes)? }
                 }
                 "u128" => {
-                    quote! { .write_option(&self.#field_name, |v| v.to_le_bytes())? }
+                    quote! { .write_option(&self.#field_name, |v| &v.to_le_bytes())? }
                 }
                 "bool" => {
-                    quote! { .write_option(&self.#field_name, |v| [*v as u8])? }
+                    quote! { .write_option(&self.#field_name, bool_as_bytes)? }
                 }
                 "Pubkey" => {
-                    quote! { .write_option(&self.#field_name, |v| v.as_ref())? }
+                    quote! { .write_option(&self.#field_name, pubkey_as_bytes)? }
                 }
                 "String" => {
                     quote! { .write_option(&self.#field_name, |v| v.as_bytes())? }
