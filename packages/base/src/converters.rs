@@ -7,6 +7,14 @@ use {
     std::{mem, slice},
 };
 
+// TODO: implement converters for
+// pub struct MoreTypes<'a, T> {
+//     pub a: &'a [T],
+//     pub b: Option<&'a [T]>,
+//     pub c: &'a [Option<T>],
+//     pub d: Option<&'a T>,
+// }
+
 #[repr(C)]
 pub struct ByteReader<'a, T> {
     data: &'a [u8],
