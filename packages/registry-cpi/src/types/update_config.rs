@@ -14,6 +14,9 @@ use {
     r#macro_account::AccountMetas,
 };
 
+// TODO: fix warning: unused imports: `bool_as_bytes`, `pubkey_as_bytes`, `state::discriminator as DISCRIMINATOR`, and `u64_as_bytes`
+// related to macro usage
+
 #[repr(C)]
 #[derive(AccountTryFrom, AccountMetas)]
 pub struct Accounts<'a> {
