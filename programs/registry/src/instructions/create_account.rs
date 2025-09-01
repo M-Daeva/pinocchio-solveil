@@ -5,7 +5,7 @@ use {
             SystemProgram,
         },
         helpers::{create_account_with_signer, get_and_check_pda, get_clock_time},
-        types::AccountData,
+        types::{AccountData, ZeroCopyDeserialize},
     },
     pinocchio::{account_info::AccountInfo, seeds, ProgramResult},
     registry_cpi::{
@@ -16,7 +16,8 @@ use {
 };
 
 pub fn create_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult {
-    let InstructionData { max_data_size } = InstructionData::try_from(instruction_data)?;
+    let InstructionData { max_data_size } =
+        InstructionData::deserialize_from(instruction_data, 0)?.0;
 
     let Accounts {
         system_program,

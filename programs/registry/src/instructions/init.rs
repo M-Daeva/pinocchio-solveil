@@ -6,7 +6,7 @@ use {
         },
         error::AuthError,
         helpers::{get_and_check_pda, get_clock_time},
-        types::AccountData,
+        types::{AccountData, ZeroCopyDeserialize},
     },
     pinocchio::{account_info::AccountInfo, seeds, ProgramResult},
     registry_cpi::{
@@ -30,7 +30,7 @@ pub fn init(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult 
         account_registration_fee,
         account_data_size_range,
         ..
-    } = InstructionData::try_from(instruction_data)?;
+    } = InstructionData::deserialize_from(instruction_data, 0)?.0;
 
     let Accounts {
         system_program,

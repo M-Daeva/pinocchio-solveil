@@ -1,8 +1,12 @@
 use {
     crate::state::discriminator as DISCRIMINATOR,
-    base::{converters::ByteReader, types::Result},
+    base::{
+        converters::{ByteReader, ByteWriter},
+        types::{Result, ZeroCopyDeserialize, ZeroCopySerialize},
+    },
     macro_try_from::AccountTryFrom,
-    pinocchio::{account_info::AccountInfo, program_error::ProgramError},
+    macro_zc_serde::{ZCDeserialize, ZCSerialize},
+    pinocchio::{account_info::AccountInfo, program_error::ProgramError, ProgramResult},
     r#macro_account::AccountMetas,
 };
 
@@ -29,21 +33,21 @@ pub struct Accounts<'a> {
 }
 
 #[repr(C)]
-#[derive(Default)]
+#[derive(Default, ZCSerialize, ZCDeserialize)]
 pub struct InstructionData {
     pub max_data_size: u32,
 }
 
-impl TryFrom<&[u8]> for InstructionData {
-    type Error = ProgramError;
+// impl TryFrom<&[u8]> for InstructionData {
+//     type Error = ProgramError;
 
-    fn try_from(data: &[u8]) -> Result<Self> {
-        ByteReader::new::<Self>(data, 0)
-            .read_u32(|x| &mut x.max_data_size)?
-            .complete()
-            .map(|(x, _)| x)
-    }
-}
+//     fn try_from(data: &[u8]) -> Result<Self> {
+//         ByteReader::new::<Self>(data, 0)
+//             .read_u32(|x| &mut x.max_data_size)?
+//             .complete()
+//             .map(|(x, _)| x)
+//     }
+// }
 
 /// for tests
 #[cfg(feature = "dev")]

@@ -1,8 +1,14 @@
 use {
     crate::state::discriminator as DISCRIMINATOR,
-    base::{converters::ByteReader, types::Result},
+    base::{
+        converters::{ByteReader, ByteWriter},
+        types::{Result, ZeroCopyDeserialize, ZeroCopySerialize},
+    },
     macro_try_from::AccountTryFrom,
-    pinocchio::{account_info::AccountInfo, program_error::ProgramError, pubkey::Pubkey},
+    macro_zc_serde::{ZCDeserialize, ZCSerialize},
+    pinocchio::{
+        account_info::AccountInfo, program_error::ProgramError, pubkey::Pubkey, ProgramResult,
+    },
     r#macro_account::AccountMetas,
 };
 
@@ -33,21 +39,21 @@ pub struct Accounts<'a> {
 }
 
 #[repr(C)]
-#[derive(Default)]
+#[derive(Default, ZCSerialize, ZCDeserialize)]
 pub struct InstructionData {
     pub user: Pubkey,
 }
 
-impl TryFrom<&[u8]> for InstructionData {
-    type Error = ProgramError;
+// impl TryFrom<&[u8]> for InstructionData {
+//     type Error = ProgramError;
 
-    fn try_from(data: &[u8]) -> Result<Self> {
-        ByteReader::new::<Self>(data, 0)
-            .read_pubkey(|x| &mut x.user)?
-            .complete()
-            .map(|(x, _)| x)
-    }
-}
+//     fn try_from(data: &[u8]) -> Result<Self> {
+//         ByteReader::new::<Self>(data, 0)
+//             .read_pubkey(|x| &mut x.user)?
+//             .complete()
+//             .map(|(x, _)| x)
+//     }
+// }
 
 // TODO: split to apply ZCSerialize
 /// for tests

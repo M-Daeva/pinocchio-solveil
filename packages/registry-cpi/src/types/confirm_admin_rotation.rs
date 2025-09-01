@@ -1,22 +1,26 @@
 use {
     crate::state::discriminator as DISCRIMINATOR,
-    base::{converters::ByteReader, types::Result},
-    pinocchio::program_error::ProgramError,
+    base::{
+        converters::{ByteReader, ByteWriter},
+        types::{Result, ZeroCopyDeserialize, ZeroCopySerialize},
+    },
+    macro_zc_serde::{ZCDeserialize, ZCSerialize},
+    pinocchio::ProgramResult,
 };
 
 pub use crate::types::update_config::Accounts;
 
 #[repr(C)]
-#[derive(Default)]
+#[derive(Default, ZCSerialize, ZCDeserialize)]
 pub struct InstructionData {}
 
-impl TryFrom<&[u8]> for InstructionData {
-    type Error = ProgramError;
+// impl TryFrom<&[u8]> for InstructionData {
+//     type Error = ProgramError;
 
-    fn try_from(data: &[u8]) -> Result<Self> {
-        ByteReader::new::<Self>(data, 0).complete().map(|(x, _)| x)
-    }
-}
+//     fn try_from(data: &[u8]) -> Result<Self> {
+//         ByteReader::new::<Self>(data, 0).complete().map(|(x, _)| x)
+//     }
+// }
 
 /// for tests
 #[cfg(feature = "dev")]

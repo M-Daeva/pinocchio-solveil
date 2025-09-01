@@ -104,14 +104,39 @@ fn generate_option_write_call(
                 "Pubkey" => {
                     quote! { .write_option(&self.#field_name, |v| v.as_ref())? }
                 }
-                "u8" | "u16" | "u32" | "u64" | "u128" => {
-                    quote! { .write_option(&self.#field_name, |v| &v.to_le_bytes())? }
-                }
-                "bool" => {
-                    quote! { .write_option(&self.#field_name, |v| &[if *v { 1u8 } else { 0u8 }])? }
-                }
                 "String" => {
                     quote! { .write_option(&self.#field_name, |v| v.as_bytes())? }
+                }
+                // For primitive types, use a different approach that avoids temporary references
+                "u8" => {
+                    quote! {
+                        .write_option_primitive(&self.#field_name, |writer, v| writer.write_u8(*v))?
+                    }
+                }
+                "u16" => {
+                    quote! {
+                        .write_option_primitive(&self.#field_name, |writer, v| writer.write_u16(*v))?
+                    }
+                }
+                "u32" => {
+                    quote! {
+                        .write_option_primitive(&self.#field_name, |writer, v| writer.write_u32(*v))?
+                    }
+                }
+                "u64" => {
+                    quote! {
+                        .write_option_primitive(&self.#field_name, |writer, v| writer.write_u64(*v))?
+                    }
+                }
+                "u128" => {
+                    quote! {
+                        .write_option_primitive(&self.#field_name, |writer, v| writer.write_u128(*v))?
+                    }
+                }
+                "bool" => {
+                    quote! {
+                        .write_option_primitive(&self.#field_name, |writer, v| writer.write_bool(*v))?
+                    }
                 }
                 _ => {
                     // For custom types that implement ZeroCopySerialize + ZeroCopyDeserialize

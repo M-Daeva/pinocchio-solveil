@@ -1,8 +1,12 @@
 use {
     crate::state::discriminator as DISCRIMINATOR,
-    base::{converters::ByteReader, types::Result},
+    base::{
+        converters::{ByteReader, ByteWriter},
+        types::{Result, ZeroCopyDeserialize, ZeroCopySerialize},
+    },
     macro_try_from::AccountTryFrom,
-    pinocchio::{account_info::AccountInfo, program_error::ProgramError},
+    macro_zc_serde::{ZCDeserialize, ZCSerialize},
+    pinocchio::{account_info::AccountInfo, program_error::ProgramError, ProgramResult},
     r#macro_account::AccountMetas,
 };
 
@@ -19,23 +23,23 @@ pub struct Accounts<'a> {
 }
 
 #[repr(C)]
-#[derive(Default)]
+#[derive(Default, ZCSerialize, ZCDeserialize)]
 pub struct InstructionData {
     pub data: String,
     pub nonce: u64,
 }
 
-impl TryFrom<&[u8]> for InstructionData {
-    type Error = ProgramError;
+// impl TryFrom<&[u8]> for InstructionData {
+//     type Error = ProgramError;
 
-    fn try_from(data: &[u8]) -> Result<Self> {
-        ByteReader::new::<Self>(data, 0)
-            .read_string(|x| &mut x.data)?
-            .read_u64(|x| &mut x.nonce)?
-            .complete()
-            .map(|(x, _)| x)
-    }
-}
+//     fn try_from(data: &[u8]) -> Result<Self> {
+//         ByteReader::new::<Self>(data, 0)
+//             .read_string(|x| &mut x.data)?
+//             .read_u64(|x| &mut x.nonce)?
+//             .complete()
+//             .map(|(x, _)| x)
+//     }
+// }
 
 /// for tests
 #[cfg(feature = "dev")]

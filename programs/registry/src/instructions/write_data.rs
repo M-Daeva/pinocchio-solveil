@@ -1,7 +1,7 @@
 use {
     base::{
         accounts::{AccountCheck, ProgramAccount, ProgramAccountCheck, SignerAccount},
-        types::AccountData,
+        types::{AccountData, ZeroCopyDeserialize},
     },
     pinocchio::{account_info::AccountInfo, ProgramResult},
     registry_cpi::{
@@ -12,7 +12,7 @@ use {
 };
 
 pub fn write_data(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult {
-    let InstructionData { data, nonce } = InstructionData::try_from(instruction_data)?;
+    let InstructionData { data, nonce } = InstructionData::deserialize_from(instruction_data, 0)?.0;
 
     let Accounts {
         sender,

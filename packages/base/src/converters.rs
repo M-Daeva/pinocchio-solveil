@@ -420,6 +420,22 @@ impl<'a> ByteWriter<'a> {
     }
 
     #[inline]
+    pub fn write_option_primitive<T, F>(mut self, value: &Option<T>, writer_fn: F) -> Result<Self>
+    where
+        F: FnOnce(Self, &T) -> Result<Self>,
+    {
+        match value {
+            Some(inner_value) => {
+                self = self.write_u8(1)?; // is_some = true
+                writer_fn(self, inner_value)
+            }
+            None => {
+                self.write_u8(0) // is_some = false
+            }
+        }
+    }
+
+    #[inline]
     pub fn write_option<T, F>(mut self, value: &Option<T>, converter: F) -> Result<Self>
     where
         F: FnOnce(&T) -> &[u8],

@@ -5,7 +5,7 @@ use {
             ProgramAccount, ProgramAccountCheck, SignerAccount, SystemProgram,
         },
         helpers::{get_token_decimals, transfer_token_from_user},
-        types::AccountData,
+        types::{AccountData, ZeroCopyDeserialize},
     },
     pinocchio::{account_info::AccountInfo, ProgramResult},
     registry_cpi::{
@@ -16,7 +16,7 @@ use {
 };
 
 pub fn activate_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult {
-    let InstructionData { .. } = InstructionData::try_from(instruction_data)?;
+    let InstructionData { .. } = InstructionData::deserialize_from(instruction_data, 0)?.0;
 
     let Accounts {
         system_program,

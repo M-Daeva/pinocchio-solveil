@@ -4,11 +4,12 @@ use {
         types::common::{AssetItem, Range},
     },
     base::{
-        converters::{to_u32, ByteReader},
-        types::{Result, ZeroCopyDeserialize},
+        converters::{to_u32, ByteReader, ByteWriter},
+        types::{Result, ZeroCopyDeserialize, ZeroCopySerialize},
     },
     macro_try_from::AccountTryFrom,
-    pinocchio::{account_info::AccountInfo, program_error::ProgramError},
+    macro_zc_serde::{ZCDeserialize, ZCSerialize},
+    pinocchio::{account_info::AccountInfo, program_error::ProgramError, ProgramResult},
     r#macro_account::AccountMetas,
 };
 
@@ -41,29 +42,24 @@ pub struct Accounts<'a> {
     pub revenue_app_ata: &'a AccountInfo,
 }
 
+// ZCSerialize,
 #[repr(C)]
-#[derive(Default)]
+#[derive(Default, ZCSerialize, ZCDeserialize)]
 pub struct InstructionData {
     pub rotation_timeout: Option<u32>,
     pub account_registration_fee: Option<AssetItem>,
     pub account_data_size_range: Option<Range>,
 }
 
-impl TryFrom<&[u8]> for InstructionData {
-    type Error = ProgramError;
-
-    fn try_from(data: &[u8]) -> Result<Self> {
-        ByteReader::new::<Self>(data, 0)
-            .read_option(|x| &mut x.rotation_timeout, to_u32)?
-            .read_option(
-                |x| &mut x.account_registration_fee,
-                AssetItem::deserialize_from,
-            )?
-            .read_option(|x| &mut x.account_data_size_range, Range::deserialize_from)?
-            .complete()
-            .map(|(x, _)| x)
-    }
-}
+// impl ZeroCopySerialize for InstructionData {
+//     fn serialize_into(&self, data: &mut [u8]) -> ProgramResult {
+//         ByteWriter::new(data)
+//             .write_option(&self.rotation_timeout, u32_as_bytes)?
+//             .write_option_custom(&self.account_registration_fee)?
+//             .write_option_custom(&self.account_data_size_range)?
+//             .complete()
+//     }
+// }
 
 /// for tests
 #[cfg(feature = "dev")]
