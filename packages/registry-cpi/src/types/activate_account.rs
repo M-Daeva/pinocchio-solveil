@@ -49,6 +49,7 @@ impl TryFrom<&[u8]> for InstructionData {
     }
 }
 
+// TODO: split to apply ZCSerialize
 /// for tests
 #[cfg(feature = "dev")]
 impl base::types::InstructionSerialize for InstructionData {
