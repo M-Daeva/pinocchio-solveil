@@ -26,6 +26,8 @@ use {
     strum::IntoEnumIterator,
 };
 
+pub const PROGRAM_NAME_REGISTRY: &str = "registry";
+
 pub mod sol_kite {
     use {
         litesvm::LiteSVM, solana_keypair::Keypair, solana_kite::SolanaKiteError,
@@ -229,7 +231,7 @@ impl App {
         };
 
         // upload custom programs
-        upload_program(&mut litesvm, "registry", &program_id.registry);
+        upload_program(&mut litesvm, PROGRAM_NAME_REGISTRY, &program_id.registry);
 
         Self {
             litesvm,
@@ -476,16 +478,31 @@ pub fn get_test_error_from_logs(logs: &[String]) -> TestError {
     }
 }
 
-fn upload_program(litesvm: &mut LiteSVM, program_name: &str, program_id: &Pubkey) {
+pub fn get_program_size(program_name: &str) -> TestResult<u64> {
+    let program_path = &get_program_path(program_name);
+
+    std::fs::metadata(program_path)
+        .map(|x| x.len())
+        .map_err(|_| TestError {
+            info: format!("{} program isn't found!", program_path),
+            index: None,
+        })
+}
+
+fn get_program_path(program_name: &str) -> String {
     const PROGRAM_PATH: &str = "../target/deploy/";
+    format!("{}{}.so", PROGRAM_PATH, program_name)
+}
+
+fn get_dumps_path(program_name: &str) -> String {
     const DUMPS_PATH: &str = "./src/helpers/dumps/";
+    format!("{}{}.so", DUMPS_PATH, program_name)
+}
 
-    let path_a = &format!("{}{}.so", PROGRAM_PATH, program_name);
-    let path_b = &format!("{}{}.so", DUMPS_PATH, program_name);
-
+fn upload_program(litesvm: &mut LiteSVM, program_name: &str, program_id: &Pubkey) {
     // try to deploy custom programs first, if it doesn't work then deploy dumps
-    if deploy_program(litesvm, program_id, path_a).is_err() {
-        deploy_program(litesvm, program_id, path_b).unwrap()
+    if deploy_program(litesvm, program_id, &get_program_path(program_name)).is_err() {
+        deploy_program(litesvm, program_id, &get_dumps_path(program_name)).unwrap()
     }
 }
 
