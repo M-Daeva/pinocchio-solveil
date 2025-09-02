@@ -1,4 +1,6 @@
 #[cfg(test)]
+pub mod profiler;
+#[cfg(test)]
 pub mod registry;
 
 pub mod helpers {
