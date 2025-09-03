@@ -1,4 +1,6 @@
 use {
+    crate::converters::{deserialize, deserialize_mut},
+    bytemuck::{Pod, Zeroable},
     pinocchio::{
         account_info::{AccountInfo, RefMut},
         program_error::ProgramError,
@@ -24,26 +26,15 @@ pub trait Space {
     fn get_space() -> usize;
 }
 
-// Zero-copy serialization trait
-pub trait ZeroCopySerialize {
-    fn serialize_into(&self, data: &mut [u8]) -> ProgramResult;
-}
-
-pub trait ZeroCopyDeserialize: Sized {
-    /// returns end_index
-    fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)>;
-}
-
 // Account data wrapper for typed access
-#[repr(C)]
-pub struct AccountData<'a, T> {
+pub struct Storage<'a, T> {
     data: RefMut<'a, [u8]>,
     _phantom: PhantomData<T>,
 }
 
-impl<'a, T> AccountData<'a, T>
+impl<'a, T> Storage<'a, T>
 where
-    T: ZeroCopySerialize + ZeroCopyDeserialize,
+    T: Pod + Zeroable,
 {
     #[inline]
     pub fn init(account: &'a AccountInfo) -> Result<Self> {
@@ -54,23 +45,23 @@ where
     }
 
     #[inline]
-    pub fn load(&self) -> Result<T> {
-        T::deserialize_from(&self.data, 0).map(|(x, _)| x)
+    pub fn load(&self) -> Result<&T> {
+        deserialize(&self.data)
     }
 
     #[inline]
-    pub fn save(&mut self, value: T) -> ProgramResult {
-        value.serialize_into(&mut self.data)
+    pub fn load_mut(&mut self) -> Result<&mut T> {
+        deserialize_mut(&mut self.data)
     }
 
-    #[inline]
     pub fn update<F>(&mut self, f: F) -> ProgramResult
     where
-        F: FnOnce(T) -> Result<T>,
+        F: FnOnce(&mut T),
+        T: Pod + Zeroable,
     {
-        let data = self.load()?;
-        let updated_data = f(data)?;
-        self.save(updated_data)
+        let data = self.load_mut()?;
+        f(data);
+        Ok(())
     }
 }
 

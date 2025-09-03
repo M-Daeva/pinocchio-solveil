@@ -4,8 +4,9 @@ use {
             AccountCheck, ProgramAccount, ProgramAccountCheck, ProgramAccountInit, SignerAccount,
             SystemProgram,
         },
+        converters::deserialize,
         helpers::{create_account_with_signer, get_clock_time},
-        types::{AccountData, ZeroCopyDeserialize},
+        types::Storage,
     },
     pinocchio::{account_info::AccountInfo, seeds, ProgramResult},
     registry_cpi::{
@@ -16,9 +17,7 @@ use {
 };
 
 pub fn reopen_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult {
-    let InstructionData { max_data_size } =
-        InstructionData::deserialize_from(instruction_data, 0)?.0;
-
+    let ix: &InstructionData = deserialize(instruction_data)?;
     let Accounts {
         system_program,
         sender,
@@ -39,9 +38,9 @@ pub fn reopen_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Prog
 
     // === load storages ===
 
-    let config = AccountData::<Config>::init(config)?.load()?;
+    let config = Storage::<Config>::init(config)?.load()?;
 
-    let mut user_id_storage = AccountData::<UserId>::init(user_id)?;
+    let mut user_id_storage = Storage::<UserId>::init(user_id)?;
     let mut user_id = user_id_storage.load()?;
 
     // === use guards ===
@@ -68,11 +67,10 @@ pub fn reopen_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Prog
         &seeds!(SEED::USER_ACCOUNT, user_seed_id, &[user_id.account_bump]),
         &crate::ID,
     )?;
-    AccountData::init(user_account)?.save(UserAccount {
-        data: String::default(),
-        nonce: 0,
-        max_size: max_data_size,
-    })?;
+    let mut user_account_storage = Storage::init(user_account)?;
+    let mut user_account = UserAccount::default();
+    user_account.set_max_size(max_data_size);
+    user_account_storage.save(&mut user_account)?;
 
     // user_rotation_state
     ProgramAccount::init::<RotationState>(
@@ -85,7 +83,7 @@ pub fn reopen_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Prog
         ),
         &crate::ID,
     )?;
-    AccountData::init(user_rotation_state)?.save(RotationState {
+    Storage::init(user_rotation_state)?.save(RotationState {
         owner: *sender.key(),
         new_owner: None,
         expiration_date: get_clock_time()?,

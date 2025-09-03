@@ -4,9 +4,10 @@ use {
             AccountCheck, AssociatedTokenAccount, AssociatedTokenAccountCheck, MintAccount,
             ProgramAccount, ProgramAccountCheck, SignerAccount, SystemProgram,
         },
+        converters::deserialize,
         error::AuthError,
         helpers::{get_ata_balance, get_token_decimals, transfer_token_from_program},
-        types::{AccountData, ZeroCopyDeserialize},
+        types::Storage,
     },
     pinocchio::{account_info::AccountInfo, seeds, ProgramResult},
     registry_cpi::{
@@ -17,8 +18,7 @@ use {
 };
 
 pub fn withdraw_revenue(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult {
-    let InstructionData { amount } = InstructionData::deserialize_from(instruction_data, 0)?.0;
-
+    let ix: &InstructionData = deserialize(instruction_data)?;
     let Accounts {
         system_program,
         token_program,
@@ -54,8 +54,8 @@ pub fn withdraw_revenue(accounts: &[AccountInfo], instruction_data: &[u8]) -> Pr
 
     // === load storages ===
 
-    let bump = AccountData::<Bump>::init(bump)?.load()?;
-    let config = AccountData::<Config>::init(config_acc)?.load()?;
+    let bump = Storage::<Bump>::init(bump)?.load()?;
+    let config = Storage::<Config>::init(config_acc)?.load()?;
 
     // === use guards ===
 

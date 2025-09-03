@@ -4,9 +4,10 @@ use {
             AccountCheck, AssociatedTokenAccount, AssociatedTokenAccountInit, MintAccount,
             ProgramAccount, ProgramAccountInit, SignerAccount, SystemProgram,
         },
+        converters::deserialize,
         error::AuthError,
         helpers::{get_and_check_pda, get_clock_time},
-        types::{AccountData, ZeroCopyDeserialize},
+        types::Storage,
     },
     pinocchio::{account_info::AccountInfo, seeds, ProgramResult},
     registry_cpi::{
@@ -24,14 +25,7 @@ use {
 };
 
 pub fn init(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult {
-    let InstructionData {
-        // bumps, // TODO: do we need it?
-        rotation_timeout,
-        account_registration_fee,
-        account_data_size_range,
-        ..
-    } = InstructionData::deserialize_from(instruction_data, 0)?.0;
-
+    let ix: &InstructionData = deserialize(instruction_data)?;
     let Accounts {
         system_program,
         token_program,
@@ -75,18 +69,30 @@ pub fn init(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult 
         &seeds!(SEED::CONFIG, &[config_bump]),
         &crate::ID,
     )?;
-    AccountData::init(config)?.save(Config {
-        admin: *sender.key(),
-        is_paused: false,
-        rotation_timeout: rotation_timeout.unwrap_or(ROTATION_TIMEOUT),
-        registration_fee: account_registration_fee.unwrap_or(AssetItem {
-            amount: ACCOUNT_REGISTRATION_FEE_AMOUNT,
-            asset: ACCOUNT_REGISTRATION_FEE_ASSET,
-        }),
-        data_size_range: account_data_size_range.unwrap_or(Range {
-            min: ACCOUNT_DATA_SIZE_MIN,
-            max: ACCOUNT_DATA_SIZE_MAX,
-        }),
+    Storage::init(config)?.update(|x| {
+        let registration_fee = if ix.is_account_registration_fee() {
+            ix.account_registration_fee
+        } else {
+            let mut x = AssetItem::default();
+            x.set_amount(ACCOUNT_REGISTRATION_FEE_AMOUNT);
+            x.asset = ACCOUNT_REGISTRATION_FEE_ASSET;
+            x
+        };
+
+        let data_size_range = if ix.is_account_data_size_range() {
+            ix.account_data_size_range
+        } else {
+            let mut x = Range::default();
+            x.set_min(ACCOUNT_DATA_SIZE_MIN);
+            x.set_max(ACCOUNT_DATA_SIZE_MAX);
+            x
+        };
+
+        *x = Config::default();
+        x.admin = *sender.key();
+        x.set_rotation_timeout(ROTATION_TIMEOUT);
+        x.registration_fee = registration_fee;
+        x.data_size_range = data_size_range;
     })?;
 
     // user_counter
@@ -98,7 +104,9 @@ pub fn init(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult 
         &seeds!(SEED::USER_COUNTER, &[user_counter_bump]),
         &crate::ID,
     )?;
-    AccountData::init(user_counter)?.save(UserCounter::default())?;
+    Storage::init(user_counter)?.update(|x| {
+        *x = UserCounter::default();
+    })?;
 
     // admin_rotation_state
     let (_, admin_rotation_state_bump) = get_and_check_pda(
@@ -112,19 +120,19 @@ pub fn init(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult 
         &seeds!(SEED::ADMIN_ROTATION_STATE, &[admin_rotation_state_bump]),
         &crate::ID,
     )?;
-    AccountData::init(admin_rotation_state)?.save(RotationState {
-        owner: *sender.key(),
-        new_owner: None,
-        expiration_date: clock_time,
+    Storage::<RotationState>::init(admin_rotation_state)?.update(|x| {
+        x.owner = *sender.key();
+        x.new_owner = *sender.key();
+        x.set_expiration_date(clock_time);
     })?;
 
     // bump
     let (_, bump_bump) = get_and_check_pda(&[SEED::BUMP], &crate::ID, Some(bump))?;
     ProgramAccount::init::<Bump>(sender, bump, &seeds!(SEED::BUMP, &[bump_bump]), &crate::ID)?;
-    AccountData::init(bump)?.save(Bump {
-        config: config_bump,
-        user_counter: user_counter_bump,
-        rotation_state: admin_rotation_state_bump,
+    Storage::<Bump>::init(bump)?.update(|x| {
+        x.config = config_bump;
+        x.user_counter = user_counter_bump;
+        x.rotation_state = admin_rotation_state_bump;
     })?;
 
     // === init ata ===

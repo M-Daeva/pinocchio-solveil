@@ -4,8 +4,9 @@ use {
             AccountCheck, ProgramAccount, ProgramAccountCheck, ProgramAccountInit, SignerAccount,
             SystemProgram,
         },
+        converters::deserialize,
         helpers::{create_account_with_signer, get_and_check_pda, get_clock_time},
-        types::{AccountData, ZeroCopyDeserialize},
+        types::Storage,
     },
     pinocchio::{account_info::AccountInfo, seeds, ProgramResult},
     registry_cpi::{
@@ -16,9 +17,7 @@ use {
 };
 
 pub fn create_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult {
-    let InstructionData { max_data_size } =
-        InstructionData::deserialize_from(instruction_data, 0)?.0;
-
+    let ix: &InstructionData = deserialize(instruction_data)?;
     let Accounts {
         system_program,
         sender,
@@ -41,10 +40,17 @@ pub fn create_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Prog
 
     // === load storages ===
 
-    let config = AccountData::<Config>::init(config)?.load()?;
+    let config = Storage::<Config>::init(config)?.load()?;
 
-    let mut user_counter_storage = AccountData::<UserCounter>::init(user_counter)?;
-    let mut user_counter = user_counter_storage.load()?;
+    // let mut user_counter_storage = Storage::<UserCounter>::init(user_counter)?;
+    // let mut user_counter = user_counter_storage.load()?;
+
+    // let mut data = user_counter.try_borrow_mut_data()?;
+    // let mut counter = try_from_bytes_mut::<UserCounter>(&mut data)
+    //     .map_err(|_| ProgramError::InvalidStorage)?;
+
+    let mut user_counter_storage = Storage::<UserCounter>::init(user_counter)?;
+    let user_counter = user_counter_storage.load()?;
 
     // === use guards ===
 
@@ -78,11 +84,10 @@ pub fn create_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Prog
         &seeds!(SEED::USER_ACCOUNT, user_seed_id, &[user_account_bump]),
         &crate::ID,
     )?;
-    AccountData::init(user_account)?.save(UserAccount {
-        data: String::default(),
-        nonce: 0,
-        max_size: max_data_size,
-    })?;
+    let mut user_account_storage = Storage::init(user_account)?;
+    let mut user_account = UserAccount::default();
+    user_account.set_max_size(max_data_size);
+    user_account_storage.save(&mut user_account)?;
 
     // user_rotation_state
     let (_, user_rotation_state_bump) = get_and_check_pda(
@@ -100,7 +105,7 @@ pub fn create_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Prog
         ),
         &crate::ID,
     )?;
-    AccountData::init(user_rotation_state)?.save(RotationState {
+    Storage::init(user_rotation_state)?.save(RotationState {
         owner: *sender.key(),
         new_owner: None,
         expiration_date: get_clock_time()?,
@@ -115,7 +120,7 @@ pub fn create_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Prog
         &seeds!(SEED::USER_ID, sender.key(), &[user_id_bump]),
         &crate::ID,
     )?;
-    AccountData::init(user_id)?.save(UserId {
+    Storage::init(user_id)?.save(UserId {
         id: current_user_id,
         is_open: true,
         is_activated: false,
@@ -125,8 +130,12 @@ pub fn create_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Prog
 
     // === save storages ===
 
-    user_counter.last_user_id = current_user_id;
-    user_counter_storage.save(user_counter)?;
+    // user_counter.last_user_id = current_user_id;
+    // user_counter_storage.save(user_counter)?;
+
+    user_counter_storage.save(&mut UserCounter {
+        last_user_id: current_user_id,
+    })?;
 
     Ok(())
 }

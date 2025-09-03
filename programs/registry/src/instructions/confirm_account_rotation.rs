@@ -4,9 +4,10 @@ use {
             AccountCheck, AccountClose, ProgramAccount, ProgramAccountInit, SignerAccount,
             SystemProgram,
         },
+        converters::deserialize,
         error::AuthError,
         helpers::{get_and_check_pda, get_clock_time},
-        types::{AccountData, ZeroCopyDeserialize},
+        types::Storage,
     },
     pinocchio::{account_info::AccountInfo, seeds, ProgramResult},
     registry_cpi::{
@@ -20,8 +21,7 @@ pub fn confirm_account_rotation(
     accounts: &[AccountInfo],
     instruction_data: &[u8],
 ) -> ProgramResult {
-    let InstructionData {} = InstructionData::deserialize_from(instruction_data, 0)?.0;
-
+    let ix: &InstructionData = deserialize(instruction_data)?;
     let Accounts {
         system_program,
         sender,
@@ -45,9 +45,9 @@ pub fn confirm_account_rotation(
 
     // === load storages ===
 
-    let user_id_pre = AccountData::<UserId>::init(user_id_pre_acc)?.load()?;
+    let user_id_pre = Storage::<UserId>::init(user_id_pre_acc)?.load()?;
 
-    let mut user_rotation_state_storage = AccountData::<RotationState>::init(user_rotation_state)?;
+    let mut user_rotation_state_storage = Storage::<RotationState>::init(user_rotation_state)?;
     let user_rotation_state = user_rotation_state_storage.load()?;
 
     // === init and write pda ===
@@ -61,7 +61,7 @@ pub fn confirm_account_rotation(
         &seeds!(SEED::USER_ID, sender.key(), &[user_id_bump]),
         &crate::ID,
     )?;
-    let mut user_id_storage = AccountData::<UserId>::init(user_id)?;
+    let mut user_id_storage = Storage::<UserId>::init(user_id)?;
 
     // === use guards ===
 

@@ -1,9 +1,10 @@
 use {
     base::{
         accounts::{AccountCheck, ProgramAccount, ProgramAccountCheck, SignerAccount},
+        converters::deserialize,
         error::AuthError,
         helpers::get_clock_time,
-        types::{AccountData, ZeroCopyDeserialize},
+        types::Storage,
     },
     pinocchio::{account_info::AccountInfo, ProgramResult},
     registry_cpi::{
@@ -17,8 +18,7 @@ pub fn request_account_rotation(
     accounts: &[AccountInfo],
     instruction_data: &[u8],
 ) -> ProgramResult {
-    let InstructionData { new_owner } = InstructionData::deserialize_from(instruction_data, 0)?.0;
-
+    let ix: &InstructionData = deserialize(instruction_data)?;
     let Accounts {
         sender,
         bump,
@@ -35,9 +35,9 @@ pub fn request_account_rotation(
 
     // === load storages ===
 
-    let config = AccountData::<Config>::init(config)?.load()?;
+    let config = Storage::<Config>::init(config)?.load()?;
 
-    let mut user_rotation_state_storage = AccountData::<RotationState>::init(user_rotation_state)?;
+    let mut user_rotation_state_storage = Storage::<RotationState>::init(user_rotation_state)?;
     let mut user_rotation_state = user_rotation_state_storage.load()?;
 
     // === use guards ===

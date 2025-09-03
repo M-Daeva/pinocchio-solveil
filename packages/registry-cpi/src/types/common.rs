@@ -1,58 +1,52 @@
 use {
-    base::{
-        converters::{ByteReader, ByteWriter},
-        types::{Result, ZeroCopyDeserialize, ZeroCopySerialize},
-    },
-    macro_zc_serde::{ZCDeserialize, ZCSerialize},
-    pinocchio::{pubkey::Pubkey, ProgramResult},
+    bytemuck::{Pod, Zeroable},
+    pinocchio::pubkey::Pubkey,
 };
 
+#[derive(Default, Debug, PartialEq, Pod, Zeroable, Clone, Copy)]
 #[repr(C)]
-#[derive(Default, Debug, PartialEq, ZCSerialize, ZCDeserialize)]
 pub struct AssetItem {
-    pub amount: u64,
+    amount: [u8; 8],
     pub asset: Pubkey,
 }
 
-// impl ZeroCopySerialize for AssetItem {
-//     fn serialize_into(&self, data: &mut [u8]) -> ProgramResult {
-//         ByteWriter::new(data)
-//             .write_u64(self.amount)?
-//             .write_pubkey(&self.asset)?
-//             .complete()
-//     }
-// }
+impl AssetItem {
+    #[inline]
+    pub fn amount(&self) -> u64 {
+        u64::from_le_bytes(self.amount)
+    }
 
-// impl ZeroCopyDeserialize for AssetItem {
-//     fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)> {
-//         ByteReader::new::<Self>(data, start_index)
-//             .read_u64(|x| &mut x.amount)?
-//             .read_pubkey(|x| &mut x.asset)?
-//             .complete()
-//     }
-// }
-
-#[repr(C)]
-#[derive(Default, Debug, PartialEq, ZCSerialize, ZCDeserialize)]
-pub struct Range {
-    pub min: u32,
-    pub max: u32,
+    #[inline]
+    pub fn set_amount(&mut self, amount: u64) {
+        self.amount = amount.to_le_bytes();
+    }
 }
 
-// impl ZeroCopySerialize for Range {
-//     fn serialize_into(&self, data: &mut [u8]) -> ProgramResult {
-//         ByteWriter::new(data)
-//             .write_u32(self.min)?
-//             .write_u32(self.max)?
-//             .complete()
-//     }
-// }
+#[derive(Default, Debug, PartialEq, Pod, Zeroable, Clone, Copy)]
+#[repr(C)]
+pub struct Range {
+    min: [u8; 4],
+    max: [u8; 4],
+}
 
-// impl ZeroCopyDeserialize for Range {
-//     fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)> {
-//         ByteReader::new::<Self>(data, start_index)
-//             .read_u32(|x| &mut x.min)?
-//             .read_u32(|x| &mut x.max)?
-//             .complete()
-//     }
-// }
+impl Range {
+    #[inline]
+    pub fn min(&self) -> u32 {
+        u32::from_le_bytes(self.min)
+    }
+
+    #[inline]
+    pub fn set_min(&mut self, min: u32) {
+        self.min = min.to_le_bytes();
+    }
+
+    #[inline]
+    pub fn max(&self) -> u32 {
+        u32::from_le_bytes(self.max)
+    }
+
+    #[inline]
+    pub fn set_max(&mut self, max: u32) {
+        self.max = max.to_le_bytes();
+    }
+}

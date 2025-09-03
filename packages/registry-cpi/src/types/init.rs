@@ -1,22 +1,22 @@
 use {
     crate::{
-        state::discriminator as DISCRIMINATOR,
+        state::Discriminator,
         types::common::{AssetItem, Range},
     },
     base::{
-        converters::{to_u32, ByteReader},
-        types::{Result, ZeroCopyDeserialize},
+        helpers::{get_flag, set_flag},
+        types::Result,
     },
+    bytemuck::{Pod, Zeroable},
     macro_test_ser::test_serialize,
     macro_try_from::AccountTryFrom,
-    macro_zc_serde::ZCDeserialize,
     pinocchio::{account_info::AccountInfo, program_error::ProgramError},
     r#macro_account::AccountMetas,
 };
 
 // TODO: implement rest accounts
-#[repr(C)]
 #[derive(AccountTryFrom, AccountMetas)]
+#[repr(C)]
 pub struct Accounts<'a> {
     pub system_program: &'a AccountInfo,
     pub token_program: &'a AccountInfo,
@@ -43,40 +43,48 @@ pub struct Accounts<'a> {
     pub revenue_app_ata: &'a AccountInfo,
 }
 
+#[test_serialize(Discriminator::Init)]
+#[derive(Default, Debug, PartialEq, Pod, Zeroable, Clone, Copy)]
 #[repr(C)]
-#[derive(Default, ZCDeserialize)]
-#[test_serialize(DISCRIMINATOR::INIT)]
 pub struct InstructionData {
-    pub rotation_timeout: Option<u32>,
-    pub account_registration_fee: Option<AssetItem>,
-    pub account_data_size_range: Option<Range>,
+    pub flags: u8,
+    pub rotation_timeout: [u8; 4],
+    pub account_registration_fee: AssetItem,
+    pub account_data_size_range: Range,
 }
 
-// impl ZeroCopySerialize for InstructionData {
-//     fn serialize_into(&self, data: &mut [u8]) -> ProgramResult {
-//         ByteWriter::new(data)
-//             .write_option(&self.rotation_timeout, u32_as_bytes)?
-//             .write_option_custom(&self.account_registration_fee)?
-//             .write_option_custom(&self.account_data_size_range)?
-//             .complete()
-//     }
-// }
+impl InstructionData {
+    const ROTATION_TIMEOUT: u8 = 0;
+    const ACCOUNT_REGISTRATION_FEE: u8 = 1;
+    const ACCOUNT_DATA_SIZE_RANGE: u8 = 2;
 
-// /// for tests
-// #[cfg(feature = "dev")]
-// impl base::types::InstructionSerialize for InstructionData {
-//     fn serialize(&self) -> Result<Vec<u8>> {
-//         use base::converters::{u32_as_bytes, ByteWriter, ByteWriterVecExt};
+    #[inline]
+    pub fn is_rotation_timeout(&self) -> bool {
+        get_flag(self.flags, Self::ROTATION_TIMEOUT)
+    }
 
-//         let mut buffer = vec![];
-//         let position = ByteWriter::from_vec(&mut buffer)
-//             .write_u8(DISCRIMINATOR::INIT)?
-//             .write_option(&self.rotation_timeout, u32_as_bytes)?
-//             .write_option_custom(&self.account_registration_fee)?
-//             .write_option_custom(&self.account_data_size_range)?
-//             .position();
-//         buffer.truncate(position);
+    #[inline]
+    pub fn set_is_rotation_timeout(&mut self, flag: bool) {
+        self.flags = set_flag(self.flags, Self::ROTATION_TIMEOUT, flag);
+    }
 
-//         Ok(buffer)
-//     }
-// }
+    #[inline]
+    pub fn is_account_registration_fee(&self) -> bool {
+        get_flag(self.flags, Self::ACCOUNT_REGISTRATION_FEE)
+    }
+
+    #[inline]
+    pub fn set_is_account_registration_fee(&mut self, flag: bool) {
+        self.flags = set_flag(self.flags, Self::ACCOUNT_REGISTRATION_FEE, flag);
+    }
+
+    #[inline]
+    pub fn is_account_data_size_range(&self) -> bool {
+        get_flag(self.flags, Self::ACCOUNT_DATA_SIZE_RANGE)
+    }
+
+    #[inline]
+    pub fn set_is_account_data_size_range(&mut self, flag: bool) {
+        self.flags = set_flag(self.flags, Self::ACCOUNT_DATA_SIZE_RANGE, flag);
+    }
+}

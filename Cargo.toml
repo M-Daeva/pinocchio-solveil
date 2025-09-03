@@ -50,6 +50,7 @@ solana-compute-budget = "2.2.1"
 spl-associated-token-account = "7.0.0"
 spl-token = "8.0.0"
 solana-kite = "0.1.4"
+bytemuck = { version = "1.23.2", features = ["derive"] }
 
 macro-account = { path = "./packages/macro-account" }
 macro-zc-serde = { path = "./packages/macro-zc-serde" }

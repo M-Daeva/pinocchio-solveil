@@ -1,11 +1,12 @@
 #![allow(unexpected_cfgs)]
 
 use {
+    core::mem::transmute,
     pinocchio::{
         account_info::AccountInfo, entrypoint, program_error::ProgramError, pubkey::Pubkey,
         ProgramResult,
     },
-    registry_cpi::{state::discriminator as DISCRIMINATOR, ID},
+    registry_cpi::{state::Discriminator, ID},
 };
 
 mod instructions;
@@ -20,24 +21,23 @@ pub fn process_instruction(
     match instruction_data.split_first() {
         None => Err(ProgramError::InvalidInstructionData),
         Some((discriminator, data)) => {
-            let instruction = match *discriminator {
-                DISCRIMINATOR::INIT => instructions::init,
-                DISCRIMINATOR::UPDATE_CONFIG => instructions::update_config,
-                DISCRIMINATOR::CONFIRM_ADMIN_ROTATION => instructions::confirm_admin_rotation,
-                DISCRIMINATOR::WITHDRAW_REVENUE => instructions::withdraw_revenue,
+            let instruction = match unsafe { transmute(*discriminator) } {
+                Discriminator::Init => instructions::init,
+                Discriminator::UpdateConfig => instructions::update_config,
+                Discriminator::ConfirmAdminRotation => instructions::confirm_admin_rotation,
+                Discriminator::WithdrawRevenue => instructions::withdraw_revenue,
                 // creates user PDA account taking rent exempt in SOL
-                DISCRIMINATOR::CREATE_ACCOUNT => instructions::create_account,
+                Discriminator::CreateAccount => instructions::create_account,
                 // 1st step to to change allocated data space or just to redeem rent
-                DISCRIMINATOR::CLOSE_ACCOUNT => instructions::close_account,
+                Discriminator::CloseAccount => instructions::close_account,
                 // 2nd step to to change allocated data space
-                DISCRIMINATOR::REOPEN_ACCOUNT => instructions::reopen_account,
+                Discriminator::ReopenAccount => instructions::reopen_account,
                 // activates account with fee asset payment
-                DISCRIMINATOR::ACTIVATE_ACCOUNT => instructions::activate_account,
-                DISCRIMINATOR::WRITE_DATA => instructions::write_data,
-                DISCRIMINATOR::REQUEST_ACCOUNT_ROTATION => instructions::request_account_rotation,
+                Discriminator::ActivateAccount => instructions::activate_account,
+                Discriminator::WriteData => instructions::write_data,
+                Discriminator::RequestAccountRotation => instructions::request_account_rotation,
                 // updates address - id pair
-                DISCRIMINATOR::CONFIRM_ACCOUNT_ROTATION => instructions::confirm_account_rotation,
-                _ => Err(ProgramError::InvalidInstructionData)?,
+                Discriminator::ConfirmAccountRotation => instructions::confirm_account_rotation,
             };
 
             instruction(accounts, data)

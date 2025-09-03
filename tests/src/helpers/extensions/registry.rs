@@ -13,7 +13,8 @@ use {
     litesvm::types::TransactionMetadata,
     registry_cpi::{
         state::{
-            Config, RotationState, UserAccount, UserCounter, UserId, ACCOUNT_REGISTRATION_FEE_ASSET,
+            Config, RotationState, UserAccount, UserCounter, UserId, ACCOUNT_DATA_SIZE_MAX,
+            ACCOUNT_REGISTRATION_FEE_ASSET,
         },
         types::{
             self,
@@ -537,11 +538,9 @@ impl CounterExtension for App {
         }
         .to_account_metas();
 
-        let instruction_data = &types::activate_account::InstructionData {
-            user: sol_to_pin_pubkey(&user),
-        }
-        .serialize()
-        .map_err(TestError::from_raw_error)?;
+        let instruction_data = &types::activate_account::InstructionData {}
+            .serialize()
+            .map_err(TestError::from_raw_error)?;
 
         send_tx_with_ix(
             self,
@@ -581,9 +580,15 @@ impl CounterExtension for App {
         }
         .to_account_metas();
 
+        let mut buffer: [u8; ACCOUNT_DATA_SIZE_MAX as usize] =
+            [0u8; ACCOUNT_DATA_SIZE_MAX as usize];
+        for (i, data_byte) in data.as_bytes().iter().enumerate() {
+            buffer[i] = *data_byte;
+        }
+
         let instruction_data = &types::write_data::InstructionData {
-            data: data.to_string(),
-            nonce,
+            data: buffer,
+            nonce: nonce.to_le_bytes(),
         }
         .serialize()
         .map_err(TestError::from_raw_error)?;

@@ -1,9 +1,10 @@
 use {
     base::{
         accounts::{AccountCheck, ProgramAccount, ProgramAccountCheck, SignerAccount},
+        converters::deserialize,
         error::AuthError,
         helpers::get_clock_time,
-        types::{AccountData, ZeroCopyDeserialize},
+        types::Storage,
     },
     pinocchio::{account_info::AccountInfo, ProgramResult},
     registry_cpi::{
@@ -14,14 +15,7 @@ use {
 };
 
 pub fn update_config(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult {
-    let InstructionData {
-        admin,
-        is_paused,
-        rotation_timeout,
-        registration_fee_amount,
-        data_size_range,
-    } = InstructionData::deserialize_from(instruction_data, 0)?.0;
-
+    let ix: &InstructionData = deserialize(instruction_data)?;
     let Accounts {
         sender,
         config,
@@ -41,11 +35,10 @@ pub fn update_config(accounts: &[AccountInfo], instruction_data: &[u8]) -> Progr
 
     // === load storages ===
 
-    let mut config_storage = AccountData::<Config>::init(config)?;
+    let mut config_storage = Storage::<Config>::init(config)?;
     let mut config = config_storage.load()?;
 
-    let mut admin_rotation_state_storage =
-        AccountData::<RotationState>::init(admin_rotation_state)?;
+    let mut admin_rotation_state_storage = Storage::<RotationState>::init(admin_rotation_state)?;
     let mut admin_rotation_state = admin_rotation_state_storage.load()?;
 
     // === use guards ===

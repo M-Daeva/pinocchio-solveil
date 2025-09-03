@@ -25,6 +25,30 @@ pub fn sort_mints(mint_a: &Pubkey, mint_b: &Pubkey) -> (Pubkey, Pubkey) {
 }
 
 #[inline]
+pub fn get_flag(field: u8, bit: u8) -> bool {
+    (field & 1 << bit) >> bit == 1
+}
+
+#[inline]
+pub fn set_flag(field: u8, bit: u8, flag: bool) -> u8 {
+    if flag {
+        set_bit(field, bit)
+    } else {
+        reset_bit(field, bit)
+    }
+}
+
+#[inline]
+fn set_bit(field: u8, bit: u8) -> u8 {
+    field | 1 << bit
+}
+
+#[inline]
+fn reset_bit(field: u8, bit: u8) -> u8 {
+    field ^ 1 << bit
+}
+
+#[inline]
 pub fn get_clock_time() -> Result<u64> {
     Ok(Clock::get()?.unix_timestamp as u64)
 }

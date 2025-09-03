@@ -301,6 +301,7 @@ dependencies = [
 name = "base"
 version = "1.0.0"
 dependencies = [
+ "bytemuck",
  "pinocchio",
  "pinocchio-associated-token-account",
  "pinocchio-pubkey",
@@ -2258,6 +2259,7 @@ name = "registry"
 version = "1.0.0"
 dependencies = [
  "base",
+ "bytemuck",
  "macro-error",
  "pinocchio",
  "pinocchio-log",
@@ -2270,6 +2272,7 @@ name = "registry-cpi"
 version = "1.0.0"
 dependencies = [
  "base",
+ "bytemuck",
  "macro-account",
  "macro-error",
  "macro-test-ser",
@@ -5047,6 +5050,7 @@ name = "tests"
 version = "1.0.0"
 dependencies = [
  "base",
+ "bytemuck",
  "litesvm",
  "pinocchio",
  "pinocchio-associated-token-account",

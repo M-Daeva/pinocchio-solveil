@@ -4,8 +4,9 @@ use {
             AccountCheck, AssociatedTokenAccount, AssociatedTokenAccountCheck, MintAccount,
             ProgramAccount, ProgramAccountCheck, SignerAccount, SystemProgram,
         },
+        converters::deserialize,
         helpers::{get_token_decimals, transfer_token_from_user},
-        types::{AccountData, ZeroCopyDeserialize},
+        types::Storage,
     },
     pinocchio::{account_info::AccountInfo, ProgramResult},
     registry_cpi::{
@@ -16,8 +17,7 @@ use {
 };
 
 pub fn activate_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult {
-    let InstructionData { .. } = InstructionData::deserialize_from(instruction_data, 0)?.0;
-
+    let _ix: &InstructionData = deserialize(instruction_data)?;
     let Accounts {
         system_program,
         token_program,
@@ -49,21 +49,22 @@ pub fn activate_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Pr
 
     // === load storages ===
 
-    let config = AccountData::<Config>::init(config)?.load()?;
+    let config_storage = Storage::<Config>::init(config)?;
+    let config = config_storage.load()?;
 
-    let mut user_id_storage = AccountData::<UserId>::init(user_id)?;
-    let mut user_id = user_id_storage.load()?;
+    let mut user_id_storage = Storage::<UserId>::init(user_id)?;
+    let user_id = user_id_storage.load_mut()?;
 
     // === use guards ===
 
     // only open account can be activated
-    if !user_id.is_open {
+    if !user_id.is_open() {
         // TODO: Err(CustomError::AccountIsNotOpened)?;
         Err(AnyError::Custom(CustomError::AccountIsNotOpened))?;
     }
 
     // only inactive account can be activated
-    if user_id.is_activated {
+    if user_id.is_activated() {
         Err(AnyError::Custom(CustomError::ActivateAccountTwice))?;
     }
 
@@ -74,13 +75,12 @@ pub fn activate_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Pr
 
     // === save storages ===
 
-    user_id.is_activated = true;
-    user_id_storage.save(user_id)?;
+    user_id.set_is_activated(true);
 
     // === transfer tokens from user to app ===
 
     transfer_token_from_user(
-        config.registration_fee.amount,
+        config.registration_fee.amount(),
         revenue_mint,
         revenue_sender_ata,
         revenue_app_ata,

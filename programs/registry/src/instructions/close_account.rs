@@ -4,7 +4,8 @@ use {
             AccountCheck, AccountClose, ProgramAccount, ProgramAccountCheck, SignerAccount,
             SystemProgram,
         },
-        types::{AccountData, ZeroCopyDeserialize},
+        converters::deserialize,
+        types::Storage,
     },
     pinocchio::{account_info::AccountInfo, ProgramResult},
     registry_cpi::{
@@ -15,8 +16,7 @@ use {
 };
 
 pub fn close_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult {
-    let InstructionData {} = InstructionData::deserialize_from(instruction_data, 0)?.0;
-
+    let _ix: &InstructionData = deserialize(instruction_data)?;
     let Accounts {
         system_program,
         sender,
@@ -33,20 +33,19 @@ pub fn close_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Progr
 
     // === load storages ===
 
-    let mut user_id_storage = AccountData::<UserId>::init(user_id)?;
-    let mut user_id = user_id_storage.load()?;
+    let mut user_id_storage = Storage::<UserId>::init(user_id)?;
+    let user_id = user_id_storage.load_mut()?;
 
     // === use guards ===
 
     // only open account can be closed
-    if !user_id.is_open {
+    if !user_id.is_open() {
         Err(AnyError::Custom(CustomError::AccountIsNotOpened))?;
     }
 
     // === save storages ===
 
-    user_id.is_open = false;
-    user_id_storage.save(user_id)?;
+    user_id.set_is_open(false);
 
     // === close accounts ===
 
