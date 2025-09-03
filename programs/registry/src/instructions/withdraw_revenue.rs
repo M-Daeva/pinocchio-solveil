@@ -50,12 +50,19 @@ pub fn withdraw_revenue(accounts: &[AccountInfo], instruction_data: &[u8]) -> Pr
 
     let config_acc = config;
     let app_balance = get_ata_balance(revenue_app_ata)?;
-    let amount = amount.unwrap_or(app_balance);
+    let amount = if ix.is_amount() {
+        ix.amount()
+    } else {
+        app_balance
+    };
 
     // === load storages ===
 
-    let bump = Storage::<Bump>::init(bump)?.load()?;
-    let config = Storage::<Config>::init(config_acc)?.load()?;
+    let bump_storage = Storage::<Bump>::init(bump)?;
+    let bump = bump_storage.load()?;
+
+    let config_storage = Storage::<Config>::init(config_acc)?;
+    let config = config_storage.load()?;
 
     // === use guards ===
 
@@ -89,7 +96,5 @@ pub fn withdraw_revenue(accounts: &[AccountInfo], instruction_data: &[u8]) -> Pr
         &seeds!(SEED::CONFIG, &[bump.config]),
         config_acc,
         get_token_decimals(revenue_mint)?,
-    )?;
-
-    Ok(())
+    )
 }

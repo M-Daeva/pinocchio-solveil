@@ -42,12 +42,22 @@ pub struct Accounts<'a> {
 #[derive(Default, Debug, PartialEq, Pod, Zeroable, Clone, Copy)]
 #[repr(C)]
 pub struct InstructionData {
-    pub flags: u8,
-    pub amount: [u8; 8],
+    flags: u8,
+    amount: [u8; 8],
 }
 
 impl InstructionData {
     const AMOUNT: u8 = 0;
+
+    #[inline]
+    pub fn amount(&self) -> u64 {
+        u64::from_le_bytes(self.amount)
+    }
+
+    #[inline]
+    pub fn set_amount(&mut self, value: u64) {
+        self.amount = value.to_le_bytes();
+    }
 
     #[inline]
     pub fn is_amount(&self) -> bool {

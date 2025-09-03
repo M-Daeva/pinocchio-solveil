@@ -380,7 +380,7 @@ impl AssociatedTokenAccountInit for AssociatedTokenAccount {
 pub struct ProgramAccount;
 
 impl ProgramAccountCheck for ProgramAccount {
-    // TODO: move T in struct, allow method chains
+    // TODO: move T in struct, allow method chains (check performance)
     // TODO make seeds required and return (pda, bump) - don't return it (affects on program size)
     fn check<T: Space>(
         account: &AccountInfo,

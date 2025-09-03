@@ -40,34 +40,29 @@ pub fn create_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Prog
 
     // === load storages ===
 
-    let config = Storage::<Config>::init(config)?.load()?;
-
-    // let mut user_counter_storage = Storage::<UserCounter>::init(user_counter)?;
-    // let mut user_counter = user_counter_storage.load()?;
-
-    // let mut data = user_counter.try_borrow_mut_data()?;
-    // let mut counter = try_from_bytes_mut::<UserCounter>(&mut data)
-    //     .map_err(|_| ProgramError::InvalidStorage)?;
+    let config_storage = Storage::<Config>::init(config)?;
+    let config = config_storage.load()?;
 
     let mut user_counter_storage = Storage::<UserCounter>::init(user_counter)?;
-    let user_counter = user_counter_storage.load()?;
+    let user_counter = user_counter_storage.load_mut()?;
+    user_counter.last_user_id += 1;
+
+    let user_seed_id = &user_counter.last_user_id.to_le_bytes();
 
     // === use guards ===
 
     // don't allow register accounts in paused program
-    if config.is_paused {
+    if config.is_paused() {
         Err(AnyError::Custom(CustomError::ContractIsPaused))?;
     }
 
+    let max_data_size = ix.max_data_size();
+
     // validate max allocated data size
-    if max_data_size < config.data_size_range.min || max_data_size > config.data_size_range.max {
+    if max_data_size < config.data_size_range.min() || max_data_size > config.data_size_range.max()
+    {
         Err(AnyError::Custom(CustomError::MaxDataSizeIsOutOfRange))?;
     }
-
-    // === core logic ===
-
-    let current_user_id = user_counter.last_user_id + 1;
-    let user_seed_id = &current_user_id.to_le_bytes();
 
     // === init and write pda ===
 
@@ -84,10 +79,11 @@ pub fn create_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Prog
         &seeds!(SEED::USER_ACCOUNT, user_seed_id, &[user_account_bump]),
         &crate::ID,
     )?;
-    let mut user_account_storage = Storage::init(user_account)?;
-    let mut user_account = UserAccount::default();
-    user_account.set_max_size(max_data_size);
-    user_account_storage.save(&mut user_account)?;
+    Storage::init(user_account)?.update(|x| {
+        *x = UserAccount::default();
+        x.set_max_size(max_data_size);
+        Ok(())
+    })?;
 
     // user_rotation_state
     let (_, user_rotation_state_bump) = get_and_check_pda(
@@ -105,10 +101,11 @@ pub fn create_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Prog
         ),
         &crate::ID,
     )?;
-    Storage::init(user_rotation_state)?.save(RotationState {
-        owner: *sender.key(),
-        new_owner: None,
-        expiration_date: get_clock_time()?,
+    Storage::<RotationState>::init(user_rotation_state)?.update(|x| {
+        x.owner = *sender.key();
+        x.new_owner = *sender.key();
+        x.set_expiration_date(get_clock_time()?);
+        Ok(())
     })?;
 
     // user_id
@@ -120,22 +117,12 @@ pub fn create_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Prog
         &seeds!(SEED::USER_ID, sender.key(), &[user_id_bump]),
         &crate::ID,
     )?;
-    Storage::init(user_id)?.save(UserId {
-        id: current_user_id,
-        is_open: true,
-        is_activated: false,
-        account_bump: user_account_bump,
-        rotation_state_bump: user_rotation_state_bump,
-    })?;
-
-    // === save storages ===
-
-    // user_counter.last_user_id = current_user_id;
-    // user_counter_storage.save(user_counter)?;
-
-    user_counter_storage.save(&mut UserCounter {
-        last_user_id: current_user_id,
-    })?;
-
-    Ok(())
+    Storage::<UserId>::init(user_id)?.update(|x| {
+        x.id = *user_seed_id;
+        x.set_is_open(true);
+        x.set_is_activated(false);
+        x.account_bump = user_account_bump;
+        x.rotation_state_bump = user_rotation_state_bump;
+        Ok(())
+    })
 }

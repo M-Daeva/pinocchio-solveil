@@ -56,12 +56,11 @@ where
 
     pub fn update<F>(&mut self, f: F) -> ProgramResult
     where
-        F: FnOnce(&mut T),
+        F: FnOnce(&mut T) -> ProgramResult,
         T: Pod + Zeroable,
     {
         let data = self.load_mut()?;
-        f(data);
-        Ok(())
+        f(data)
     }
 }
 

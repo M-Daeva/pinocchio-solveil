@@ -35,22 +35,20 @@ pub fn request_account_rotation(
 
     // === load storages ===
 
-    let config = Storage::<Config>::init(config)?.load()?;
+    let config_storage = Storage::<Config>::init(config)?;
+    let config = config_storage.load()?;
 
-    let mut user_rotation_state_storage = Storage::<RotationState>::init(user_rotation_state)?;
-    let mut user_rotation_state = user_rotation_state_storage.load()?;
+    Storage::<RotationState>::init(user_rotation_state)?.update(|x| {
+        // === use guards ===
 
-    // === use guards ===
+        if &ix.new_owner == sender.key() {
+            Err(AnyError::Auth(AuthError::UselessRotation))?;
+        }
 
-    if &new_owner == sender.key() {
-        Err(AnyError::Auth(AuthError::UselessRotation))?;
-    }
+        // === save storages ===
 
-    // === save storages ===
-
-    user_rotation_state.new_owner = Some(new_owner);
-    user_rotation_state.expiration_date = get_clock_time()? + config.rotation_timeout as u64;
-    user_rotation_state_storage.save(user_rotation_state)?;
-
-    Ok(())
+        x.new_owner = ix.new_owner;
+        x.set_expiration_date(get_clock_time()? + config.rotation_timeout() as u64);
+        Ok(())
+    })
 }

@@ -4,7 +4,6 @@ use {
             AccountCheck, AccountClose, ProgramAccount, ProgramAccountInit, SignerAccount,
             SystemProgram,
         },
-        converters::deserialize,
         error::AuthError,
         helpers::{get_and_check_pda, get_clock_time},
         types::Storage,
@@ -13,15 +12,15 @@ use {
     registry_cpi::{
         error::AnyError,
         state::{seed as SEED, RotationState, UserId},
-        types::confirm_account_rotation::{Accounts, InstructionData},
+        types::confirm_account_rotation::Accounts,
     },
 };
 
 pub fn confirm_account_rotation(
     accounts: &[AccountInfo],
-    instruction_data: &[u8],
+    _instruction_data: &[u8],
 ) -> ProgramResult {
-    let ix: &InstructionData = deserialize(instruction_data)?;
+    // let ix: &InstructionData = deserialize(instruction_data)?;
     let Accounts {
         system_program,
         sender,
@@ -41,15 +40,6 @@ pub fn confirm_account_rotation(
     // )?;
     // user_rotation_state, // TODO: should check
 
-    let user_id_pre_acc = user_id_pre;
-
-    // === load storages ===
-
-    let user_id_pre = Storage::<UserId>::init(user_id_pre_acc)?.load()?;
-
-    let mut user_rotation_state_storage = Storage::<RotationState>::init(user_rotation_state)?;
-    let user_rotation_state = user_rotation_state_storage.load()?;
-
     // === init and write pda ===
 
     // new user doesn't have account yet, so it must be created
@@ -61,38 +51,36 @@ pub fn confirm_account_rotation(
         &seeds!(SEED::USER_ID, sender.key(), &[user_id_bump]),
         &crate::ID,
     )?;
-    let mut user_id_storage = Storage::<UserId>::init(user_id)?;
 
-    // === use guards ===
+    Storage::<RotationState>::init(user_rotation_state)?.update(|user_rotation_state| {
+        // === use guards ===
 
-    match user_rotation_state.new_owner {
-        None => Err(AnyError::Auth(AuthError::NoNewOwner))?,
-        Some(new_owner) => {
-            let clock_time = get_clock_time()?;
-
-            if sender.key() != &new_owner {
-                Err(AnyError::Auth(AuthError::Unauthorized))?;
-            }
-
-            if clock_time >= user_rotation_state.expiration_date {
-                Err(AnyError::Auth(AuthError::TransferOwnerDeadline))?;
-            }
-
-            // === save storages ===
-
-            user_id_storage.save(user_id_pre)?;
-
-            user_rotation_state_storage.save(RotationState {
-                owner: new_owner,
-                new_owner: None,
-                expiration_date: clock_time,
-            })?;
-
-            // === close accounts ===
-
-            ProgramAccount::close(user_id_pre_acc, sender)?;
+        if user_rotation_state.new_owner == user_rotation_state.owner {
+            Err(AnyError::Auth(AuthError::NoNewOwner))?;
         }
-    }
 
-    Ok(())
+        if sender.key() != &user_rotation_state.new_owner {
+            Err(AnyError::Auth(AuthError::Unauthorized))?;
+        }
+
+        let clock_time = get_clock_time()?;
+
+        if clock_time >= user_rotation_state.expiration_date() {
+            Err(AnyError::Auth(AuthError::TransferOwnerDeadline))?;
+        }
+
+        // === save storages ===
+
+        user_rotation_state.owner = user_rotation_state.new_owner;
+        user_rotation_state.set_expiration_date(clock_time);
+
+        Storage::<UserId>::init(user_id)?.update(|x| {
+            *x = *Storage::init(user_id_pre)?.load_mut()?;
+            Ok(())
+        })
+    })?;
+
+    // === close accounts ===
+
+    ProgramAccount::close(user_id_pre, sender)
 }

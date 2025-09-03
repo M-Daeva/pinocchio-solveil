@@ -47,8 +47,8 @@ pub struct Accounts<'a> {
 #[derive(Default, Debug, PartialEq, Pod, Zeroable, Clone, Copy)]
 #[repr(C)]
 pub struct InstructionData {
-    pub flags: u8,
-    pub rotation_timeout: [u8; 4],
+    flags: u8,
+    rotation_timeout: [u8; 4],
     pub account_registration_fee: AssetItem,
     pub account_data_size_range: Range,
 }

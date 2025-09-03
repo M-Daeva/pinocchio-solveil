@@ -31,7 +31,7 @@ pub struct Accounts<'a> {
 #[derive(Default, Debug, PartialEq, Pod, Zeroable, Clone, Copy)]
 #[repr(C)]
 pub struct InstructionData {
-    pub flags: u8,
+    flags: u8,
     pub admin: Pubkey,
     pub is_paused: u8,
     pub rotation_timeout: [u8; 4],

@@ -37,5 +37,17 @@ pub struct Accounts<'a> {
 #[derive(Default, Debug, PartialEq, Pod, Zeroable, Clone, Copy)]
 #[repr(C)]
 pub struct InstructionData {
-    pub max_data_size: [u8; 4],
+    max_data_size: [u8; 4],
+}
+
+impl InstructionData {
+    #[inline]
+    pub fn max_data_size(&self) -> u32 {
+        u32::from_le_bytes(self.max_data_size)
+    }
+
+    #[inline]
+    pub fn set_max_data_size(&mut self, value: u32) {
+        self.max_data_size = value.to_le_bytes();
+    }
 }

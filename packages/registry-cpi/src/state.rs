@@ -72,8 +72,8 @@ impl Space for Bump {
 pub struct Config {
     /// can update the config and execute priveledged instructions
     pub admin: Pubkey,
-    is_paused: u8,
-    rotation_timeout: [u8; 4],
+    pub is_paused: u8,
+    pub rotation_timeout: [u8; 4],
     pub registration_fee: AssetItem,
     pub data_size_range: Range,
 }

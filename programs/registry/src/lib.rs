@@ -6,12 +6,15 @@ use {
         account_info::AccountInfo, entrypoint, program_error::ProgramError, pubkey::Pubkey,
         ProgramResult,
     },
-    registry_cpi::{state::Discriminator, ID},
+    registry_cpi::{state::Discriminator as D, ID},
 };
 
 mod instructions;
+use instructions as i;
 
 entrypoint!(process_instruction);
+
+// TODO: try no_std
 
 pub fn process_instruction(
     _program_id: &Pubkey,
@@ -22,22 +25,22 @@ pub fn process_instruction(
         None => Err(ProgramError::InvalidInstructionData),
         Some((discriminator, data)) => {
             let instruction = match unsafe { transmute(*discriminator) } {
-                Discriminator::Init => instructions::init,
-                Discriminator::UpdateConfig => instructions::update_config,
-                Discriminator::ConfirmAdminRotation => instructions::confirm_admin_rotation,
-                Discriminator::WithdrawRevenue => instructions::withdraw_revenue,
+                D::Init => i::init,
+                D::UpdateConfig => i::update_config,
+                D::ConfirmAdminRotation => i::confirm_admin_rotation,
+                D::WithdrawRevenue => i::withdraw_revenue,
                 // creates user PDA account taking rent exempt in SOL
-                Discriminator::CreateAccount => instructions::create_account,
+                D::CreateAccount => i::create_account,
                 // 1st step to to change allocated data space or just to redeem rent
-                Discriminator::CloseAccount => instructions::close_account,
+                D::CloseAccount => i::close_account,
                 // 2nd step to to change allocated data space
-                Discriminator::ReopenAccount => instructions::reopen_account,
+                D::ReopenAccount => i::reopen_account,
                 // activates account with fee asset payment
-                Discriminator::ActivateAccount => instructions::activate_account,
-                Discriminator::WriteData => instructions::write_data,
-                Discriminator::RequestAccountRotation => instructions::request_account_rotation,
+                D::ActivateAccount => i::activate_account,
+                D::WriteData => i::write_data,
+                D::RequestAccountRotation => i::request_account_rotation,
                 // updates address - id pair
-                Discriminator::ConfirmAccountRotation => instructions::confirm_account_rotation,
+                D::ConfirmAccountRotation => i::confirm_account_rotation,
             };
 
             instruction(accounts, data)

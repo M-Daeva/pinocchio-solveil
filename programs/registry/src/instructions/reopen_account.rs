@@ -38,26 +38,30 @@ pub fn reopen_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Prog
 
     // === load storages ===
 
-    let config = Storage::<Config>::init(config)?.load()?;
+    let config_storage = Storage::<Config>::init(config)?;
+    let config = config_storage.load()?;
 
     let mut user_id_storage = Storage::<UserId>::init(user_id)?;
-    let mut user_id = user_id_storage.load()?;
+    let user_id = user_id_storage.load_mut()?;
 
     // === use guards ===
 
     // only closed account can be open
-    if user_id.is_open {
+    if user_id.is_open() {
         Err(AnyError::Custom(CustomError::OpenAccountTwice))?;
     }
 
+    user_id.set_is_open(true);
+    let max_data_size = ix.max_data_size();
+    let user_seed_id = &user_id.id;
+
     // validate max allocated data size
-    if max_data_size < config.data_size_range.min || max_data_size > config.data_size_range.max {
+    if max_data_size < config.data_size_range.min() || max_data_size > config.data_size_range.max()
+    {
         Err(AnyError::Custom(CustomError::MaxDataSizeIsOutOfRange))?;
     }
 
     // === init and write pda ===
-
-    let user_seed_id = &user_id.id.to_le_bytes();
 
     // user_account
     create_account_with_signer(
@@ -67,10 +71,11 @@ pub fn reopen_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Prog
         &seeds!(SEED::USER_ACCOUNT, user_seed_id, &[user_id.account_bump]),
         &crate::ID,
     )?;
-    let mut user_account_storage = Storage::init(user_account)?;
-    let mut user_account = UserAccount::default();
-    user_account.set_max_size(max_data_size);
-    user_account_storage.save(&mut user_account)?;
+    Storage::init(user_account)?.update(|x| {
+        *x = UserAccount::default();
+        x.set_max_size(max_data_size);
+        Ok(())
+    })?;
 
     // user_rotation_state
     ProgramAccount::init::<RotationState>(
@@ -83,16 +88,10 @@ pub fn reopen_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Prog
         ),
         &crate::ID,
     )?;
-    Storage::init(user_rotation_state)?.save(RotationState {
-        owner: *sender.key(),
-        new_owner: None,
-        expiration_date: get_clock_time()?,
-    })?;
-
-    // === save storages ===
-
-    user_id.is_open = true;
-    user_id_storage.save(user_id)?;
-
-    Ok(())
+    Storage::<RotationState>::init(user_rotation_state)?.update(|x| {
+        x.owner = *sender.key();
+        x.new_owner = *sender.key();
+        x.set_expiration_date(get_clock_time()?);
+        Ok(())
+    })
 }

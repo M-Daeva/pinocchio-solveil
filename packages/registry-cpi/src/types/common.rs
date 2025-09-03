@@ -6,7 +6,7 @@ use {
 #[derive(Default, Debug, PartialEq, Pod, Zeroable, Clone, Copy)]
 #[repr(C)]
 pub struct AssetItem {
-    amount: [u8; 8],
+    pub amount: [u8; 8],
     pub asset: Pubkey,
 }
 

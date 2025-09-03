@@ -93,6 +93,7 @@ pub fn init(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult 
         x.set_rotation_timeout(ROTATION_TIMEOUT);
         x.registration_fee = registration_fee;
         x.data_size_range = data_size_range;
+        Ok(())
     })?;
 
     // user_counter
@@ -106,6 +107,7 @@ pub fn init(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult 
     )?;
     Storage::init(user_counter)?.update(|x| {
         *x = UserCounter::default();
+        Ok(())
     })?;
 
     // admin_rotation_state
@@ -124,6 +126,7 @@ pub fn init(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult 
         x.owner = *sender.key();
         x.new_owner = *sender.key();
         x.set_expiration_date(clock_time);
+        Ok(())
     })?;
 
     // bump
@@ -133,6 +136,7 @@ pub fn init(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult 
         x.config = config_bump;
         x.user_counter = user_counter_bump;
         x.rotation_state = admin_rotation_state_bump;
+        Ok(())
     })?;
 
     // === init ata ===
@@ -145,7 +149,5 @@ pub fn init(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult 
         config,
         system_program,
         token_program,
-    )?;
-
-    Ok(())
+    )
 }
