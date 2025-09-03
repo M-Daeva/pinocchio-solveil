@@ -70,27 +70,27 @@ pub fn init(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult 
         &crate::ID,
     )?;
     Storage::init(config)?.update(|x| {
-        let registration_fee = if ix.is_account_registration_fee() {
+        let registration_fee = if ix.get_account_registration_fee_flag() {
             ix.account_registration_fee
         } else {
             let mut x = AssetItem::default();
-            x.set_amount(ACCOUNT_REGISTRATION_FEE_AMOUNT);
+            x.amount.set(ACCOUNT_REGISTRATION_FEE_AMOUNT);
             x.asset = ACCOUNT_REGISTRATION_FEE_ASSET;
             x
         };
 
-        let data_size_range = if ix.is_account_data_size_range() {
+        let data_size_range = if ix.get_account_data_size_range_flag() {
             ix.account_data_size_range
         } else {
             let mut x = Range::default();
-            x.set_min(ACCOUNT_DATA_SIZE_MIN);
-            x.set_max(ACCOUNT_DATA_SIZE_MAX);
+            x.min.set(ACCOUNT_DATA_SIZE_MIN);
+            x.max.set(ACCOUNT_DATA_SIZE_MAX);
             x
         };
 
         *x = Config::default();
         x.admin = *sender.key();
-        x.set_rotation_timeout(ROTATION_TIMEOUT);
+        x.rotation_timeout.set(ROTATION_TIMEOUT);
         x.registration_fee = registration_fee;
         x.data_size_range = data_size_range;
         Ok(())
@@ -125,7 +125,7 @@ pub fn init(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult 
     Storage::<RotationState>::init(admin_rotation_state)?.update(|x| {
         x.owner = *sender.key();
         x.new_owner = *sender.key();
-        x.set_expiration_date(clock_time);
+        x.expiration_date.set(clock_time);
         Ok(())
     })?;
 

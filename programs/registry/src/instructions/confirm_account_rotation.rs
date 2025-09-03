@@ -65,14 +65,14 @@ pub fn confirm_account_rotation(
 
         let clock_time = get_clock_time()?;
 
-        if clock_time >= user_rotation_state.expiration_date() {
+        if clock_time >= user_rotation_state.expiration_date.get() {
             Err(AnyError::Auth(AuthError::TransferOwnerDeadline))?;
         }
 
         // === save storages ===
 
         user_rotation_state.owner = user_rotation_state.new_owner;
-        user_rotation_state.set_expiration_date(clock_time);
+        user_rotation_state.expiration_date.set(clock_time);
 
         Storage::<UserId>::init(user_id)?.update(|x| {
             *x = *Storage::init(user_id_pre)?.load_mut()?;

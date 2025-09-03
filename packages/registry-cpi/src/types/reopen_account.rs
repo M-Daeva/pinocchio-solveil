@@ -1,9 +1,10 @@
 use {
     crate::state::Discriminator,
-    base::types::Result,
+    base::types::{Result, Uint32},
     bytemuck::{Pod, Zeroable},
     macro_test_ser::test_serialize,
     macro_try_from::AccountTryFrom,
+    macro_zc_serde::p_serde,
     pinocchio::{account_info::AccountInfo, program_error::ProgramError},
     r#macro_account::AccountMetas,
 };
@@ -31,20 +32,7 @@ pub struct Accounts<'a> {
 }
 
 #[test_serialize(Discriminator::ReopenAccount)]
-#[derive(Default, Debug, PartialEq, Pod, Zeroable, Clone, Copy)]
-#[repr(C)]
+#[p_serde]
 pub struct InstructionData {
-    max_data_size: [u8; 4],
-}
-
-impl InstructionData {
-    #[inline]
-    pub fn max_data_size(&self) -> u32 {
-        u32::from_le_bytes(self.max_data_size)
-    }
-
-    #[inline]
-    pub fn set_max_data_size(&mut self, value: u32) {
-        self.max_data_size = value.to_le_bytes();
-    }
+    pub max_data_size: Uint32,
 }

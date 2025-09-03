@@ -48,7 +48,8 @@ pub fn request_account_rotation(
         // === save storages ===
 
         x.new_owner = ix.new_owner;
-        x.set_expiration_date(get_clock_time()? + config.rotation_timeout() as u64);
+        x.expiration_date
+            .set(get_clock_time()? + config.rotation_timeout.get() as u64);
         Ok(())
     })
 }

@@ -47,16 +47,17 @@ pub fn reopen_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Prog
     // === use guards ===
 
     // only closed account can be open
-    if user_id.is_open() {
+    if user_id.get_is_open_flag() {
         Err(AnyError::Custom(CustomError::OpenAccountTwice))?;
     }
 
-    user_id.set_is_open(true);
-    let max_data_size = ix.max_data_size();
-    let user_seed_id = &user_id.id;
+    user_id.set_is_open_flag(true);
+    let max_data_size = ix.max_data_size.get();
+    let user_seed_id = &user_id.id.get_raw();
 
     // validate max allocated data size
-    if max_data_size < config.data_size_range.min() || max_data_size > config.data_size_range.max()
+    if max_data_size < config.data_size_range.min.get()
+        || max_data_size > config.data_size_range.max.get()
     {
         Err(AnyError::Custom(CustomError::MaxDataSizeIsOutOfRange))?;
     }
@@ -73,7 +74,7 @@ pub fn reopen_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Prog
     )?;
     Storage::init(user_account)?.update(|x| {
         *x = UserAccount::default();
-        x.set_max_size(max_data_size);
+        x.max_size.set(max_data_size);
         Ok(())
     })?;
 
@@ -91,7 +92,7 @@ pub fn reopen_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Prog
     Storage::<RotationState>::init(user_rotation_state)?.update(|x| {
         x.owner = *sender.key();
         x.new_owner = *sender.key();
-        x.set_expiration_date(get_clock_time()?);
+        x.expiration_date.set(get_clock_time()?);
         Ok(())
     })
 }

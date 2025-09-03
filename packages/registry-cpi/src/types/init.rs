@@ -3,13 +3,11 @@ use {
         state::Discriminator,
         types::common::{AssetItem, Range},
     },
-    base::{
-        helpers::{get_flag, set_flag},
-        types::Result,
-    },
+    base::types::{BitField, Result, Uint32},
     bytemuck::{Pod, Zeroable},
     macro_test_ser::test_serialize,
     macro_try_from::AccountTryFrom,
+    macro_zc_serde::p_serde,
     pinocchio::{account_info::AccountInfo, program_error::ProgramError},
     r#macro_account::AccountMetas,
 };
@@ -44,11 +42,10 @@ pub struct Accounts<'a> {
 }
 
 #[test_serialize(Discriminator::Init)]
-#[derive(Default, Debug, PartialEq, Pod, Zeroable, Clone, Copy)]
-#[repr(C)]
+#[p_serde]
 pub struct InstructionData {
-    flags: u8,
-    rotation_timeout: [u8; 4],
+    pub flags: BitField,
+    pub rotation_timeout: Uint32,
     pub account_registration_fee: AssetItem,
     pub account_data_size_range: Range,
 }
@@ -59,32 +56,32 @@ impl InstructionData {
     const ACCOUNT_DATA_SIZE_RANGE: u8 = 2;
 
     #[inline]
-    pub fn is_rotation_timeout(&self) -> bool {
-        get_flag(self.flags, Self::ROTATION_TIMEOUT)
+    pub fn get_rotation_timeout_flag(&self) -> bool {
+        self.flags.get_flag(Self::ROTATION_TIMEOUT)
     }
 
     #[inline]
-    pub fn set_is_rotation_timeout(&mut self, flag: bool) {
-        self.flags = set_flag(self.flags, Self::ROTATION_TIMEOUT, flag);
+    pub fn set_rotation_timeout_flag(&mut self, x: bool) {
+        self.flags.set_flag(Self::ROTATION_TIMEOUT, x);
     }
 
     #[inline]
-    pub fn is_account_registration_fee(&self) -> bool {
-        get_flag(self.flags, Self::ACCOUNT_REGISTRATION_FEE)
+    pub fn get_account_registration_fee_flag(&self) -> bool {
+        self.flags.get_flag(Self::ACCOUNT_REGISTRATION_FEE)
     }
 
     #[inline]
-    pub fn set_is_account_registration_fee(&mut self, flag: bool) {
-        self.flags = set_flag(self.flags, Self::ACCOUNT_REGISTRATION_FEE, flag);
+    pub fn set_account_registration_fee_flag(&mut self, x: bool) {
+        self.flags.set_flag(Self::ACCOUNT_REGISTRATION_FEE, x);
     }
 
     #[inline]
-    pub fn is_account_data_size_range(&self) -> bool {
-        get_flag(self.flags, Self::ACCOUNT_DATA_SIZE_RANGE)
+    pub fn get_account_data_size_range_flag(&self) -> bool {
+        self.flags.get_flag(Self::ACCOUNT_DATA_SIZE_RANGE)
     }
 
     #[inline]
-    pub fn set_is_account_data_size_range(&mut self, flag: bool) {
-        self.flags = set_flag(self.flags, Self::ACCOUNT_DATA_SIZE_RANGE, flag);
+    pub fn set_account_data_size_range_flag(&mut self, x: bool) {
+        self.flags.set_flag(Self::ACCOUNT_DATA_SIZE_RANGE, x);
     }
 }

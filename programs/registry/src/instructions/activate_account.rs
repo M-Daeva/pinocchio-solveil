@@ -55,13 +55,13 @@ pub fn activate_account(accounts: &[AccountInfo], _instruction_data: &[u8]) -> P
         // === use guards ===
 
         // only open account can be activated
-        if !user_id.is_open() {
+        if !user_id.get_is_open_flag() {
             // TODO: Err(CustomError::AccountIsNotOpened)?;
             Err(AnyError::Custom(CustomError::AccountIsNotOpened))?;
         }
 
         // only inactive account can be activated
-        if user_id.is_activated() {
+        if user_id.get_is_activated_flag() {
             Err(AnyError::Custom(CustomError::ActivateAccountTwice))?;
         }
 
@@ -72,14 +72,14 @@ pub fn activate_account(accounts: &[AccountInfo], _instruction_data: &[u8]) -> P
 
         // === save storages ===
 
-        user_id.set_is_activated(true);
+        user_id.set_is_activated_flag(true);
         Ok(())
     })?;
 
     // === transfer tokens from user to app ===
 
     transfer_token_from_user(
-        config.registration_fee.amount(),
+        config.registration_fee.amount.get(),
         revenue_mint,
         revenue_sender_ata,
         revenue_app_ata,

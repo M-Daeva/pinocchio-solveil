@@ -29,14 +29,14 @@ pub fn confirm_admin_rotation(accounts: &[AccountInfo], _instruction_data: &[u8]
 
         let clock_time = get_clock_time()?;
 
-        if clock_time >= admin_rotation_state.expiration_date() {
+        if clock_time >= admin_rotation_state.expiration_date.get() {
             Err(AnyError::Auth(AuthError::TransferOwnerDeadline))?;
         }
 
         // === save storages ===
 
         admin_rotation_state.owner = admin_rotation_state.new_owner;
-        admin_rotation_state.set_expiration_date(clock_time);
+        admin_rotation_state.expiration_date.set(clock_time);
 
         Storage::<Config>::init(config)?.update(|x| {
             x.admin = admin_rotation_state.new_owner;

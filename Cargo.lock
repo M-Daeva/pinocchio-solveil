@@ -302,6 +302,7 @@ name = "base"
 version = "1.0.0"
 dependencies = [
  "bytemuck",
+ "macro-zc-serde",
  "pinocchio",
  "pinocchio-associated-token-account",
  "pinocchio-pubkey",

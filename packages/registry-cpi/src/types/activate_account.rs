@@ -4,6 +4,7 @@ use {
     bytemuck::{Pod, Zeroable},
     macro_test_ser::test_serialize,
     macro_try_from::AccountTryFrom,
+    macro_zc_serde::p_serde,
     pinocchio::{account_info::AccountInfo, program_error::ProgramError},
     r#macro_account::AccountMetas,
 };
@@ -35,6 +36,5 @@ pub struct Accounts<'a> {
 }
 
 #[test_serialize(Discriminator::ActivateAccount)]
-#[derive(Default, Debug, PartialEq, Pod, Zeroable, Clone, Copy)]
-#[repr(C)]
+#[p_serde]
 pub struct InstructionData {}

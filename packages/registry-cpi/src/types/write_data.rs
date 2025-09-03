@@ -1,6 +1,6 @@
 use {
     crate::state::{Discriminator, ACCOUNT_DATA_SIZE_MAX},
-    base::types::Result,
+    base::types::{Result, Uint64},
     bytemuck::{Pod, Zeroable},
     macro_test_ser::test_serialize,
     macro_try_from::AccountTryFrom,
@@ -21,18 +21,18 @@ pub struct Accounts<'a> {
 }
 
 #[test_serialize(Discriminator::WriteData)]
-#[derive(Debug, PartialEq, Pod, Zeroable, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Pod, Zeroable, Clone, Copy)]
 #[repr(C)]
 pub struct InstructionData {
     pub data: [u8; ACCOUNT_DATA_SIZE_MAX as usize],
-    pub nonce: [u8; 8],
+    pub nonce: Uint64,
 }
 
 impl Default for InstructionData {
     fn default() -> Self {
         Self {
-            data: [0u8; ACCOUNT_DATA_SIZE_MAX as usize],
-            nonce: [0u8; 8],
+            data: [0; ACCOUNT_DATA_SIZE_MAX as usize],
+            nonce: Uint64::default(),
         }
     }
 }

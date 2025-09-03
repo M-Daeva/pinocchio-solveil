@@ -42,31 +42,32 @@ pub fn update_config(accounts: &[AccountInfo], instruction_data: &[u8]) -> Progr
         Err(AnyError::Auth(AuthError::Unauthorized))?;
     }
 
-    if ix.is_admin() {
+    if ix.get_admin_flag() {
         if &ix.admin == sender.key() {
             Err(AnyError::Auth(AuthError::UselessRotation))?;
         }
 
         Storage::<RotationState>::init(admin_rotation_state)?.update(|x| {
             x.new_owner = ix.admin;
-            x.set_expiration_date(get_clock_time()? + config.rotation_timeout() as u64);
+            x.expiration_date
+                .set(get_clock_time()? + config.rotation_timeout.get() as u64);
             Ok(())
         })?;
     }
 
-    if ix.is_paused() {
+    if ix.get_is_paused_flag() {
         config.is_paused = ix.is_paused;
     }
 
-    if ix.is_rotation_timeout() {
+    if ix.get_rotation_timeout_flag() {
         config.rotation_timeout = ix.rotation_timeout;
     }
 
-    if ix.is_registration_fee_amount() {
+    if ix.get_registration_fee_amount_flag() {
         config.registration_fee.amount = ix.registration_fee_amount;
     }
 
-    if ix.is_data_size_range() {
+    if ix.get_data_size_range_flag() {
         config.data_size_range = ix.data_size_range;
     }
 

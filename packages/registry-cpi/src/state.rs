@@ -1,10 +1,11 @@
 use {
     crate::types::common::{AssetItem, Range},
     base::{
-        helpers::{get_flag, get_space, set_flag},
-        types::Space,
+        helpers::get_space,
+        types::{BitField, Space, Uint32, Uint64},
     },
     bytemuck::{Pod, Zeroable},
+    macro_zc_serde::p_serde,
     pinocchio::pubkey::Pubkey,
     pinocchio_pubkey::pubkey,
 };
@@ -52,8 +53,7 @@ pub const ACCOUNT_DATA_SIZE_MIN: u32 = 100;
 pub const ACCOUNT_DATA_SIZE_MAX: u32 = 4096;
 
 /// to store bumps for all app accounts
-#[derive(Default, Debug, PartialEq, Pod, Zeroable, Clone, Copy)]
-#[repr(C)]
+#[p_serde]
 pub struct Bump {
     pub config: u8,
     pub user_counter: u8,
@@ -67,39 +67,14 @@ impl Space for Bump {
     }
 }
 
-#[derive(Default, Debug, PartialEq, Pod, Zeroable, Clone, Copy)]
-#[repr(C)]
+#[p_serde]
 pub struct Config {
     /// can update the config and execute priveledged instructions
     pub admin: Pubkey,
-    pub is_paused: u8,
-    pub rotation_timeout: [u8; 4],
+    pub is_paused: BitField,
+    pub rotation_timeout: Uint32,
     pub registration_fee: AssetItem,
     pub data_size_range: Range,
-}
-
-impl Config {
-    const PAUSE_BIT: u8 = 0;
-
-    #[inline]
-    pub fn is_paused(&self) -> bool {
-        get_flag(self.is_paused, Self::PAUSE_BIT)
-    }
-
-    #[inline]
-    pub fn set_is_paused(&mut self, is_paused: bool) {
-        self.is_paused = set_flag(self.is_paused, Self::PAUSE_BIT, is_paused);
-    }
-
-    #[inline]
-    pub fn rotation_timeout(&self) -> u32 {
-        u32::from_le_bytes(self.rotation_timeout)
-    }
-
-    #[inline]
-    pub fn set_rotation_timeout(&mut self, rotation_timeout: u32) {
-        self.rotation_timeout = rotation_timeout.to_le_bytes();
-    }
 }
 
 impl Space for Config {
@@ -110,10 +85,9 @@ impl Space for Config {
 }
 
 /// for indexing
-#[derive(Default, Debug, PartialEq, Pod, Zeroable, Clone, Copy)]
-#[repr(C)]
+#[p_serde]
 pub struct UserCounter {
-    pub last_user_id: u32,
+    pub last_user_id: Uint32,
 }
 
 impl Space for UserCounter {
@@ -125,24 +99,11 @@ impl Space for UserCounter {
 
 /// to transfer ownership from one address to another in 2 steps (for security reasons) \
 /// used both for app admin and user accounts
-#[derive(Default, Debug, PartialEq, Pod, Zeroable, Clone, Copy)]
-#[repr(C)]
+#[p_serde]
 pub struct RotationState {
     pub owner: Pubkey,
     pub new_owner: Pubkey,
-    pub expiration_date: [u8; 8],
-}
-
-impl RotationState {
-    #[inline]
-    pub fn expiration_date(&self) -> u64 {
-        u64::from_le_bytes(self.expiration_date)
-    }
-
-    #[inline]
-    pub fn set_expiration_date(&mut self, expiration_date: u64) {
-        self.expiration_date = expiration_date.to_le_bytes();
-    }
+    pub expiration_date: Uint64,
 }
 
 impl Space for RotationState {
@@ -153,11 +114,10 @@ impl Space for RotationState {
 }
 
 /// get by user: Pubkey
-#[derive(Default, Debug, PartialEq, Pod, Zeroable, Clone, Copy)]
-#[repr(C)]
+#[p_serde]
 pub struct UserId {
-    pub flags: u8,
-    pub id: [u8; 4],
+    pub flags: BitField,
+    pub id: Uint32,
     pub account_bump: u8,
     pub rotation_state_bump: u8,
 }
@@ -167,23 +127,23 @@ impl UserId {
     const IS_ACTIVATED: u8 = 1;
 
     #[inline]
-    pub fn is_open(&self) -> bool {
-        get_flag(self.flags, Self::IS_OPEN)
+    pub fn get_is_open_flag(&self) -> bool {
+        self.flags.get_flag(Self::IS_OPEN)
     }
 
     #[inline]
-    pub fn set_is_open(&mut self, flag: bool) {
-        self.flags = set_flag(self.flags, Self::IS_OPEN, flag);
+    pub fn set_is_open_flag(&mut self, x: bool) {
+        self.flags.set_flag(Self::IS_OPEN, x);
     }
 
     #[inline]
-    pub fn is_activated(&self) -> bool {
-        get_flag(self.flags, Self::IS_ACTIVATED)
+    pub fn get_is_activated_flag(&self) -> bool {
+        self.flags.get_flag(Self::IS_ACTIVATED)
     }
 
     #[inline]
-    pub fn set_is_activated(&mut self, flag: bool) {
-        self.flags = set_flag(self.flags, Self::IS_ACTIVATED, flag);
+    pub fn set_is_activated_flag(&mut self, x: bool) {
+        self.flags.set_flag(Self::IS_ACTIVATED, x);
     }
 }
 
@@ -195,15 +155,15 @@ impl Space for UserId {
 }
 
 /// get by user_id: u32
-#[derive(Debug, PartialEq, Pod, Zeroable, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Pod, Zeroable, Clone, Copy)]
 #[repr(C)]
 pub struct UserAccount {
     /// encrypted user data
     pub data: [u8; ACCOUNT_DATA_SIZE_MAX as usize],
     /// encryption nonce
-    pub nonce: [u8; 8],
+    pub nonce: Uint64,
     /// allocated storage capacity
-    max_size: [u8; 4],
+    pub max_size: Uint32,
 }
 
 impl Default for UserAccount {
@@ -211,21 +171,9 @@ impl Default for UserAccount {
     fn default() -> Self {
         Self {
             data: [0; ACCOUNT_DATA_SIZE_MAX as usize],
-            nonce: [0; 8],
-            max_size: [0; 4],
+            nonce: Uint64::default(),
+            max_size: Uint32::default(),
         }
-    }
-}
-
-impl UserAccount {
-    #[inline]
-    pub fn max_size(&self) -> u32 {
-        u32::from_le_bytes(self.max_size)
-    }
-
-    #[inline]
-    pub fn set_max_size(&mut self, max_size: u32) {
-        self.max_size = max_size.to_le_bytes();
     }
 }
 

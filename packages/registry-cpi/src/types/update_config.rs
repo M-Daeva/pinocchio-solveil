@@ -1,12 +1,10 @@
 use {
     crate::{state::Discriminator, types::common::Range},
-    base::{
-        helpers::{get_flag, set_flag},
-        types::Result,
-    },
+    base::types::{BitField, Result, Uint32, Uint64},
     bytemuck::{Pod, Zeroable},
     macro_test_ser::test_serialize,
     macro_try_from::AccountTryFrom,
+    macro_zc_serde::p_serde,
     pinocchio::{account_info::AccountInfo, program_error::ProgramError, pubkey::Pubkey},
     r#macro_account::AccountMetas,
 };
@@ -28,18 +26,16 @@ pub struct Accounts<'a> {
 }
 
 #[test_serialize(Discriminator::UpdateConfig)]
-#[derive(Default, Debug, PartialEq, Pod, Zeroable, Clone, Copy)]
-#[repr(C)]
+#[p_serde]
 pub struct InstructionData {
-    flags: u8,
+    pub flags: BitField,
     pub admin: Pubkey,
-    pub is_paused: u8,
-    pub rotation_timeout: [u8; 4],
-    pub registration_fee_amount: [u8; 8],
+    pub is_paused: BitField,
+    pub rotation_timeout: Uint32,
+    pub registration_fee_amount: Uint64,
     pub data_size_range: Range,
 }
 
-// TODO: builder for setters?
 impl InstructionData {
     const ADMIN: u8 = 0;
     const IS_PAUSED: u8 = 1;
@@ -48,52 +44,52 @@ impl InstructionData {
     const DATA_SIZE_RANGE: u8 = 4;
 
     #[inline]
-    pub fn is_admin(&self) -> bool {
-        get_flag(self.flags, Self::ADMIN)
+    pub fn get_admin_flag(&self) -> bool {
+        self.flags.get_flag(Self::ADMIN)
     }
 
     #[inline]
-    pub fn set_is_admin(&mut self, flag: bool) {
-        self.flags = set_flag(self.flags, Self::ADMIN, flag);
+    pub fn set_admin_flag(&mut self, x: bool) {
+        self.flags.set_flag(Self::ADMIN, x);
     }
 
     #[inline]
-    pub fn is_paused(&self) -> bool {
-        get_flag(self.flags, Self::IS_PAUSED)
+    pub fn get_is_paused_flag(&self) -> bool {
+        self.flags.get_flag(Self::IS_PAUSED)
     }
 
     #[inline]
-    pub fn set_is_paused(&mut self, flag: bool) {
-        self.flags = set_flag(self.flags, Self::IS_PAUSED, flag);
+    pub fn set_is_paused_flag(&mut self, x: bool) {
+        self.flags.set_flag(Self::IS_PAUSED, x);
     }
 
     #[inline]
-    pub fn is_rotation_timeout(&self) -> bool {
-        get_flag(self.flags, Self::ROTATION_TIMEOUT)
+    pub fn get_rotation_timeout_flag(&self) -> bool {
+        self.flags.get_flag(Self::ROTATION_TIMEOUT)
     }
 
     #[inline]
-    pub fn set_is_rotation_timeout(&mut self, flag: bool) {
-        self.flags = set_flag(self.flags, Self::ROTATION_TIMEOUT, flag);
+    pub fn set_rotation_timeout_flag(&mut self, x: bool) {
+        self.flags.set_flag(Self::ROTATION_TIMEOUT, x);
     }
 
     #[inline]
-    pub fn is_registration_fee_amount(&self) -> bool {
-        get_flag(self.flags, Self::REGISTRATION_FEE_AMOUNT)
+    pub fn get_registration_fee_amount_flag(&self) -> bool {
+        self.flags.get_flag(Self::REGISTRATION_FEE_AMOUNT)
     }
 
     #[inline]
-    pub fn set_is_registration_fee_amount(&mut self, flag: bool) {
-        self.flags = set_flag(self.flags, Self::REGISTRATION_FEE_AMOUNT, flag);
+    pub fn set_registration_fee_amount_flag(&mut self, x: bool) {
+        self.flags.set_flag(Self::REGISTRATION_FEE_AMOUNT, x);
     }
 
     #[inline]
-    pub fn is_data_size_range(&self) -> bool {
-        get_flag(self.flags, Self::DATA_SIZE_RANGE)
+    pub fn get_data_size_range_flag(&self) -> bool {
+        self.flags.get_flag(Self::DATA_SIZE_RANGE)
     }
 
     #[inline]
-    pub fn set_is_data_size_range(&mut self, flag: bool) {
-        self.flags = set_flag(self.flags, Self::DATA_SIZE_RANGE, flag);
+    pub fn set_data_size_range_flag(&mut self, x: bool) {
+        self.flags.set_flag(Self::DATA_SIZE_RANGE, x);
     }
 }

@@ -35,11 +35,11 @@ pub fn write_data(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramR
 
     // === use guards ===
 
-    if !user_id.is_activated() {
+    if !user_id.get_is_activated_flag() {
         Err(AnyError::Custom(CustomError::AccountIsNotActivated))?;
     }
 
-    if data.len() > user_account.max_size() as usize {
+    if data.len() > user_account.max_size.get() as usize {
         Err(AnyError::Custom(CustomError::MaxDataSizeIsExceeded))?;
     }
 

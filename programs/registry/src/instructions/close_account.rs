@@ -34,11 +34,11 @@ pub fn close_account(accounts: &[AccountInfo], _instruction_data: &[u8]) -> Prog
 
     Storage::<UserId>::init(user_id)?.update(|user_id| {
         // only open account can be closed
-        if !user_id.is_open() {
+        if !user_id.get_is_open_flag() {
             Err(AnyError::Custom(CustomError::AccountIsNotOpened))?;
         }
-        user_id.set_is_open(false);
 
+        user_id.set_is_open_flag(false);
         Ok(())
     })?;
 
