@@ -301,8 +301,11 @@ dependencies = [
 name = "base"
 version = "1.0.0"
 dependencies = [
+ "bytemuck",
+ "macro-p-serde",
  "pinocchio",
  "pinocchio-associated-token-account",
+ "pinocchio-log",
  "pinocchio-pubkey",
  "pinocchio-system",
  "pinocchio-token",
@@ -1638,6 +1641,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "macro-p-serde"
+version = "1.0.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.106",
+]
+
+[[package]]
 name = "macro-test-ser"
 version = "1.0.0"
 dependencies = [
@@ -1648,15 +1660,6 @@ dependencies = [
 
 [[package]]
 name = "macro-try-from"
-version = "1.0.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.106",
-]
-
-[[package]]
-name = "macro-zc-serde"
 version = "1.0.0"
 dependencies = [
  "proc-macro2",
@@ -2258,6 +2261,7 @@ name = "registry"
 version = "1.0.0"
 dependencies = [
  "base",
+ "bytemuck",
  "macro-error",
  "pinocchio",
  "pinocchio-log",
@@ -2270,11 +2274,12 @@ name = "registry-cpi"
 version = "1.0.0"
 dependencies = [
  "base",
+ "bytemuck",
  "macro-account",
  "macro-error",
+ "macro-p-serde",
  "macro-test-ser",
  "macro-try-from",
- "macro-zc-serde",
  "pinocchio",
  "pinocchio-log",
  "pinocchio-pubkey",
@@ -5047,6 +5052,7 @@ name = "tests"
 version = "1.0.0"
 dependencies = [
  "base",
+ "bytemuck",
  "litesvm",
  "pinocchio",
  "pinocchio-associated-token-account",

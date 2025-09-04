@@ -4,19 +4,18 @@ use {
             AccountCheck, AccountClose, ProgramAccount, ProgramAccountCheck, SignerAccount,
             SystemProgram,
         },
-        types::{AccountData, ZeroCopyDeserialize},
+        types::StorageW,
     },
     pinocchio::{account_info::AccountInfo, ProgramResult},
     registry_cpi::{
         error::{AnyError, CustomError},
         state::{seed as SEED, UserId},
-        types::close_account::{Accounts, InstructionData},
+        types::close_account::Accounts,
     },
 };
 
-pub fn close_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult {
-    let InstructionData {} = InstructionData::deserialize_from(instruction_data, 0)?.0;
-
+pub fn close_account(accounts: &[AccountInfo], _instruction_data: &[u8]) -> ProgramResult {
+    // let ix: &InstructionData = deserialize(instruction_data)?;
     let Accounts {
         system_program,
         sender,
@@ -31,27 +30,20 @@ pub fn close_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Progr
     // user_account, // TODO: should check
     // user_rotation_state,
 
-    // === load storages ===
-
-    let mut user_id_storage = AccountData::<UserId>::init(user_id)?;
-    let mut user_id = user_id_storage.load()?;
-
-    // === use guards ===
-
-    // only open account can be closed
-    if !user_id.is_open {
-        Err(AnyError::Custom(CustomError::AccountIsNotOpened))?;
-    }
-
     // === save storages ===
 
-    user_id.is_open = false;
-    user_id_storage.save(user_id)?;
+    StorageW::<UserId>::update(user_id, |user_id| {
+        // only open account can be closed
+        if !user_id.get_is_open_flag() {
+            Err(AnyError::Custom(CustomError::AccountIsNotOpened))?;
+        }
+
+        user_id.set_is_open_flag(false);
+        Ok(())
+    })?;
 
     // === close accounts ===
 
     ProgramAccount::close(user_account, sender)?;
-    ProgramAccount::close(user_rotation_state, sender)?;
-
-    Ok(())
+    ProgramAccount::close(user_rotation_state, sender)
 }

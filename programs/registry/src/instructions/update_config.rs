@@ -1,27 +1,21 @@
 use {
     base::{
         accounts::{AccountCheck, ProgramAccount, ProgramAccountCheck, SignerAccount},
+        converters::deserialize,
         error::AuthError,
         helpers::get_clock_time,
-        types::{AccountData, ZeroCopyDeserialize},
+        types::StorageW,
     },
     pinocchio::{account_info::AccountInfo, ProgramResult},
     registry_cpi::{
-        error::{AnyError, CustomError},
+        error::AnyError,
         state::{seed as SEED, Config, RotationState},
         types::update_config::{Accounts, InstructionData},
     },
 };
 
 pub fn update_config(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult {
-    let InstructionData {
-        admin,
-        is_paused,
-        rotation_timeout,
-        registration_fee_amount,
-        data_size_range,
-    } = InstructionData::deserialize_from(instruction_data, 0)?.0;
-
+    let ix: &InstructionData = deserialize(instruction_data)?;
     let Accounts {
         sender,
         config,
@@ -36,17 +30,9 @@ pub fn update_config(accounts: &[AccountInfo], instruction_data: &[u8]) -> Progr
         Some(&[SEED::ADMIN_ROTATION_STATE]),
     )?;
 
-    let mut is_config_updated = false;
-    let mut is_admin_rotation_state_updated = false;
-
     // === load storages ===
 
-    let mut config_storage = AccountData::<Config>::init(config)?;
-    let mut config = config_storage.load()?;
-
-    let mut admin_rotation_state_storage =
-        AccountData::<RotationState>::init(admin_rotation_state)?;
-    let mut admin_rotation_state = admin_rotation_state_storage.load()?;
+    let mut config = StorageW::<Config>::load(config)?;
 
     // === use guards ===
 
@@ -55,49 +41,33 @@ pub fn update_config(accounts: &[AccountInfo], instruction_data: &[u8]) -> Progr
         Err(AnyError::Auth(AuthError::Unauthorized))?;
     }
 
-    if let Some(new_admin) = admin {
-        if &new_admin == sender.key() {
+    if ix.get_admin_flag() {
+        if &ix.admin == sender.key() {
             Err(AnyError::Auth(AuthError::UselessRotation))?;
         }
 
-        admin_rotation_state.new_owner = Some(new_admin);
-        admin_rotation_state.expiration_date = get_clock_time()? + config.rotation_timeout as u64;
-        is_admin_rotation_state_updated = true;
+        StorageW::<RotationState>::update(admin_rotation_state, |x| {
+            x.new_owner = ix.admin;
+            x.expiration_date
+                .set(get_clock_time()? + config.rotation_timeout.get() as u64);
+            Ok(())
+        })?;
     }
 
-    if let Some(x) = is_paused {
-        config.is_paused = x;
-        is_config_updated = true;
+    if ix.get_is_paused_flag() {
+        config.is_paused = ix.is_paused;
     }
 
-    if let Some(x) = rotation_timeout {
-        config.rotation_timeout = x;
-        is_config_updated = true;
+    if ix.get_rotation_timeout_flag() {
+        config.rotation_timeout = ix.rotation_timeout;
     }
 
-    if let Some(x) = registration_fee_amount {
-        config.registration_fee.amount = x;
-        is_config_updated = true;
+    if ix.get_registration_fee_amount_flag() {
+        config.registration_fee.amount = ix.registration_fee_amount;
     }
 
-    if let Some(x) = data_size_range {
-        config.data_size_range = x;
-        is_config_updated = true;
-    }
-
-    // don't allow empty instructions
-    if !is_config_updated && !is_admin_rotation_state_updated {
-        Err(AnyError::Custom(CustomError::NoParameters))?;
-    }
-
-    // === save storages ===
-
-    if is_config_updated {
-        config_storage.save(config)?;
-    }
-
-    if is_admin_rotation_state_updated {
-        admin_rotation_state_storage.save(admin_rotation_state)?;
+    if ix.get_data_size_range_flag() {
+        config.data_size_range = ix.data_size_range;
     }
 
     Ok(())

@@ -58,7 +58,7 @@ pub trait PinPubkey {
     fn pubkey(&self) -> pinocchio::pubkey::Pubkey;
 }
 
-#[derive(Debug, Clone, Copy, Display, IntoStaticStr, EnumIter, PartialEq)]
+#[derive(Debug, Clone, Copy, Display, IntoStaticStr, EnumIter, PartialEq, Eq)]
 pub enum AppUser {
     Admin,
     Alice,
@@ -117,12 +117,12 @@ impl AppUser {
     }
 }
 
-#[derive(Debug, Clone, Copy, Display, IntoStaticStr, EnumIter, PartialEq)]
+#[derive(Debug, Clone, Copy, Display, IntoStaticStr, EnumIter, PartialEq, Eq)]
 pub enum AppCoin {
     SOL,
 }
 
-#[derive(Debug, Clone, Copy, Display, IntoStaticStr, EnumIter, PartialEq)]
+#[derive(Debug, Clone, Copy, Display, IntoStaticStr, EnumIter, PartialEq, Eq)]
 pub enum AppToken {
     USDC,
     PYTH,

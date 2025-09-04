@@ -1,52 +1,64 @@
 use {
+    crate::{
+        converters::{deserialize_mut_unchecked, deserialize_unchecked},
+        helpers::{get_flag, set_flag},
+    },
+    bytemuck::{Pod, Zeroable},
+    macro_p_serde::p_serde,
     pinocchio::{
-        account_info::{AccountInfo, RefMut},
+        account_info::{AccountInfo, Ref, RefMut},
         program_error::ProgramError,
-        pubkey::Pubkey,
         ProgramResult,
     },
-    pinocchio_pubkey::pubkey,
     std::marker::PhantomData,
 };
 
-pub const TOKEN_2022_ACCOUNT_DISCRIMINATOR_OFFSET: usize = 165;
-pub const TOKEN_2022_MINT_DISCRIMINATOR: u8 = 0x01;
-pub const TOKEN_2022_TOKEN_ACCOUNT_DISCRIMINATOR: u8 = 0x02;
-pub const TOKEN_2022_PROGRAM_ID: Pubkey = pubkey!("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb");
-
 pub type Result<T> = std::result::Result<T, ProgramError>;
 
-pub trait ErrorIndexOffset {
-    const OFFSET: u32;
+// Account data wrapper for immutable operations
+pub struct StorageR<'a, T> {
+    data: Ref<'a, [u8]>,
+    _phantom: PhantomData<T>,
 }
 
-pub trait Space {
-    fn get_space() -> usize;
+impl<'a, T> StorageR<'a, T>
+where
+    T: Pod + Zeroable,
+{
+    #[inline]
+    pub fn load(account: &'a AccountInfo) -> Result<Self> {
+        Ok(Self {
+            data: account.try_borrow_data()?,
+            _phantom: PhantomData,
+        })
+    }
 }
 
-// Zero-copy serialization trait
-pub trait ZeroCopySerialize {
-    fn serialize_into(&self, data: &mut [u8]) -> ProgramResult;
+impl<'a, T> core::ops::Deref for StorageR<'a, T>
+where
+    T: Pod + Zeroable,
+{
+    type Target = T;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        // SAFETY: We control the data format and ensure it's valid
+        unsafe { deserialize_unchecked(&self.data) }
+    }
 }
 
-pub trait ZeroCopyDeserialize: Sized {
-    /// returns end_index
-    fn deserialize_from(data: &[u8], start_index: usize) -> Result<(Self, usize)>;
-}
-
-// Account data wrapper for typed access
-#[repr(C)]
-pub struct AccountData<'a, T> {
+// Account data wrapper for mutable operations
+pub struct StorageW<'a, T> {
     data: RefMut<'a, [u8]>,
     _phantom: PhantomData<T>,
 }
 
-impl<'a, T> AccountData<'a, T>
+impl<'a, T> StorageW<'a, T>
 where
-    T: ZeroCopySerialize + ZeroCopyDeserialize,
+    T: Pod + Zeroable,
 {
     #[inline]
-    pub fn init(account: &'a AccountInfo) -> Result<Self> {
+    pub fn load(account: &'a AccountInfo) -> Result<Self> {
         Ok(Self {
             data: account.try_borrow_mut_data()?,
             _phantom: PhantomData,
@@ -54,28 +66,208 @@ where
     }
 
     #[inline]
-    pub fn load(&self) -> Result<T> {
-        T::deserialize_from(&self.data, 0).map(|(x, _)| x)
-    }
-
-    #[inline]
-    pub fn save(&mut self, value: T) -> ProgramResult {
-        value.serialize_into(&mut self.data)
-    }
-
-    #[inline]
-    pub fn update<F>(&mut self, f: F) -> ProgramResult
+    pub fn update<F>(account: &'a AccountInfo, f: F) -> ProgramResult
     where
-        F: FnOnce(T) -> Result<T>,
+        F: FnOnce(&mut T) -> ProgramResult,
     {
-        let data = self.load()?;
-        let updated_data = f(data)?;
-        self.save(updated_data)
+        f(&mut *Self::load(account)?)
     }
 }
 
-/// for tests
-#[cfg(feature = "dev")]
-pub trait InstructionSerialize {
-    fn serialize(&self) -> Result<Vec<u8>>;
+impl<'a, T> core::ops::Deref for StorageW<'a, T>
+where
+    T: Pod + Zeroable,
+{
+    type Target = T;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        // SAFETY: We control the data format and ensure it's valid
+        unsafe { deserialize_unchecked(&self.data) }
+    }
+}
+
+impl<'a, T> core::ops::DerefMut for StorageW<'a, T>
+where
+    T: Pod + Zeroable,
+{
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        // SAFETY: We control the data format and ensure it's valid
+        unsafe { deserialize_mut_unchecked(&mut self.data) }
+    }
+}
+
+#[p_serde]
+pub struct BitField(u8);
+
+impl From<bool> for BitField {
+    #[inline]
+    fn from(x: bool) -> Self {
+        if x {
+            Self(1)
+        } else {
+            Self(0)
+        }
+    }
+}
+
+impl BitField {
+    #[inline]
+    pub fn get_raw(&self) -> u8 {
+        self.0
+    }
+
+    #[inline]
+    pub fn set_raw(&mut self, x: u8) {
+        self.0 = x;
+    }
+
+    #[inline]
+    pub fn get_flag(&self, bit: u8) -> bool {
+        get_flag(self.0, bit)
+    }
+
+    #[inline]
+    pub fn set_flag(&mut self, bit: u8, value: bool) {
+        self.0 = set_flag(self.0, bit, value);
+    }
+
+    #[inline]
+    pub fn get_bit(&self) -> bool {
+        get_flag(self.0, 0)
+    }
+
+    #[inline]
+    pub fn set_bit(&mut self, value: bool) {
+        self.0 = set_flag(self.0, 0, value);
+    }
+}
+
+#[p_serde]
+pub struct Uint16([u8; 2]);
+
+impl From<u16> for Uint16 {
+    #[inline]
+    fn from(x: u16) -> Self {
+        Self(x.to_le_bytes())
+    }
+}
+
+impl Uint16 {
+    #[inline]
+    pub fn get_raw(&self) -> [u8; 2] {
+        self.0
+    }
+
+    #[inline]
+    pub fn set_raw(&mut self, x: [u8; 2]) {
+        self.0 = x;
+    }
+
+    #[inline]
+    pub fn get(&self) -> u16 {
+        u16::from_le_bytes(self.0)
+    }
+
+    #[inline]
+    pub fn set(&mut self, x: u16) {
+        self.0 = x.to_le_bytes();
+    }
+}
+
+#[p_serde]
+pub struct Uint32([u8; 4]);
+
+impl From<u32> for Uint32 {
+    #[inline]
+    fn from(x: u32) -> Self {
+        Self(x.to_le_bytes())
+    }
+}
+
+impl Uint32 {
+    #[inline]
+    pub fn get_raw(&self) -> [u8; 4] {
+        self.0
+    }
+
+    #[inline]
+    pub fn set_raw(&mut self, x: [u8; 4]) {
+        self.0 = x;
+    }
+
+    #[inline]
+    pub fn get(&self) -> u32 {
+        u32::from_le_bytes(self.0)
+    }
+
+    #[inline]
+    pub fn set(&mut self, x: u32) {
+        self.0 = x.to_le_bytes();
+    }
+}
+
+#[p_serde]
+pub struct Uint64([u8; 8]);
+
+impl From<u64> for Uint64 {
+    #[inline]
+    fn from(x: u64) -> Self {
+        Self(x.to_le_bytes())
+    }
+}
+
+impl Uint64 {
+    #[inline]
+    pub fn get_raw(&self) -> [u8; 8] {
+        self.0
+    }
+
+    #[inline]
+    pub fn set_raw(&mut self, x: [u8; 8]) {
+        self.0 = x;
+    }
+
+    #[inline]
+    pub fn get(&self) -> u64 {
+        u64::from_le_bytes(self.0)
+    }
+
+    #[inline]
+    pub fn set(&mut self, x: u64) {
+        self.0 = x.to_le_bytes();
+    }
+}
+
+#[p_serde]
+pub struct Uint128([u8; 16]);
+
+impl From<u128> for Uint128 {
+    #[inline]
+    fn from(x: u128) -> Self {
+        Self(x.to_le_bytes())
+    }
+}
+
+impl Uint128 {
+    #[inline]
+    pub fn get_raw(&self) -> [u8; 16] {
+        self.0
+    }
+
+    #[inline]
+    pub fn set_raw(&mut self, x: [u8; 16]) {
+        self.0 = x;
+    }
+
+    #[inline]
+    pub fn get(&self) -> u128 {
+        u128::from_le_bytes(self.0)
+    }
+
+    #[inline]
+    pub fn set(&mut self, x: u128) {
+        self.0 = x.to_le_bytes();
+    }
 }

@@ -1,9 +1,10 @@
 use {
     base::{
         accounts::{AccountCheck, ProgramAccount, ProgramAccountCheck, SignerAccount},
+        converters::deserialize,
         error::AuthError,
         helpers::get_clock_time,
-        types::{AccountData, ZeroCopyDeserialize},
+        types::{StorageR, StorageW},
     },
     pinocchio::{account_info::AccountInfo, ProgramResult},
     registry_cpi::{
@@ -17,8 +18,7 @@ pub fn request_account_rotation(
     accounts: &[AccountInfo],
     instruction_data: &[u8],
 ) -> ProgramResult {
-    let InstructionData { new_owner } = InstructionData::deserialize_from(instruction_data, 0)?.0;
-
+    let ix: &InstructionData = deserialize(instruction_data)?;
     let Accounts {
         sender,
         bump,
@@ -35,22 +35,20 @@ pub fn request_account_rotation(
 
     // === load storages ===
 
-    let config = AccountData::<Config>::init(config)?.load()?;
+    let config = StorageR::<Config>::load(config)?;
 
-    let mut user_rotation_state_storage = AccountData::<RotationState>::init(user_rotation_state)?;
-    let mut user_rotation_state = user_rotation_state_storage.load()?;
+    StorageW::<RotationState>::update(user_rotation_state, |x| {
+        // === use guards ===
 
-    // === use guards ===
+        if &ix.new_owner == sender.key() {
+            Err(AnyError::Auth(AuthError::UselessRotation))?;
+        }
 
-    if &new_owner == sender.key() {
-        Err(AnyError::Auth(AuthError::UselessRotation))?;
-    }
+        // === save storages ===
 
-    // === save storages ===
-
-    user_rotation_state.new_owner = Some(new_owner);
-    user_rotation_state.expiration_date = get_clock_time()? + config.rotation_timeout as u64;
-    user_rotation_state_storage.save(user_rotation_state)?;
-
-    Ok(())
+        x.new_owner = ix.new_owner;
+        x.expiration_date
+            .set(get_clock_time()? + config.rotation_timeout.get() as u64);
+        Ok(())
+    })
 }

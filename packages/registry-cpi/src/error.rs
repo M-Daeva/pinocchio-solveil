@@ -1,5 +1,5 @@
 use {
-    base::{error::AuthError, types::ErrorIndexOffset},
+    base::{error::AuthError, traits::ErrorIndexOffset},
     macro_error::any_error,
     strum_macros::EnumIter,
 };

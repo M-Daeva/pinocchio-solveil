@@ -1,15 +1,10 @@
 use {
-    crate::{state::discriminator as DISCRIMINATOR, types::common::Range},
-    base::{
-        converters::{
-            bool_as_bytes, pubkey_as_bytes, to_bool, to_pubkey, to_u32, to_u64, u64_as_bytes,
-            ByteReader,
-        },
-        types::{Result, ZeroCopyDeserialize},
-    },
+    crate::{state::Discriminator, types::common::Range},
+    base::types::{BitField, Result, Uint32, Uint64},
+    bytemuck::{Pod, Zeroable},
+    macro_p_serde::p_serde,
     macro_test_ser::test_serialize,
     macro_try_from::AccountTryFrom,
-    macro_zc_serde::ZCDeserialize,
     pinocchio::{account_info::AccountInfo, program_error::ProgramError, pubkey::Pubkey},
     r#macro_account::AccountMetas,
 };
@@ -17,8 +12,8 @@ use {
 // TODO: fix warning: unused imports: `bool_as_bytes`, `pubkey_as_bytes`, `state::discriminator as DISCRIMINATOR`, and `u64_as_bytes`
 // related to macro usage
 
-#[repr(C)]
 #[derive(AccountTryFrom, AccountMetas)]
+#[repr(C)]
 pub struct Accounts<'a> {
     #[account(signer, writable)]
     pub sender: &'a AccountInfo,
@@ -30,52 +25,71 @@ pub struct Accounts<'a> {
     pub admin_rotation_state: &'a AccountInfo,
 }
 
-#[repr(C)]
-#[derive(Default, ZCDeserialize)]
-#[test_serialize(DISCRIMINATOR::UPDATE_CONFIG)]
+#[test_serialize(Discriminator::UpdateConfig)]
+#[p_serde]
 pub struct InstructionData {
-    pub admin: Option<Pubkey>,
-    pub is_paused: Option<bool>,
-    pub rotation_timeout: Option<u32>,
-    pub registration_fee_amount: Option<u64>,
-    pub data_size_range: Option<Range>,
+    pub flags: BitField,
+    pub admin: Pubkey,
+    pub is_paused: BitField,
+    pub rotation_timeout: Uint32,
+    pub registration_fee_amount: Uint64,
+    pub data_size_range: Range,
 }
 
-// impl TryFrom<&[u8]> for InstructionData {
-//     type Error = ProgramError;
+impl InstructionData {
+    const ADMIN: u8 = 0;
+    const IS_PAUSED: u8 = 1;
+    const ROTATION_TIMEOUT: u8 = 2;
+    const REGISTRATION_FEE_AMOUNT: u8 = 3;
+    const DATA_SIZE_RANGE: u8 = 4;
 
-//     fn try_from(data: &[u8]) -> Result<Self> {
-//         ByteReader::new::<Self>(data, 0)
-//             .read_option(|x| &mut x.admin, to_pubkey)?
-//             .read_option(|x| &mut x.is_paused, to_bool)?
-//             .read_option(|x| &mut x.rotation_timeout, to_u32)?
-//             .read_option(|x| &mut x.registration_fee_amount, to_u64)?
-//             .read_option(|x| &mut x.data_size_range, Range::deserialize_from)?
-//             .complete()
-//             .map(|(x, _)| x)
-//     }
-// }
+    #[inline]
+    pub fn get_admin_flag(&self) -> bool {
+        self.flags.get_flag(Self::ADMIN)
+    }
 
-// /// for tests
-// #[cfg(feature = "dev")]
-// impl base::types::InstructionSerialize for InstructionData {
-//     fn serialize(&self) -> Result<Vec<u8>> {
-//         use base::converters::{
-//             bool_as_bytes, pubkey_as_bytes, u32_as_bytes, u64_as_bytes, ByteWriter,
-//             ByteWriterVecExt,
-//         };
+    #[inline]
+    pub fn set_admin_flag(&mut self, x: bool) {
+        self.flags.set_flag(Self::ADMIN, x);
+    }
 
-//         let mut buffer = vec![];
-//         let position = ByteWriter::from_vec(&mut buffer)
-//             .write_u8(DISCRIMINATOR::UPDATE_CONFIG)?
-//             .write_option(&self.admin, pubkey_as_bytes)?
-//             .write_option(&self.is_paused, bool_as_bytes)?
-//             .write_option(&self.rotation_timeout, u32_as_bytes)?
-//             .write_option(&self.registration_fee_amount, u64_as_bytes)?
-//             .write_option_custom(&self.data_size_range)?
-//             .position();
-//         buffer.truncate(position);
+    #[inline]
+    pub fn get_is_paused_flag(&self) -> bool {
+        self.flags.get_flag(Self::IS_PAUSED)
+    }
 
-//         Ok(buffer)
-//     }
-// }
+    #[inline]
+    pub fn set_is_paused_flag(&mut self, x: bool) {
+        self.flags.set_flag(Self::IS_PAUSED, x);
+    }
+
+    #[inline]
+    pub fn get_rotation_timeout_flag(&self) -> bool {
+        self.flags.get_flag(Self::ROTATION_TIMEOUT)
+    }
+
+    #[inline]
+    pub fn set_rotation_timeout_flag(&mut self, x: bool) {
+        self.flags.set_flag(Self::ROTATION_TIMEOUT, x);
+    }
+
+    #[inline]
+    pub fn get_registration_fee_amount_flag(&self) -> bool {
+        self.flags.get_flag(Self::REGISTRATION_FEE_AMOUNT)
+    }
+
+    #[inline]
+    pub fn set_registration_fee_amount_flag(&mut self, x: bool) {
+        self.flags.set_flag(Self::REGISTRATION_FEE_AMOUNT, x);
+    }
+
+    #[inline]
+    pub fn get_data_size_range_flag(&self) -> bool {
+        self.flags.get_flag(Self::DATA_SIZE_RANGE)
+    }
+
+    #[inline]
+    pub fn set_data_size_range_flag(&mut self, x: bool) {
+        self.flags.set_flag(Self::DATA_SIZE_RANGE, x);
+    }
+}

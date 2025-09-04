@@ -6,12 +6,15 @@ use {
             types::{AppToken, AppUser, PinPubkey, TestResult},
         },
     },
-    registry_cpi::{state::ACCOUNT_REGISTRATION_FEE_AMOUNT, types::common::AssetItem},
+    base::types::Uint64,
+    registry_cpi::{
+        state::{ACCOUNT_DATA_SIZE_MAX, ACCOUNT_REGISTRATION_FEE_AMOUNT},
+        types::common::AssetItem,
+    },
 };
 
 #[test]
 fn profiling_registry() -> TestResult<()> {
-    const MAX_DATA_SIZE: u32 = 1_000;
     const DATA_0: &str = "encrypted_secrets_0";
     const NONCE_0: u64 = 1;
 
@@ -22,7 +25,7 @@ fn profiling_registry() -> TestResult<()> {
             AppUser::Admin,
             None,
             Some(AssetItem {
-                amount: ACCOUNT_REGISTRATION_FEE_AMOUNT,
+                amount: Uint64::from(ACCOUNT_REGISTRATION_FEE_AMOUNT),
                 asset: AppToken::USDC.pubkey(),
             }),
             None,
@@ -30,7 +33,7 @@ fn profiling_registry() -> TestResult<()> {
         .compute_units_consumed;
 
     let create_account_cu = app
-        .registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, None)?
+        .registry_try_create_account(AppUser::Alice, ACCOUNT_DATA_SIZE_MAX, None)?
         .compute_units_consumed;
     let activate_account_cu = app
         .registry_try_activate_account(AppUser::Alice, None, None)?

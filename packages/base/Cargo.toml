@@ -17,6 +17,7 @@ std = []
 
 [dependencies]
 pinocchio = { workspace = true }
+pinocchio-log = { workspace = true }
 pinocchio-pubkey = { workspace = true }
 pinocchio-system = { workspace = true }
 pinocchio-token = { workspace = true }
@@ -25,3 +26,6 @@ solana-instruction = { workspace = true }
 solana-pubkey = { workspace = true }
 strum = { workspace = true }
 strum_macros = { workspace = true }
+bytemuck = { workspace = true }
+
+macro-p-serde = { workspace = true }

@@ -1,5 +1,5 @@
 use {
-    crate::types::{
+    crate::constants::{
         TOKEN_2022_ACCOUNT_DISCRIMINATOR_OFFSET, TOKEN_2022_TOKEN_ACCOUNT_DISCRIMINATOR,
     },
     pinocchio::{

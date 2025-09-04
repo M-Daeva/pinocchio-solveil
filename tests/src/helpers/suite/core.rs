@@ -5,7 +5,8 @@ use {
             AppAsset, AppCoin, AppToken, AppUser, GetDecimals, SolPubkey, TestError, TestResult,
         },
     },
-    base::types::ZeroCopyDeserialize,
+    base::converters::deserialize,
+    bytemuck::{Pod, Zeroable},
     litesvm::{types::TransactionMetadata, LiteSVM},
     pinocchio::program_error,
     solana_compute_budget::compute_budget::ComputeBudget,
@@ -511,13 +512,11 @@ pub mod extension {
 
     pub fn get_data<T>(litesvm: &LiteSVM, pda: &Pubkey) -> TestResult<T>
     where
-        T: ZeroCopyDeserialize,
+        T: Pod + Zeroable,
     {
         match litesvm.get_account(pda) {
             Some(account) => {
-                let (data, _end_index) =
-                    T::deserialize_from(&account.data, 0).map_err(TestError::from_raw_error)?;
-                Ok(data)
+                Ok(*deserialize::<T>(&account.data).map_err(TestError::from_raw_error)?)
             }
             _ => Err(TestError::from_raw_error(
                 program_error::ProgramError::UninitializedAccount,
