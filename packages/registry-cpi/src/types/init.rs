@@ -3,16 +3,19 @@ use {
         state::Discriminator,
         types::common::{AssetItem, Range},
     },
-    base::types::{BitField, Result, Uint32},
+    base::{
+        traits::DataLen,
+        types::{BitField, Result, Uint32},
+    },
     bytemuck::{Pod, Zeroable},
     macro_p_serde::p_serde,
-    macro_test_ser::test_serialize,
+    macro_test_ser::test_ser,
     macro_try_from::AccountTryFrom,
     pinocchio::{account_info::AccountInfo, program_error::ProgramError},
     r#macro_account::AccountMetas,
 };
 
-// TODO: implement rest accounts
+// TODO: implement remaining accounts
 #[derive(AccountTryFrom, AccountMetas)]
 #[repr(C)]
 pub struct Accounts<'a> {
@@ -41,7 +44,7 @@ pub struct Accounts<'a> {
     pub revenue_app_ata: &'a AccountInfo,
 }
 
-#[test_serialize(Discriminator::Init)]
+#[test_ser(Discriminator::Init)]
 #[p_serde]
 pub struct InstructionData {
     pub flags: BitField,

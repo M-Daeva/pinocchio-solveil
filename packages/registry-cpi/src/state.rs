@@ -1,8 +1,7 @@
 use {
     crate::types::common::{AssetItem, Range},
     base::{
-        helpers::get_space,
-        traits::Space,
+        traits::DataLen,
         types::{BitField, Uint32, Uint64},
     },
     bytemuck::{Pod, Zeroable},
@@ -61,13 +60,6 @@ pub struct Bump {
     pub rotation_state: u8,
 }
 
-impl Space for Bump {
-    #[inline]
-    fn get_space() -> usize {
-        get_space::<Self>()
-    }
-}
-
 #[p_serde]
 pub struct Config {
     /// can update the config and execute priveledged instructions
@@ -78,24 +70,10 @@ pub struct Config {
     pub data_size_range: Range,
 }
 
-impl Space for Config {
-    #[inline]
-    fn get_space() -> usize {
-        get_space::<Self>()
-    }
-}
-
 /// for indexing
 #[p_serde]
 pub struct UserCounter {
     pub last_user_id: Uint32,
-}
-
-impl Space for UserCounter {
-    #[inline]
-    fn get_space() -> usize {
-        get_space::<Self>()
-    }
 }
 
 /// to transfer ownership from one address to another in 2 steps (for security reasons) \
@@ -105,13 +83,6 @@ pub struct RotationState {
     pub owner: Pubkey,
     pub new_owner: Pubkey,
     pub expiration_date: Uint64,
-}
-
-impl Space for RotationState {
-    #[inline]
-    fn get_space() -> usize {
-        get_space::<Self>()
-    }
 }
 
 /// get by user: Pubkey
@@ -148,13 +119,6 @@ impl UserId {
     }
 }
 
-impl Space for UserId {
-    #[inline]
-    fn get_space() -> usize {
-        get_space::<Self>()
-    }
-}
-
 /// get by user_id: u32
 #[derive(Debug, PartialEq, Eq, Pod, Zeroable, Clone, Copy)]
 #[repr(C)]
@@ -178,20 +142,6 @@ impl Default for UserAccount {
     }
 }
 
-impl UserAccount {
-    #[inline]
-    pub fn get_space(_max_size: u32) -> usize {
-        get_space::<Self>()
-    }
-
-    // pub fn get_space(_max_size: u32) -> usize {
-    //     // ACCOUNT_DATA_SIZE_MAX
-    //     const DATA: usize = 4_096;
-    //     // u64
-    //     const NONCE: usize = 8;
-    //     // u32
-    //     const MAX_SIZE: usize = 4;
-
-    //     DATA + NONCE + MAX_SIZE
-    // }
+impl DataLen for UserAccount {
+    const LEN: usize = core::mem::size_of::<Self>();
 }

@@ -1,9 +1,9 @@
 use {
     crate::state::Discriminator,
-    base::types::Result,
+    base::{traits::DataLen, types::Result},
     bytemuck::{Pod, Zeroable},
     macro_p_serde::p_serde,
-    macro_test_ser::test_serialize,
+    macro_test_ser::test_ser,
     macro_try_from::AccountTryFrom,
     pinocchio::{account_info::AccountInfo, program_error::ProgramError},
     r#macro_account::AccountMetas,
@@ -27,6 +27,6 @@ pub struct Accounts<'a> {
     pub user_rotation_state: &'a AccountInfo,
 }
 
-#[test_serialize(Discriminator::CloseAccount)]
+#[test_ser(Discriminator::CloseAccount)]
 #[p_serde]
 pub struct InstructionData {}

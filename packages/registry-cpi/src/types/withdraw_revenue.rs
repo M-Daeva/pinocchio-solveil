@@ -1,9 +1,12 @@
 use {
     crate::state::Discriminator,
-    base::types::{BitField, Result, Uint64},
+    base::{
+        traits::DataLen,
+        types::{BitField, Result, Uint64},
+    },
     bytemuck::{Pod, Zeroable},
     macro_p_serde::p_serde,
-    macro_test_ser::test_serialize,
+    macro_test_ser::test_ser,
     macro_try_from::AccountTryFrom,
     pinocchio::{account_info::AccountInfo, program_error::ProgramError},
     r#macro_account::AccountMetas,
@@ -36,7 +39,7 @@ pub struct Accounts<'a> {
     pub revenue_app_ata: &'a AccountInfo,
 }
 
-#[test_serialize(Discriminator::WithdrawRevenue)]
+#[test_ser(Discriminator::WithdrawRevenue)]
 #[p_serde]
 pub struct InstructionData {
     pub flags: BitField,

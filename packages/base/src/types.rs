@@ -2,6 +2,7 @@ use {
     crate::{
         converters::{deserialize_mut_unchecked, deserialize_unchecked},
         helpers::{get_flag, set_flag},
+        traits::DataLen,
     },
     bytemuck::{Pod, Zeroable},
     macro_p_serde::p_serde,

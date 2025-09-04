@@ -1,6 +1,6 @@
 use {
     crate::helpers::suite::decimal::{str_to_dec, Decimal},
-    registry_cpi::error::AnyError,
+    registry_cpi::error::AnyError, // TODO: use project name independent path
     solana_keypair::Keypair,
     std::fmt::Debug,
     strum::IntoEnumIterator,

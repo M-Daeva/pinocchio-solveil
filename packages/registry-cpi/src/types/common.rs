@@ -1,5 +1,8 @@
 use {
-    base::types::{Uint32, Uint64},
+    base::{
+        traits::DataLen,
+        types::{Uint32, Uint64},
+    },
     bytemuck::{Pod, Zeroable},
     macro_p_serde::p_serde,
     pinocchio::pubkey::Pubkey,
