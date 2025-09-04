@@ -4,7 +4,7 @@ use {
         helpers::{get_flag, set_flag},
     },
     bytemuck::{Pod, Zeroable},
-    macro_zc_serde::p_serde,
+    macro_p_serde::p_serde,
     pinocchio::{
         account_info::{AccountInfo, Ref, RefMut},
         program_error::ProgramError,

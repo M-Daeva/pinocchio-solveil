@@ -302,7 +302,7 @@ name = "base"
 version = "1.0.0"
 dependencies = [
  "bytemuck",
- "macro-zc-serde",
+ "macro-p-serde",
  "pinocchio",
  "pinocchio-associated-token-account",
  "pinocchio-log",
@@ -1641,6 +1641,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "macro-p-serde"
+version = "1.0.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.106",
+]
+
+[[package]]
 name = "macro-test-ser"
 version = "1.0.0"
 dependencies = [
@@ -1651,15 +1660,6 @@ dependencies = [
 
 [[package]]
 name = "macro-try-from"
-version = "1.0.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.106",
-]
-
-[[package]]
-name = "macro-zc-serde"
 version = "1.0.0"
 dependencies = [
  "proc-macro2",
@@ -2277,9 +2277,9 @@ dependencies = [
  "bytemuck",
  "macro-account",
  "macro-error",
+ "macro-p-serde",
  "macro-test-ser",
  "macro-try-from",
- "macro-zc-serde",
  "pinocchio",
  "pinocchio-log",
  "pinocchio-pubkey",

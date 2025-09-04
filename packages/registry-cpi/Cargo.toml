@@ -27,7 +27,7 @@ strum_macros = { workspace = true }
 bytemuck = { workspace = true }
 
 macro-account = { workspace = true }
-macro-zc-serde = { workspace = true }
+macro-p-serde = { workspace = true }
 macro-test-ser = { workspace = true }
 macro-try-from = { workspace = true }
 macro-error = { workspace = true }

@@ -2,8 +2,8 @@ use {
     crate::state::Discriminator,
     base::types::Result,
     bytemuck::{Pod, Zeroable},
+    macro_p_serde::p_serde,
     macro_test_ser::test_serialize,
-    macro_zc_serde::p_serde,
 };
 
 pub use crate::types::update_config::Accounts;

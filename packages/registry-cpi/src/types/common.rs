@@ -1,7 +1,7 @@
 use {
     base::types::{Uint32, Uint64},
     bytemuck::{Pod, Zeroable},
-    macro_zc_serde::p_serde,
+    macro_p_serde::p_serde,
     pinocchio::pubkey::Pubkey,
 };
 

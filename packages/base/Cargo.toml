@@ -28,4 +28,4 @@ strum = { workspace = true }
 strum_macros = { workspace = true }
 bytemuck = { workspace = true }
 
-macro-zc-serde = { workspace = true }
+macro-p-serde = { workspace = true }

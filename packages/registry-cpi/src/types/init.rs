@@ -5,9 +5,9 @@ use {
     },
     base::types::{BitField, Result, Uint32},
     bytemuck::{Pod, Zeroable},
+    macro_p_serde::p_serde,
     macro_test_ser::test_serialize,
     macro_try_from::AccountTryFrom,
-    macro_zc_serde::p_serde,
     pinocchio::{account_info::AccountInfo, program_error::ProgramError},
     r#macro_account::AccountMetas,
 };
