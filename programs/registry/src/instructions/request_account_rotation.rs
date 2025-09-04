@@ -35,8 +35,7 @@ pub fn request_account_rotation(
 
     // === load storages ===
 
-    let config_storage = StorageR::<Config>::init(config)?;
-    let config = config_storage.load()?;
+    let config = StorageR::<Config>::load(config)?;
 
     StorageW::<RotationState>::init(user_rotation_state)?.update(|x| {
         // === use guards ===

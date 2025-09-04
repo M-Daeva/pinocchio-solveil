@@ -40,8 +40,7 @@ pub fn create_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Prog
 
     // === load storages ===
 
-    let config_storage = StorageR::<Config>::init(config)?;
-    let config = config_storage.load()?;
+    let config = StorageR::<Config>::load(config)?;
 
     let mut user_counter_storage = StorageW::<UserCounter>::init(user_counter)?;
     let user_counter = user_counter_storage.load()?;

@@ -75,7 +75,7 @@ pub fn confirm_account_rotation(
         user_rotation_state.expiration_date.set(clock_time);
 
         StorageW::<UserId>::init(user_id)?.update(|x| {
-            *x = *StorageR::init(user_id_pre)?.load()?;
+            *x = *StorageR::<UserId>::load(user_id_pre)?;
             Ok(())
         })
     })?;

@@ -58,11 +58,8 @@ pub fn withdraw_revenue(accounts: &[AccountInfo], instruction_data: &[u8]) -> Pr
 
     // === load storages ===
 
-    let bump_storage = StorageR::<Bump>::init(bump)?;
-    let bump = bump_storage.load()?;
-
-    let config_storage = StorageR::<Config>::init(config_acc)?;
-    let config = config_storage.load()?;
+    let bump = StorageR::<Bump>::load(bump)?;
+    let config = StorageR::<Config>::load(config_acc)?;
 
     // === use guards ===
 

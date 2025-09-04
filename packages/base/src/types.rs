@@ -1,6 +1,6 @@
 use {
     crate::{
-        converters::{deserialize, deserialize_mut},
+        converters::{deserialize_mut, deserialize_unchecked},
         helpers::{get_flag, set_flag},
     },
     bytemuck::{Pod, Zeroable},
@@ -41,16 +41,24 @@ where
     T: Pod + Zeroable,
 {
     #[inline]
-    pub fn init(account: &'a AccountInfo) -> Result<Self> {
+    pub fn load(account: &'a AccountInfo) -> Result<Self> {
         Ok(Self {
             data: account.try_borrow_data()?,
             _phantom: PhantomData,
         })
     }
+}
+
+impl<'a, T> core::ops::Deref for StorageR<'a, T>
+where
+    T: Pod + Zeroable,
+{
+    type Target = T;
 
     #[inline]
-    pub fn load(&self) -> Result<&T> {
-        deserialize(&self.data)
+    fn deref(&self) -> &Self::Target {
+        // SAFETY: We control the data format and ensure it's valid
+        unsafe { deserialize_unchecked(&self.data) }
     }
 }
 

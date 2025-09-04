@@ -48,8 +48,7 @@ pub fn activate_account(accounts: &[AccountInfo], _instruction_data: &[u8]) -> P
 
     // === load storages ===
 
-    let config_storage = StorageR::<Config>::init(config)?;
-    let config = config_storage.load()?;
+    let config = StorageR::<Config>::load(config)?;
 
     StorageW::<UserId>::init(user_id)?.update(|user_id| {
         // === use guards ===

@@ -33,6 +33,11 @@ where
 }
 
 #[inline]
+pub unsafe fn deserialize_unchecked<T: Pod>(data: &[u8]) -> &T {
+    &*(data.as_ptr() as *const T)
+}
+
+#[inline]
 pub fn deserialize_mut<T>(data: &mut [u8]) -> Result<&mut T>
 where
     T: Pod + Zeroable,
@@ -40,13 +45,10 @@ where
     try_from_bytes_mut(data).map_err(|_| ProgramError::InvalidAccountData)
 }
 
-// TODO: implement converters for
-// pub struct MoreTypes<'a, T> {
-//     pub a: &'a [T],
-//     pub b: Option<&'a [T]>,
-//     pub c: &'a [Option<T>],
-//     pub d: Option<&'a T>,
-// }
+#[inline]
+pub unsafe fn deserialize_mut_unchecked<T: Pod>(data: &mut [u8]) -> &mut T {
+    &mut *(data.as_mut_ptr() as *mut T)
+}
 
 // pub struct ByteReader<'a, T> {
 //     data: &'a [u8],

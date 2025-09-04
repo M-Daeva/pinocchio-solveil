@@ -38,8 +38,7 @@ pub fn reopen_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Prog
 
     // === load storages ===
 
-    let config_storage = StorageR::<Config>::init(config)?;
-    let config = config_storage.load()?;
+    let config = StorageR::<Config>::load(config)?;
 
     let mut user_id_storage = StorageW::<UserId>::init(user_id)?;
     let user_id = user_id_storage.load()?;

@@ -1,3 +1,4 @@
+#![no_std]
 #![allow(unexpected_cfgs)]
 
 use {
@@ -13,8 +14,6 @@ mod instructions;
 use instructions as i;
 
 entrypoint!(process_instruction);
-
-// TODO: try no_std
 
 pub fn process_instruction(
     _program_id: &Pubkey,
