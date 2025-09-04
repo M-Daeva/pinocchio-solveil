@@ -9,7 +9,10 @@ use {
             TestResult,
         },
     },
-    base::types::{InstructionSerialize, Uint32, Uint64},
+    base::{
+        traits::InstructionSerialize,
+        types::{Uint32, Uint64},
+    },
     litesvm::types::TransactionMetadata,
     registry_cpi::{
         state::{

@@ -2,7 +2,8 @@ use {
     crate::types::common::{AssetItem, Range},
     base::{
         helpers::get_space,
-        types::{BitField, Space, Uint32, Uint64},
+        traits::Space,
+        types::{BitField, Uint32, Uint64},
     },
     bytemuck::{Pod, Zeroable},
     macro_p_serde::p_serde,

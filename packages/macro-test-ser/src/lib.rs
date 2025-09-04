@@ -38,7 +38,7 @@ pub fn test_serialize(args: TokenStream, input: TokenStream) -> TokenStream {
     let serialize_impl = quote! {
         /// for tests
         #[cfg(feature = "dev")]
-        impl base::types::InstructionSerialize for #struct_name {
+        impl base::traits::InstructionSerialize for #struct_name {
             fn serialize(&self) -> Result<Vec<u8>> {
                 Ok([&[#discriminator_tokens as u8], bytemuck::bytes_of(self)].concat())
             }

@@ -8,27 +8,12 @@ use {
     pinocchio::{
         account_info::{AccountInfo, Ref, RefMut},
         program_error::ProgramError,
-        pubkey::Pubkey,
         ProgramResult,
     },
-    pinocchio_pubkey::pubkey,
     std::marker::PhantomData,
 };
 
-pub const TOKEN_2022_ACCOUNT_DISCRIMINATOR_OFFSET: usize = 165;
-pub const TOKEN_2022_MINT_DISCRIMINATOR: u8 = 0x01;
-pub const TOKEN_2022_TOKEN_ACCOUNT_DISCRIMINATOR: u8 = 0x02;
-pub const TOKEN_2022_PROGRAM_ID: Pubkey = pubkey!("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb");
-
 pub type Result<T> = std::result::Result<T, ProgramError>;
-
-pub trait ErrorIndexOffset {
-    const OFFSET: u32;
-}
-
-pub trait Space {
-    fn get_space() -> usize;
-}
 
 // Account data wrapper for immutable operations
 pub struct StorageR<'a, T> {
@@ -285,10 +270,4 @@ impl Uint128 {
     pub fn set(&mut self, x: u128) {
         self.0 = x.to_le_bytes();
     }
-}
-
-/// for tests
-#[cfg(feature = "dev")]
-pub trait InstructionSerialize {
-    fn serialize(&self) -> Result<Vec<u8>>;
 }

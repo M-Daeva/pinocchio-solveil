@@ -1,5 +1,6 @@
 use {
     crate::{
+        constants::TOKEN_2022_PROGRAM_ID,
         guards::{
             check_account_data_len, check_account_owner, check_signer, check_system_program,
             check_token_2022_data_len,
@@ -8,7 +9,7 @@ use {
             create_account, create_account_with_signer, create_ata, get_and_check_pda,
             init_mint_account, init_token_account,
         },
-        types::{Space, TOKEN_2022_PROGRAM_ID},
+        traits::Space,
     },
     pinocchio::{
         account_info::AccountInfo, instruction::Seed, program_error::ProgramError, pubkey::Pubkey,

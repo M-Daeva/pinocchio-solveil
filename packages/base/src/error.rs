@@ -1,4 +1,4 @@
-use {crate::types::ErrorIndexOffset, strum_macros::EnumIter};
+use {crate::traits::ErrorIndexOffset, strum_macros::EnumIter};
 
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq, EnumIter)]
