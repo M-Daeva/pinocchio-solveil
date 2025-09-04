@@ -10,7 +10,6 @@ use {
 };
 
 #[derive(AccountTryFrom, AccountMetas)]
-#[repr(C)]
 pub struct Accounts<'a> {
     #[account(signer, writable)]
     pub sender: &'a AccountInfo,
