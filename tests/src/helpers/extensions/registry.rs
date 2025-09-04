@@ -26,7 +26,7 @@ use {
     },
 };
 
-pub trait CounterExtension {
+pub trait RegistryExtension {
     fn registry_try_init(
         &mut self,
         sender: AppUser,
@@ -116,7 +116,7 @@ pub trait CounterExtension {
     fn registry_query_user_rotation_state(&self, user: AppUser) -> TestResult<RotationState>;
 }
 
-impl CounterExtension for App {
+impl RegistryExtension for App {
     fn registry_try_init(
         &mut self,
         sender: AppUser,

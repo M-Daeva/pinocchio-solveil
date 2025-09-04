@@ -1,6 +1,6 @@
 use {
     crate::helpers::{
-        extensions::registry::CounterExtension,
+        extensions::registry::RegistryExtension,
         suite::{
             core::{get_program_size, App, PROGRAM_NAME_REGISTRY},
             types::{AppToken, AppUser, PinPubkey, TestResult},
