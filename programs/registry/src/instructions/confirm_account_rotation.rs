@@ -52,7 +52,7 @@ pub fn confirm_account_rotation(
         &crate::ID,
     )?;
 
-    StorageW::<RotationState>::init(user_rotation_state)?.update(|user_rotation_state| {
+    StorageW::<RotationState>::update(user_rotation_state, |user_rotation_state| {
         // === use guards ===
 
         if user_rotation_state.new_owner == user_rotation_state.owner {
@@ -74,7 +74,7 @@ pub fn confirm_account_rotation(
         user_rotation_state.owner = user_rotation_state.new_owner;
         user_rotation_state.expiration_date.set(clock_time);
 
-        StorageW::<UserId>::init(user_id)?.update(|x| {
+        StorageW::<UserId>::update(user_id, |x| {
             *x = *StorageR::<UserId>::load(user_id_pre)?;
             Ok(())
         })

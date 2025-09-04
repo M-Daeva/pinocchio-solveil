@@ -42,11 +42,9 @@ pub fn create_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Prog
 
     let config = StorageR::<Config>::load(config)?;
 
-    let mut user_counter_storage = StorageW::<UserCounter>::init(user_counter)?;
-    let user_counter = user_counter_storage.load()?;
-    user_counter
-        .last_user_id
-        .set(user_counter.last_user_id.get() + 1);
+    let mut user_counter = StorageW::<UserCounter>::load(user_counter)?;
+    let last_user_id = user_counter.last_user_id.get() + 1;
+    user_counter.last_user_id.set(last_user_id);
 
     let user_seed_id = &user_counter.last_user_id.get_raw();
 
@@ -81,7 +79,7 @@ pub fn create_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Prog
         &seeds!(SEED::USER_ACCOUNT, user_seed_id, &[user_account_bump]),
         &crate::ID,
     )?;
-    StorageW::init(user_account)?.update(|x| {
+    StorageW::update(user_account, |x| {
         *x = UserAccount::default();
         x.max_size.set(max_data_size);
         Ok(())
@@ -103,7 +101,7 @@ pub fn create_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Prog
         ),
         &crate::ID,
     )?;
-    StorageW::<RotationState>::init(user_rotation_state)?.update(|x| {
+    StorageW::<RotationState>::update(user_rotation_state, |x| {
         x.owner = *sender.key();
         x.new_owner = *sender.key();
         x.expiration_date.set(get_clock_time()?);
@@ -119,7 +117,7 @@ pub fn create_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Prog
         &seeds!(SEED::USER_ID, sender.key(), &[user_id_bump]),
         &crate::ID,
     )?;
-    StorageW::<UserId>::init(user_id)?.update(|x| {
+    StorageW::<UserId>::update(user_id, |x| {
         x.id.set_raw(*user_seed_id);
         x.set_is_open_flag(true);
         x.set_is_activated_flag(false);

@@ -16,7 +16,7 @@ pub fn confirm_admin_rotation(accounts: &[AccountInfo], _instruction_data: &[u8]
         admin_rotation_state,
     } = Accounts::try_from(accounts)?;
 
-    StorageW::<RotationState>::init(admin_rotation_state)?.update(|admin_rotation_state| {
+    StorageW::<RotationState>::update(admin_rotation_state, |admin_rotation_state| {
         // === use guards ===
 
         if admin_rotation_state.new_owner == admin_rotation_state.owner {
@@ -38,7 +38,7 @@ pub fn confirm_admin_rotation(accounts: &[AccountInfo], _instruction_data: &[u8]
         admin_rotation_state.owner = admin_rotation_state.new_owner;
         admin_rotation_state.expiration_date.set(clock_time);
 
-        StorageW::<Config>::init(config)?.update(|x| {
+        StorageW::<Config>::update(config, |x| {
             x.admin = admin_rotation_state.new_owner;
             Ok(())
         })

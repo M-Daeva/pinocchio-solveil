@@ -28,9 +28,7 @@ pub fn write_data(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramR
     // === load storages ===
 
     let user_id = StorageR::<UserId>::load(user_id)?;
-
-    let mut user_account_storage = StorageW::<UserAccount>::init(user_account)?;
-    let user_account = user_account_storage.load()?;
+    let mut user_account = StorageW::<UserAccount>::load(user_account)?;
 
     // === use guards ===
 

@@ -37,7 +37,7 @@ pub fn request_account_rotation(
 
     let config = StorageR::<Config>::load(config)?;
 
-    StorageW::<RotationState>::init(user_rotation_state)?.update(|x| {
+    StorageW::<RotationState>::update(user_rotation_state, |x| {
         // === use guards ===
 
         if &ix.new_owner == sender.key() {

@@ -1,6 +1,6 @@
 use {
     crate::{
-        converters::{deserialize_mut, deserialize_unchecked},
+        converters::{deserialize_mut_unchecked, deserialize_unchecked},
         helpers::{get_flag, set_flag},
     },
     bytemuck::{Pod, Zeroable},
@@ -73,7 +73,7 @@ where
     T: Pod + Zeroable,
 {
     #[inline]
-    pub fn init(account: &'a AccountInfo) -> Result<Self> {
+    pub fn load(account: &'a AccountInfo) -> Result<Self> {
         Ok(Self {
             data: account.try_borrow_mut_data()?,
             _phantom: PhantomData,
@@ -81,18 +81,35 @@ where
     }
 
     #[inline]
-    pub fn load(&mut self) -> Result<&mut T> {
-        deserialize_mut(&mut self.data)
-    }
-
-    #[inline]
-    pub fn update<F>(&mut self, f: F) -> ProgramResult
+    pub fn update<F>(account: &'a AccountInfo, f: F) -> ProgramResult
     where
         F: FnOnce(&mut T) -> ProgramResult,
-        T: Pod + Zeroable,
     {
-        let data = self.load()?;
-        f(data)
+        f(&mut *Self::load(account)?)
+    }
+}
+
+impl<'a, T> core::ops::Deref for StorageW<'a, T>
+where
+    T: Pod + Zeroable,
+{
+    type Target = T;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        // SAFETY: We control the data format and ensure it's valid
+        unsafe { deserialize_unchecked(&self.data) }
+    }
+}
+
+impl<'a, T> core::ops::DerefMut for StorageW<'a, T>
+where
+    T: Pod + Zeroable,
+{
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        // SAFETY: We control the data format and ensure it's valid
+        unsafe { deserialize_mut_unchecked(&mut self.data) }
     }
 }
 

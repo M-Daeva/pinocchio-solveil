@@ -32,8 +32,7 @@ pub fn update_config(accounts: &[AccountInfo], instruction_data: &[u8]) -> Progr
 
     // === load storages ===
 
-    let mut config_storage = StorageW::<Config>::init(config)?;
-    let config = config_storage.load()?;
+    let mut config = StorageW::<Config>::load(config)?;
 
     // === use guards ===
 
@@ -47,7 +46,7 @@ pub fn update_config(accounts: &[AccountInfo], instruction_data: &[u8]) -> Progr
             Err(AnyError::Auth(AuthError::UselessRotation))?;
         }
 
-        StorageW::<RotationState>::init(admin_rotation_state)?.update(|x| {
+        StorageW::<RotationState>::update(admin_rotation_state, |x| {
             x.new_owner = ix.admin;
             x.expiration_date
                 .set(get_clock_time()? + config.rotation_timeout.get() as u64);

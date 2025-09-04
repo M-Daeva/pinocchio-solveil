@@ -69,7 +69,7 @@ pub fn init(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult 
         &seeds!(SEED::CONFIG, &[config_bump]),
         &crate::ID,
     )?;
-    StorageW::init(config)?.update(|x| {
+    StorageW::update(config, |x| {
         let registration_fee = if ix.get_account_registration_fee_flag() {
             ix.account_registration_fee
         } else {
@@ -105,7 +105,7 @@ pub fn init(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult 
         &seeds!(SEED::USER_COUNTER, &[user_counter_bump]),
         &crate::ID,
     )?;
-    StorageW::init(user_counter)?.update(|x| {
+    StorageW::update(user_counter, |x| {
         *x = UserCounter::default();
         Ok(())
     })?;
@@ -122,7 +122,7 @@ pub fn init(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult 
         &seeds!(SEED::ADMIN_ROTATION_STATE, &[admin_rotation_state_bump]),
         &crate::ID,
     )?;
-    StorageW::<RotationState>::init(admin_rotation_state)?.update(|x| {
+    StorageW::<RotationState>::update(admin_rotation_state, |x| {
         x.owner = *sender.key();
         x.new_owner = *sender.key();
         x.expiration_date.set(clock_time);
@@ -132,7 +132,7 @@ pub fn init(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult 
     // bump
     let (_, bump_bump) = get_and_check_pda(&[SEED::BUMP], &crate::ID, Some(bump))?;
     ProgramAccount::init::<Bump>(sender, bump, &seeds!(SEED::BUMP, &[bump_bump]), &crate::ID)?;
-    StorageW::<Bump>::init(bump)?.update(|x| {
+    StorageW::<Bump>::update(bump, |x| {
         x.config = config_bump;
         x.user_counter = user_counter_bump;
         x.rotation_state = admin_rotation_state_bump;
