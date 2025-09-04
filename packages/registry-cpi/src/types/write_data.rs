@@ -2,14 +2,13 @@ use {
     crate::state::{Discriminator, ACCOUNT_DATA_SIZE_MAX},
     base::types::{Result, Uint64},
     bytemuck::{Pod, Zeroable},
-    macro_test_ser::test_serialize,
+    macro_test_ser::test_ser,
     macro_try_from::AccountTryFrom,
     pinocchio::{account_info::AccountInfo, program_error::ProgramError},
     r#macro_account::AccountMetas,
 };
 
 #[derive(AccountTryFrom, AccountMetas)]
-#[repr(C)]
 pub struct Accounts<'a> {
     #[account(signer, writable)]
     pub sender: &'a AccountInfo,
@@ -20,7 +19,7 @@ pub struct Accounts<'a> {
     pub user_account: &'a AccountInfo,
 }
 
-#[test_serialize(Discriminator::WriteData)]
+#[test_ser(Discriminator::WriteData)]
 #[derive(Debug, PartialEq, Eq, Pod, Zeroable, Clone, Copy)]
 #[repr(C)]
 pub struct InstructionData {
@@ -36,11 +35,3 @@ impl Default for InstructionData {
         }
     }
 }
-
-// /// for tests
-// #[cfg(feature = "dev")]
-// impl base::types::InstructionSerialize for InstructionData {
-//     fn serialize(&self) -> Result<Vec<u8>> {
-//         Ok([&[Discriminator::WriteData as u8], bytemuck::bytes_of(self)].concat())
-//     }
-// }

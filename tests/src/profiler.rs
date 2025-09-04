@@ -1,6 +1,6 @@
 use {
     crate::helpers::{
-        extensions::registry::CounterExtension,
+        extensions::registry::RegistryExtension,
         suite::{
             core::{get_program_size, App, PROGRAM_NAME_REGISTRY},
             types::{AppToken, AppUser, PinPubkey, TestResult},
@@ -45,11 +45,11 @@ fn profiling_registry() -> TestResult<()> {
     const PROGRAM_NAME: &str = PROGRAM_NAME_REGISTRY;
     const PREVIOUS_RESULT: &str = "
 ==================== previous result ====================
-registry program size: 72824 B
-registry init instruction: 36958 CU
-registry create_account instruction: 19466 CU
-registry activate_account instruction: 14548 CU
-registry write_data instruction: 5293 CU
+registry program size: 49240 B
+registry init instruction: 36700 CU
+registry create_account instruction: 19114 CU
+registry activate_account instruction: 14222 CU
+registry write_data instruction: 4785 CU
 ==================== current result =====================";
 
     println!("{}", PREVIOUS_RESULT);

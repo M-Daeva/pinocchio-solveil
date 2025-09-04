@@ -9,7 +9,7 @@ use {
             create_account, create_account_with_signer, create_ata, get_and_check_pda,
             init_mint_account, init_token_account,
         },
-        traits::Space,
+        traits::DataLen,
     },
     pinocchio::{
         account_info::AccountInfo, instruction::Seed, program_error::ProgramError, pubkey::Pubkey,
@@ -69,7 +69,7 @@ pub trait AssociatedTokenAccountInit {
 }
 
 pub trait ProgramAccountCheck {
-    fn check<T: Space>(
+    fn check<T: DataLen>(
         account: &AccountInfo,
         program_id: &Pubkey,
         seeds: Option<&[&[u8]]>,
@@ -77,14 +77,14 @@ pub trait ProgramAccountCheck {
 }
 
 pub trait ProgramAccountInit {
-    fn init<T: Space>(
+    fn init<T: DataLen>(
         payer: &AccountInfo,
         account: &AccountInfo,
         signer_seeds: &[Seed],
         owner: &Pubkey,
     ) -> ProgramResult;
 
-    fn init_if_needed<T: Space>(
+    fn init_if_needed<T: DataLen>(
         payer: &AccountInfo,
         account: &AccountInfo,
         program_id: &Pubkey,
@@ -383,13 +383,13 @@ pub struct ProgramAccount;
 impl ProgramAccountCheck for ProgramAccount {
     // TODO: move T in struct, allow method chains (check performance)
     // TODO make seeds required and return (pda, bump) - don't return it (affects on program size)
-    fn check<T: Space>(
+    fn check<T: DataLen>(
         account: &AccountInfo,
         program_id: &Pubkey,
         seeds: Option<&[&[u8]]>,
     ) -> ProgramResult {
         check_account_owner(account, program_id)?;
-        check_account_data_len(account, T::get_space())?;
+        check_account_data_len(account, T::LEN)?;
 
         if let Some(seeds) = seeds {
             get_and_check_pda(seeds, program_id, Some(account))?;
@@ -400,16 +400,16 @@ impl ProgramAccountCheck for ProgramAccount {
 }
 
 impl ProgramAccountInit for ProgramAccount {
-    fn init<T: Space>(
+    fn init<T: DataLen>(
         payer: &AccountInfo,
         account: &AccountInfo,
         signer_seeds: &[Seed],
         owner: &Pubkey,
     ) -> ProgramResult {
-        create_account_with_signer(payer, account, T::get_space(), signer_seeds, owner)
+        create_account_with_signer(payer, account, T::LEN, signer_seeds, owner)
     }
 
-    fn init_if_needed<T: Space>(
+    fn init_if_needed<T: DataLen>(
         payer: &AccountInfo,
         account: &AccountInfo,
         program_id: &Pubkey,

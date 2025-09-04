@@ -1,16 +1,18 @@
 use {
     crate::state::Discriminator,
-    base::types::{Result, Uint32},
+    base::{
+        traits::DataLen,
+        types::{Result, Uint32},
+    },
     bytemuck::{Pod, Zeroable},
     macro_p_serde::p_serde,
-    macro_test_ser::test_serialize,
+    macro_test_ser::test_ser,
     macro_try_from::AccountTryFrom,
     pinocchio::{account_info::AccountInfo, program_error::ProgramError},
     r#macro_account::AccountMetas,
 };
 
 #[derive(AccountTryFrom, AccountMetas)]
-#[repr(C)]
 pub struct Accounts<'a> {
     pub system_program: &'a AccountInfo,
 
@@ -31,7 +33,7 @@ pub struct Accounts<'a> {
     pub user_rotation_state: &'a AccountInfo,
 }
 
-#[test_serialize(Discriminator::ReopenAccount)]
+#[test_ser(Discriminator::ReopenAccount)]
 #[p_serde]
 pub struct InstructionData {
     pub max_data_size: Uint32,

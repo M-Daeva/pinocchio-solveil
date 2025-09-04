@@ -1,9 +1,12 @@
 use {
     crate::{state::Discriminator, types::common::Range},
-    base::types::{BitField, Result, Uint32, Uint64},
+    base::{
+        traits::DataLen,
+        types::{BitField, Result, Uint32, Uint64},
+    },
     bytemuck::{Pod, Zeroable},
     macro_p_serde::p_serde,
-    macro_test_ser::test_serialize,
+    macro_test_ser::test_ser,
     macro_try_from::AccountTryFrom,
     pinocchio::{account_info::AccountInfo, program_error::ProgramError, pubkey::Pubkey},
     r#macro_account::AccountMetas,
@@ -13,7 +16,6 @@ use {
 // related to macro usage
 
 #[derive(AccountTryFrom, AccountMetas)]
-#[repr(C)]
 pub struct Accounts<'a> {
     #[account(signer, writable)]
     pub sender: &'a AccountInfo,
@@ -25,7 +27,7 @@ pub struct Accounts<'a> {
     pub admin_rotation_state: &'a AccountInfo,
 }
 
-#[test_serialize(Discriminator::UpdateConfig)]
+#[test_ser(Discriminator::UpdateConfig)]
 #[p_serde]
 pub struct InstructionData {
     pub flags: BitField,

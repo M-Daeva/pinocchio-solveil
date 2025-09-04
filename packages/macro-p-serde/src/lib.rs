@@ -6,7 +6,8 @@ use {
 
 /// replaces \
 /// #[derive(Default, Debug, PartialEq, Eq, Pod, Zeroable, Clone, Copy)] \
-/// #[repr(C)]
+/// #[repr(C)] \
+/// and implements DataLen
 #[proc_macro_attribute]
 pub fn p_serde(_args: TokenStream, input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -15,6 +16,7 @@ pub fn p_serde(_args: TokenStream, input: TokenStream) -> TokenStream {
     let vis = &input.vis;
     let attrs = &input.attrs;
     let generics = &input.generics;
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     // Handle the struct data properly
     let fields = match &input.data {
@@ -22,7 +24,7 @@ pub fn p_serde(_args: TokenStream, input: TokenStream) -> TokenStream {
         _ => panic!("p_serde can only be used on structs"),
     };
 
-    let expanded = match fields {
+    let struct_def = match fields {
         Fields::Named(fields) => {
             let named_fields = &fields.named;
             quote! {
@@ -51,6 +53,17 @@ pub fn p_serde(_args: TokenStream, input: TokenStream) -> TokenStream {
                 #vis struct #name #generics;
             }
         }
+    };
+
+    let datalen_impl = quote! {
+        impl #impl_generics DataLen for #name #ty_generics #where_clause {
+            const LEN: usize = core::mem::size_of::<Self>();
+        }
+    };
+
+    let expanded = quote! {
+        #struct_def
+        #datalen_impl
     };
 
     TokenStream::from(expanded)

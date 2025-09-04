@@ -58,11 +58,6 @@ pub fn get_clock_time() -> Result<u64> {
 }
 
 #[inline]
-pub fn get_space<T>() -> usize {
-    core::mem::size_of::<T>()
-}
-
-#[inline]
 pub fn get_rent_exempt(space: usize) -> Result<u64> {
     Ok(Rent::get()?.minimum_balance(space))
 }

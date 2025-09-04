@@ -4,8 +4,8 @@ pub trait ErrorIndexOffset {
     const OFFSET: u32;
 }
 
-pub trait Space {
-    fn get_space() -> usize;
+pub trait DataLen {
+    const LEN: usize;
 }
 
 /// for tests

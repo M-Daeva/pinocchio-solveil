@@ -1,6 +1,6 @@
 use {
     crate::helpers::{
-        extensions::registry::{get_data_buffer, CounterExtension},
+        extensions::registry::{get_data_buffer, RegistryExtension},
         suite::{
             core::{assert_error, App},
             types::{pin_to_sol_pubkey, AppToken, AppUser, PinPubkey, TestResult},

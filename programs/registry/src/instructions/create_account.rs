@@ -6,6 +6,7 @@ use {
         },
         converters::deserialize,
         helpers::{create_account_with_signer, get_and_check_pda, get_clock_time},
+        traits::DataLen,
         types::{StorageR, StorageW},
     },
     pinocchio::{account_info::AccountInfo, seeds, ProgramResult},
@@ -75,7 +76,7 @@ pub fn create_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Prog
     create_account_with_signer(
         sender,
         user_account,
-        UserAccount::get_space(max_data_size),
+        UserAccount::LEN,
         &seeds!(SEED::USER_ACCOUNT, user_seed_id, &[user_account_bump]),
         &crate::ID,
     )?;
