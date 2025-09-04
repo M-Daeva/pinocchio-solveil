@@ -93,7 +93,5 @@ pub fn withdraw_revenue(accounts: &[AccountInfo], instruction_data: &[u8]) -> Pr
         &seeds!(SEED::CONFIG, &[bump.config]),
         config_acc,
         get_token_decimals(revenue_mint)?,
-    )?;
-
-    Ok(())
+    )
 }

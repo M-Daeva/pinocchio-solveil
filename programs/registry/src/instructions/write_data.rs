@@ -28,26 +28,26 @@ pub fn write_data(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramR
     // === load storages ===
 
     let user_id = StorageR::<UserId>::load(user_id)?;
-    let mut user_account = StorageW::<UserAccount>::load(user_account)?;
 
-    // === use guards ===
+    StorageW::<UserAccount>::update(user_account, |user_account| {
+        // === use guards ===
 
-    if !user_id.get_is_activated_flag() {
-        Err(AnyError::Custom(CustomError::AccountIsNotActivated))?;
-    }
+        if !user_id.get_is_activated_flag() {
+            Err(AnyError::Custom(CustomError::AccountIsNotActivated))?;
+        }
 
-    if data.len() > user_account.max_size.get() as usize {
-        Err(AnyError::Custom(CustomError::MaxDataSizeIsExceeded))?;
-    }
+        if data.len() > user_account.max_size.get() as usize {
+            Err(AnyError::Custom(CustomError::MaxDataSizeIsExceeded))?;
+        }
 
-    if nonce == &user_account.nonce {
-        Err(AnyError::Custom(CustomError::BadNonce))?;
-    }
+        if nonce == &user_account.nonce {
+            Err(AnyError::Custom(CustomError::BadNonce))?;
+        }
 
-    // === save storages ===
+        // === save storages ===
 
-    user_account.data = *data;
-    user_account.nonce = *nonce;
-
-    Ok(())
+        user_account.data = *data;
+        user_account.nonce = *nonce;
+        Ok(())
+    })
 }

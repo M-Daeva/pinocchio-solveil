@@ -7,12 +7,14 @@ use {
         },
     },
     base::types::Uint64,
-    registry_cpi::{state::ACCOUNT_REGISTRATION_FEE_AMOUNT, types::common::AssetItem},
+    registry_cpi::{
+        state::{ACCOUNT_DATA_SIZE_MAX, ACCOUNT_REGISTRATION_FEE_AMOUNT},
+        types::common::AssetItem,
+    },
 };
 
 #[test]
 fn profiling_registry() -> TestResult<()> {
-    const MAX_DATA_SIZE: u32 = 1_000;
     const DATA_0: &str = "encrypted_secrets_0";
     const NONCE_0: u64 = 1;
 
@@ -31,14 +33,14 @@ fn profiling_registry() -> TestResult<()> {
         .compute_units_consumed;
 
     let create_account_cu = app
-        .registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, None)?
+        .registry_try_create_account(AppUser::Alice, ACCOUNT_DATA_SIZE_MAX, None)?
         .compute_units_consumed;
     let activate_account_cu = app
         .registry_try_activate_account(AppUser::Alice, None, None)?
         .compute_units_consumed;
-    // let write_data_cu = app
-    //     .registry_try_write_data(AppUser::Alice, DATA_0, NONCE_0)?
-    //     .compute_units_consumed;
+    let write_data_cu = app
+        .registry_try_write_data(AppUser::Alice, DATA_0, NONCE_0)?
+        .compute_units_consumed;
 
     const PROGRAM_NAME: &str = PROGRAM_NAME_REGISTRY;
     const PREVIOUS_RESULT: &str = "
@@ -65,10 +67,10 @@ registry write_data instruction: 5293 CU
         "{} activate_account instruction: {} CU",
         PROGRAM_NAME, activate_account_cu
     );
-    // println!(
-    //     "{} write_data instruction: {} CU",
-    //     PROGRAM_NAME, write_data_cu
-    // );
+    println!(
+        "{} write_data instruction: {} CU",
+        PROGRAM_NAME, write_data_cu
+    );
 
     Ok(())
 }

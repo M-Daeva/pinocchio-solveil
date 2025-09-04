@@ -616,14 +616,8 @@ impl CounterExtension for App {
         }
         .to_account_metas();
 
-        let mut buffer: [u8; ACCOUNT_DATA_SIZE_MAX as usize] =
-            [0u8; ACCOUNT_DATA_SIZE_MAX as usize];
-        for (i, data_byte) in data.as_bytes().iter().enumerate() {
-            buffer[i] = *data_byte;
-        }
-
         let instruction_data = &types::write_data::InstructionData {
-            data: buffer,
+            data: get_data_buffer(data),
             nonce: Uint64::from(nonce),
         }
         .serialize()
@@ -765,4 +759,11 @@ impl CounterExtension for App {
             &self.pda.registry_user_rotation_state(user_id.id.get()),
         )
     }
+}
+
+pub fn get_data_buffer(data: &str) -> [u8; ACCOUNT_DATA_SIZE_MAX as usize] {
+    let mut buffer = [0u8; ACCOUNT_DATA_SIZE_MAX as usize];
+    let bytes = data.as_bytes();
+    buffer[..bytes.len()].copy_from_slice(bytes);
+    buffer
 }
