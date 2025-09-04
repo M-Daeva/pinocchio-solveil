@@ -6,7 +6,7 @@ use {
         },
         converters::deserialize,
         helpers::{create_account_with_signer, get_clock_time},
-        types::Storage,
+        types::{StorageR, StorageW},
     },
     pinocchio::{account_info::AccountInfo, seeds, ProgramResult},
     registry_cpi::{
@@ -38,11 +38,11 @@ pub fn reopen_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Prog
 
     // === load storages ===
 
-    let config_storage = Storage::<Config>::init(config)?;
+    let config_storage = StorageR::<Config>::init(config)?;
     let config = config_storage.load()?;
 
-    let mut user_id_storage = Storage::<UserId>::init(user_id)?;
-    let user_id = user_id_storage.load_mut()?;
+    let mut user_id_storage = StorageW::<UserId>::init(user_id)?;
+    let user_id = user_id_storage.load()?;
 
     // === use guards ===
 
@@ -72,7 +72,7 @@ pub fn reopen_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Prog
         &seeds!(SEED::USER_ACCOUNT, user_seed_id, &[user_id.account_bump]),
         &crate::ID,
     )?;
-    Storage::init(user_account)?.update(|x| {
+    StorageW::init(user_account)?.update(|x| {
         *x = UserAccount::default();
         x.max_size.set(max_data_size);
         Ok(())
@@ -89,7 +89,7 @@ pub fn reopen_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Prog
         ),
         &crate::ID,
     )?;
-    Storage::<RotationState>::init(user_rotation_state)?.update(|x| {
+    StorageW::<RotationState>::init(user_rotation_state)?.update(|x| {
         x.owner = *sender.key();
         x.new_owner = *sender.key();
         x.expiration_date.set(get_clock_time()?);

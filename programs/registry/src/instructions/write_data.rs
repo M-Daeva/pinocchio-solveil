@@ -2,7 +2,7 @@ use {
     base::{
         accounts::{AccountCheck, ProgramAccount, ProgramAccountCheck, SignerAccount},
         converters::deserialize,
-        types::Storage,
+        types::{StorageR, StorageW},
     },
     pinocchio::{account_info::AccountInfo, ProgramResult},
     registry_cpi::{
@@ -27,11 +27,11 @@ pub fn write_data(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramR
 
     // === load storages ===
 
-    let user_id_storage = Storage::<UserId>::init(user_id)?;
+    let user_id_storage = StorageR::<UserId>::init(user_id)?;
     let user_id = user_id_storage.load()?;
 
-    let mut user_account_storage = Storage::<UserAccount>::init(user_account)?;
-    let user_account = user_account_storage.load_mut()?;
+    let mut user_account_storage = StorageW::<UserAccount>::init(user_account)?;
+    let user_account = user_account_storage.load()?;
 
     // === use guards ===
 

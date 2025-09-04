@@ -5,7 +5,7 @@ use {
             ProgramAccount, ProgramAccountCheck, SignerAccount, SystemProgram,
         },
         helpers::{get_token_decimals, transfer_token_from_user},
-        types::Storage,
+        types::{StorageR, StorageW},
     },
     pinocchio::{account_info::AccountInfo, ProgramResult},
     registry_cpi::{
@@ -48,10 +48,10 @@ pub fn activate_account(accounts: &[AccountInfo], _instruction_data: &[u8]) -> P
 
     // === load storages ===
 
-    let config_storage = Storage::<Config>::init(config)?;
+    let config_storage = StorageR::<Config>::init(config)?;
     let config = config_storage.load()?;
 
-    Storage::<UserId>::init(user_id)?.update(|user_id| {
+    StorageW::<UserId>::init(user_id)?.update(|user_id| {
         // === use guards ===
 
         // only open account can be activated

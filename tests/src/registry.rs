@@ -332,7 +332,7 @@ fn activate_account_for_other_user() -> TestResult<()> {
 fn withdraw_revenue_default() -> TestResult<()> {
     const MAX_DATA_SIZE: u32 = 1_000;
 
-    let mut app = init_app(false)?;
+    let mut app = init_app(true)?;
 
     app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, None)?;
     app.registry_try_activate_account(AppUser::Alice, None, None)?;

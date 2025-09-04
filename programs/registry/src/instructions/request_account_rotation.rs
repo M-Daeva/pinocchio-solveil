@@ -4,7 +4,7 @@ use {
         converters::deserialize,
         error::AuthError,
         helpers::get_clock_time,
-        types::Storage,
+        types::{StorageR, StorageW},
     },
     pinocchio::{account_info::AccountInfo, ProgramResult},
     registry_cpi::{
@@ -35,10 +35,10 @@ pub fn request_account_rotation(
 
     // === load storages ===
 
-    let config_storage = Storage::<Config>::init(config)?;
+    let config_storage = StorageR::<Config>::init(config)?;
     let config = config_storage.load()?;
 
-    Storage::<RotationState>::init(user_rotation_state)?.update(|x| {
+    StorageW::<RotationState>::init(user_rotation_state)?.update(|x| {
         // === use guards ===
 
         if &ix.new_owner == sender.key() {

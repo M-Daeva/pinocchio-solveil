@@ -6,7 +6,7 @@ use {
         },
         error::AuthError,
         helpers::{get_and_check_pda, get_clock_time},
-        types::Storage,
+        types::{StorageR, StorageW},
     },
     pinocchio::{account_info::AccountInfo, seeds, ProgramResult},
     registry_cpi::{
@@ -52,7 +52,7 @@ pub fn confirm_account_rotation(
         &crate::ID,
     )?;
 
-    Storage::<RotationState>::init(user_rotation_state)?.update(|user_rotation_state| {
+    StorageW::<RotationState>::init(user_rotation_state)?.update(|user_rotation_state| {
         // === use guards ===
 
         if user_rotation_state.new_owner == user_rotation_state.owner {
@@ -74,8 +74,8 @@ pub fn confirm_account_rotation(
         user_rotation_state.owner = user_rotation_state.new_owner;
         user_rotation_state.expiration_date.set(clock_time);
 
-        Storage::<UserId>::init(user_id)?.update(|x| {
-            *x = *Storage::init(user_id_pre)?.load_mut()?;
+        StorageW::<UserId>::init(user_id)?.update(|x| {
+            *x = *StorageR::init(user_id_pre)?.load()?;
             Ok(())
         })
     })?;

@@ -305,6 +305,7 @@ dependencies = [
  "macro-zc-serde",
  "pinocchio",
  "pinocchio-associated-token-account",
+ "pinocchio-log",
  "pinocchio-pubkey",
  "pinocchio-system",
  "pinocchio-token",

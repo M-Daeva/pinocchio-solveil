@@ -7,7 +7,7 @@ use {
         converters::deserialize,
         error::AuthError,
         helpers::{get_ata_balance, get_token_decimals, transfer_token_from_program},
-        types::Storage,
+        types::StorageR,
     },
     pinocchio::{account_info::AccountInfo, seeds, ProgramResult},
     registry_cpi::{
@@ -58,10 +58,10 @@ pub fn withdraw_revenue(accounts: &[AccountInfo], instruction_data: &[u8]) -> Pr
 
     // === load storages ===
 
-    let bump_storage = Storage::<Bump>::init(bump)?;
+    let bump_storage = StorageR::<Bump>::init(bump)?;
     let bump = bump_storage.load()?;
 
-    let config_storage = Storage::<Config>::init(config_acc)?;
+    let config_storage = StorageR::<Config>::init(config_acc)?;
     let config = config_storage.load()?;
 
     // === use guards ===
@@ -96,5 +96,7 @@ pub fn withdraw_revenue(accounts: &[AccountInfo], instruction_data: &[u8]) -> Pr
         &seeds!(SEED::CONFIG, &[bump.config]),
         config_acc,
         get_token_decimals(revenue_mint)?,
-    )
+    )?;
+
+    Ok(())
 }

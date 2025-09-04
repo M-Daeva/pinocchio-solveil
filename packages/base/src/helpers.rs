@@ -9,6 +9,10 @@ use {
     },
 };
 
+pub fn show<T: std::fmt::Debug>(label: &str, data: T) {
+    pinocchio_log::log!("✅ {}: {}", label, format!("{:?}", data).as_str());
+}
+
 /// pass args in the order to expect mint_a <= mint_b
 #[inline]
 pub fn are_mints_sorted(mint_a: &Pubkey, mint_b: &Pubkey) -> bool {

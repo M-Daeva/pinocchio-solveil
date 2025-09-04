@@ -6,7 +6,7 @@ use {
     bytemuck::{Pod, Zeroable},
     macro_zc_serde::p_serde,
     pinocchio::{
-        account_info::{AccountInfo, RefMut},
+        account_info::{AccountInfo, Ref, RefMut},
         program_error::ProgramError,
         pubkey::Pubkey,
         ProgramResult,
@@ -30,13 +30,37 @@ pub trait Space {
     fn get_space() -> usize;
 }
 
-// Account data wrapper for typed access
-pub struct Storage<'a, T> {
+// Account data wrapper for immutable operations
+pub struct StorageR<'a, T> {
+    data: Ref<'a, [u8]>,
+    _phantom: PhantomData<T>,
+}
+
+impl<'a, T> StorageR<'a, T>
+where
+    T: Pod + Zeroable,
+{
+    #[inline]
+    pub fn init(account: &'a AccountInfo) -> Result<Self> {
+        Ok(Self {
+            data: account.try_borrow_data()?,
+            _phantom: PhantomData,
+        })
+    }
+
+    #[inline]
+    pub fn load(&self) -> Result<&T> {
+        deserialize(&self.data)
+    }
+}
+
+// Account data wrapper for mutable operations
+pub struct StorageW<'a, T> {
     data: RefMut<'a, [u8]>,
     _phantom: PhantomData<T>,
 }
 
-impl<'a, T> Storage<'a, T>
+impl<'a, T> StorageW<'a, T>
 where
     T: Pod + Zeroable,
 {
@@ -49,12 +73,7 @@ where
     }
 
     #[inline]
-    pub fn load(&self) -> Result<&T> {
-        deserialize(&self.data)
-    }
-
-    #[inline]
-    pub fn load_mut(&mut self) -> Result<&mut T> {
+    pub fn load(&mut self) -> Result<&mut T> {
         deserialize_mut(&mut self.data)
     }
 
@@ -64,7 +83,7 @@ where
         F: FnOnce(&mut T) -> ProgramResult,
         T: Pod + Zeroable,
     {
-        let data = self.load_mut()?;
+        let data = self.load()?;
         f(data)
     }
 }

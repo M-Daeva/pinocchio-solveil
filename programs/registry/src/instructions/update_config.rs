@@ -4,7 +4,7 @@ use {
         converters::deserialize,
         error::AuthError,
         helpers::get_clock_time,
-        types::Storage,
+        types::StorageW,
     },
     pinocchio::{account_info::AccountInfo, ProgramResult},
     registry_cpi::{
@@ -32,8 +32,8 @@ pub fn update_config(accounts: &[AccountInfo], instruction_data: &[u8]) -> Progr
 
     // === load storages ===
 
-    let mut config_storage = Storage::<Config>::init(config)?;
-    let config = config_storage.load_mut()?;
+    let mut config_storage = StorageW::<Config>::init(config)?;
+    let config = config_storage.load()?;
 
     // === use guards ===
 
@@ -47,7 +47,7 @@ pub fn update_config(accounts: &[AccountInfo], instruction_data: &[u8]) -> Progr
             Err(AnyError::Auth(AuthError::UselessRotation))?;
         }
 
-        Storage::<RotationState>::init(admin_rotation_state)?.update(|x| {
+        StorageW::<RotationState>::init(admin_rotation_state)?.update(|x| {
             x.new_owner = ix.admin;
             x.expiration_date
                 .set(get_clock_time()? + config.rotation_timeout.get() as u64);

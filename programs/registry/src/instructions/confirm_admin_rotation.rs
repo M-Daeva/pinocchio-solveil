@@ -1,5 +1,5 @@
 use {
-    base::{error::AuthError, helpers::get_clock_time, types::Storage},
+    base::{error::AuthError, helpers::get_clock_time, types::StorageW},
     pinocchio::{account_info::AccountInfo, ProgramResult},
     registry_cpi::{
         error::AnyError,
@@ -16,7 +16,7 @@ pub fn confirm_admin_rotation(accounts: &[AccountInfo], _instruction_data: &[u8]
         admin_rotation_state,
     } = Accounts::try_from(accounts)?;
 
-    Storage::<RotationState>::init(admin_rotation_state)?.update(|admin_rotation_state| {
+    StorageW::<RotationState>::init(admin_rotation_state)?.update(|admin_rotation_state| {
         // === use guards ===
 
         if admin_rotation_state.new_owner == admin_rotation_state.owner {
@@ -38,7 +38,7 @@ pub fn confirm_admin_rotation(accounts: &[AccountInfo], _instruction_data: &[u8]
         admin_rotation_state.owner = admin_rotation_state.new_owner;
         admin_rotation_state.expiration_date.set(clock_time);
 
-        Storage::<Config>::init(config)?.update(|x| {
+        StorageW::<Config>::init(config)?.update(|x| {
             x.admin = admin_rotation_state.new_owner;
             Ok(())
         })
