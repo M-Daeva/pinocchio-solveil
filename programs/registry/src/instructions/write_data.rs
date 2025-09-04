@@ -1,7 +1,8 @@
 use {
     base::{
         accounts::{AccountCheck, ProgramAccount, ProgramAccountCheck, SignerAccount},
-        types::{AccountData, ZeroCopyDeserialize},
+        converters::deserialize,
+        types::{StorageR, StorageW},
     },
     pinocchio::{account_info::AccountInfo, ProgramResult},
     registry_cpi::{
@@ -12,7 +13,7 @@ use {
 };
 
 pub fn write_data(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult {
-    let InstructionData { data, nonce } = InstructionData::deserialize_from(instruction_data, 0)?.0;
+    let InstructionData { data, nonce } = deserialize(instruction_data)?;
 
     let Accounts {
         sender,
@@ -26,30 +27,27 @@ pub fn write_data(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramR
 
     // === load storages ===
 
-    let user_id = AccountData::<UserId>::init(user_id)?.load()?;
+    let user_id = StorageR::<UserId>::load(user_id)?;
 
-    let mut user_account_storage = AccountData::<UserAccount>::init(user_account)?;
-    let mut user_account = user_account_storage.load()?;
+    StorageW::<UserAccount>::update(user_account, |user_account| {
+        // === use guards ===
 
-    // === use guards ===
+        if !user_id.get_is_activated_flag() {
+            Err(AnyError::Custom(CustomError::AccountIsNotActivated))?;
+        }
 
-    if !user_id.is_activated {
-        Err(AnyError::Custom(CustomError::AccountIsNotActivated))?;
-    }
+        if data.len() > user_account.max_size.get() as usize {
+            Err(AnyError::Custom(CustomError::MaxDataSizeIsExceeded))?;
+        }
 
-    if data.len() > user_account.max_size as usize {
-        Err(AnyError::Custom(CustomError::MaxDataSizeIsExceeded))?;
-    }
+        if nonce == &user_account.nonce {
+            Err(AnyError::Custom(CustomError::BadNonce))?;
+        }
 
-    if nonce == user_account.nonce {
-        Err(AnyError::Custom(CustomError::BadNonce))?;
-    }
+        // === save storages ===
 
-    // === save storages ===
-
-    user_account.data = data;
-    user_account.nonce = nonce;
-    user_account_storage.save(user_account)?;
-
-    Ok(())
+        user_account.data = *data;
+        user_account.nonce = *nonce;
+        Ok(())
+    })
 }

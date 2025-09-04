@@ -9,11 +9,15 @@ use {
             TestResult,
         },
     },
-    base::types::InstructionSerialize,
+    base::{
+        traits::InstructionSerialize,
+        types::{Uint32, Uint64},
+    },
     litesvm::types::TransactionMetadata,
     registry_cpi::{
         state::{
-            Config, RotationState, UserAccount, UserCounter, UserId, ACCOUNT_REGISTRATION_FEE_ASSET,
+            Config, RotationState, UserAccount, UserCounter, UserId, ACCOUNT_DATA_SIZE_MAX,
+            ACCOUNT_REGISTRATION_FEE_ASSET,
         },
         types::{
             self,
@@ -164,13 +168,23 @@ impl CounterExtension for App {
         }
         .to_account_metas();
 
-        let instruction_data = &types::init::InstructionData {
-            rotation_timeout,
-            account_registration_fee,
-            account_data_size_range,
+        let mut instruction_data = types::init::InstructionData::default();
+        if let Some(x) = rotation_timeout {
+            instruction_data.set_rotation_timeout_flag(true);
+            instruction_data.rotation_timeout.set(x);
         }
-        .serialize()
-        .map_err(TestError::from_raw_error)?;
+        if let Some(x) = account_registration_fee {
+            instruction_data.set_account_registration_fee_flag(true);
+            instruction_data.account_registration_fee = x;
+        }
+        if let Some(x) = account_data_size_range {
+            instruction_data.set_account_data_size_range_flag(true);
+            instruction_data.account_data_size_range = x;
+        }
+
+        let instruction_data = &instruction_data
+            .serialize()
+            .map_err(TestError::from_raw_error)?;
 
         send_tx_with_ix(
             self,
@@ -212,15 +226,31 @@ impl CounterExtension for App {
         }
         .to_account_metas();
 
-        let instruction_data = &types::update_config::InstructionData {
-            admin: admin.map(|x| sol_to_pin_pubkey(&x.pubkey())),
-            is_paused,
-            rotation_timeout,
-            registration_fee_amount,
-            data_size_range,
+        let mut instruction_data = types::update_config::InstructionData::default();
+        if let Some(x) = admin {
+            instruction_data.set_admin_flag(true);
+            instruction_data.admin = sol_to_pin_pubkey(&x.pubkey());
         }
-        .serialize()
-        .map_err(TestError::from_raw_error)?;
+        if let Some(x) = is_paused {
+            instruction_data.set_is_paused_flag(true);
+            instruction_data.is_paused.set_bit(x);
+        }
+        if let Some(x) = rotation_timeout {
+            instruction_data.set_rotation_timeout_flag(true);
+            instruction_data.rotation_timeout.set(x);
+        }
+        if let Some(x) = registration_fee_amount {
+            instruction_data.set_registration_fee_amount_flag(true);
+            instruction_data.registration_fee_amount.set(x);
+        }
+        if let Some(x) = data_size_range {
+            instruction_data.set_data_size_range_flag(true);
+            instruction_data.data_size_range = x;
+        }
+
+        let instruction_data = &instruction_data
+            .serialize()
+            .map_err(TestError::from_raw_error)?;
 
         send_tx_with_ix(
             self,
@@ -322,7 +352,13 @@ impl CounterExtension for App {
         }
         .to_account_metas();
 
-        let instruction_data = &types::withdraw_revenue::InstructionData { amount }
+        let mut instruction_data = types::withdraw_revenue::InstructionData::default();
+        if let Some(x) = amount {
+            instruction_data.flags.set_bit(true);
+            instruction_data.amount.set(x);
+        }
+
+        let instruction_data = &instruction_data
             .serialize()
             .map_err(TestError::from_raw_error)?;
 
@@ -360,7 +396,7 @@ impl CounterExtension for App {
 
         let user_id = self.pda.registry_user_id(sender);
         let expected_user_id =
-            expected_user_id.unwrap_or(self.registry_query_user_counter()?.last_user_id + 1);
+            expected_user_id.unwrap_or(self.registry_query_user_counter()?.last_user_id.get() + 1);
         let user_account = self.pda.registry_user_account(expected_user_id);
         let user_rotation_state = self.pda.registry_user_rotation_state(expected_user_id);
 
@@ -376,9 +412,11 @@ impl CounterExtension for App {
         }
         .to_account_metas();
 
-        let instruction_data = &types::create_account::InstructionData { max_data_size }
-            .serialize()
-            .map_err(TestError::from_raw_error)?;
+        let instruction_data = &types::create_account::InstructionData {
+            max_data_size: Uint32::from(max_data_size),
+        }
+        .serialize()
+        .map_err(TestError::from_raw_error)?;
 
         send_tx_with_ix(
             self,
@@ -411,8 +449,8 @@ impl CounterExtension for App {
         // pda
         let user_id = self.pda.registry_user_id(user.pubkey());
         let id = self.registry_query_user_id(user)?.id;
-        let user_account = self.pda.registry_user_account(id);
-        let user_rotation_state = self.pda.registry_user_rotation_state(id);
+        let user_account = self.pda.registry_user_account(id.get());
+        let user_rotation_state = self.pda.registry_user_rotation_state(id.get());
 
         let accounts = types::close_account::TestAccounts {
             system_program,
@@ -459,8 +497,8 @@ impl CounterExtension for App {
 
         let user_id = self.pda.registry_user_id(payer);
         let id = self.registry_query_user_id(sender)?.id;
-        let user_account = self.pda.registry_user_account(id);
-        let user_rotation_state = self.pda.registry_user_rotation_state(id);
+        let user_account = self.pda.registry_user_account(id.get());
+        let user_rotation_state = self.pda.registry_user_rotation_state(id.get());
 
         let accounts = types::reopen_account::TestAccounts {
             system_program,
@@ -473,9 +511,11 @@ impl CounterExtension for App {
         }
         .to_account_metas();
 
-        let instruction_data = &types::reopen_account::InstructionData { max_data_size }
-            .serialize()
-            .map_err(TestError::from_raw_error)?;
+        let instruction_data = &types::reopen_account::InstructionData {
+            max_data_size: Uint32::from(max_data_size),
+        }
+        .serialize()
+        .map_err(TestError::from_raw_error)?;
 
         send_tx_with_ix(
             self,
@@ -537,11 +577,9 @@ impl CounterExtension for App {
         }
         .to_account_metas();
 
-        let instruction_data = &types::activate_account::InstructionData {
-            user: sol_to_pin_pubkey(&user),
-        }
-        .serialize()
-        .map_err(TestError::from_raw_error)?;
+        let instruction_data = &types::activate_account::InstructionData {}
+            .serialize()
+            .map_err(TestError::from_raw_error)?;
 
         send_tx_with_ix(
             self,
@@ -572,7 +610,7 @@ impl CounterExtension for App {
         // pda
         let user_id = self.pda.registry_user_id(payer);
         let id = self.registry_query_user_id(sender)?.id;
-        let user_account = self.pda.registry_user_account(id);
+        let user_account = self.pda.registry_user_account(id.get());
 
         let accounts = types::write_data::TestAccounts {
             sender: payer,
@@ -582,8 +620,8 @@ impl CounterExtension for App {
         .to_account_metas();
 
         let instruction_data = &types::write_data::InstructionData {
-            data: data.to_string(),
-            nonce,
+            data: get_data_buffer(data),
+            nonce: Uint64::from(nonce),
         }
         .serialize()
         .map_err(TestError::from_raw_error)?;
@@ -619,7 +657,7 @@ impl CounterExtension for App {
 
         let user_id = self.pda.registry_user_id(payer);
         let id = self.registry_query_user_id(sender)?.id;
-        let user_rotation_state = self.pda.registry_user_rotation_state(id);
+        let user_rotation_state = self.pda.registry_user_rotation_state(id.get());
 
         let accounts = types::request_account_rotation::TestAccounts {
             sender: payer,
@@ -666,7 +704,9 @@ impl CounterExtension for App {
         let user_id_pre = self.pda.registry_user_id(prev_owner.pubkey());
         let user_id = self.pda.registry_user_id(payer);
         let user_id_value_pre = self.registry_query_user_id(prev_owner)?.id;
-        let user_rotation_state = self.pda.registry_user_rotation_state(user_id_value_pre);
+        let user_rotation_state = self
+            .pda
+            .registry_user_rotation_state(user_id_value_pre.get());
 
         let accounts = types::confirm_account_rotation::TestAccounts {
             system_program,
@@ -709,14 +749,24 @@ impl CounterExtension for App {
 
     fn registry_query_user_account(&self, user: AppUser) -> TestResult<UserAccount> {
         let user_id = self.registry_query_user_id(user)?;
-        get_data(&self.litesvm, &self.pda.registry_user_account(user_id.id))
+        get_data(
+            &self.litesvm,
+            &self.pda.registry_user_account(user_id.id.get()),
+        )
     }
 
     fn registry_query_user_rotation_state(&self, user: AppUser) -> TestResult<RotationState> {
         let user_id = self.registry_query_user_id(user)?;
         get_data(
             &self.litesvm,
-            &self.pda.registry_user_rotation_state(user_id.id),
+            &self.pda.registry_user_rotation_state(user_id.id.get()),
         )
     }
+}
+
+pub fn get_data_buffer(data: &str) -> [u8; ACCOUNT_DATA_SIZE_MAX as usize] {
+    let mut buffer = [0u8; ACCOUNT_DATA_SIZE_MAX as usize];
+    let bytes = data.as_bytes();
+    buffer[..bytes.len()].copy_from_slice(bytes);
+    buffer
 }

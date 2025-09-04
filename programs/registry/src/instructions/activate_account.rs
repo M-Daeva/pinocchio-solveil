@@ -5,19 +5,18 @@ use {
             ProgramAccount, ProgramAccountCheck, SignerAccount, SystemProgram,
         },
         helpers::{get_token_decimals, transfer_token_from_user},
-        types::{AccountData, ZeroCopyDeserialize},
+        types::{StorageR, StorageW},
     },
     pinocchio::{account_info::AccountInfo, ProgramResult},
     registry_cpi::{
         error::{AnyError, CustomError},
         state::{seed as SEED, Bump, Config, UserId},
-        types::activate_account::{Accounts, InstructionData},
+        types::activate_account::Accounts,
     },
 };
 
-pub fn activate_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult {
-    let InstructionData { .. } = InstructionData::deserialize_from(instruction_data, 0)?.0;
-
+pub fn activate_account(accounts: &[AccountInfo], _instruction_data: &[u8]) -> ProgramResult {
+    // let ix: &InstructionData = deserialize(instruction_data)?;
     let Accounts {
         system_program,
         token_program,
@@ -49,44 +48,41 @@ pub fn activate_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Pr
 
     // === load storages ===
 
-    let config = AccountData::<Config>::init(config)?.load()?;
+    let config = StorageR::<Config>::load(config)?;
 
-    let mut user_id_storage = AccountData::<UserId>::init(user_id)?;
-    let mut user_id = user_id_storage.load()?;
+    StorageW::<UserId>::update(user_id, |user_id| {
+        // === use guards ===
 
-    // === use guards ===
+        // only open account can be activated
+        if !user_id.get_is_open_flag() {
+            // TODO: Err(CustomError::AccountIsNotOpened)?;
+            Err(AnyError::Custom(CustomError::AccountIsNotOpened))?;
+        }
 
-    // only open account can be activated
-    if !user_id.is_open {
-        // TODO: Err(CustomError::AccountIsNotOpened)?;
-        Err(AnyError::Custom(CustomError::AccountIsNotOpened))?;
-    }
+        // only inactive account can be activated
+        if user_id.get_is_activated_flag() {
+            Err(AnyError::Custom(CustomError::ActivateAccountTwice))?;
+        }
 
-    // only inactive account can be activated
-    if user_id.is_activated {
-        Err(AnyError::Custom(CustomError::ActivateAccountTwice))?;
-    }
+        // validate fee token
+        if revenue_mint.key() != &config.registration_fee.asset {
+            Err(AnyError::Custom(CustomError::WrongAssetType))?;
+        }
 
-    // validate fee token
-    if revenue_mint.key() != &config.registration_fee.asset {
-        Err(AnyError::Custom(CustomError::WrongAssetType))?;
-    }
+        // === save storages ===
 
-    // === save storages ===
-
-    user_id.is_activated = true;
-    user_id_storage.save(user_id)?;
+        user_id.set_is_activated_flag(true);
+        Ok(())
+    })?;
 
     // === transfer tokens from user to app ===
 
     transfer_token_from_user(
-        config.registration_fee.amount,
+        config.registration_fee.amount.get(),
         revenue_mint,
         revenue_sender_ata,
         revenue_app_ata,
         sender,
         get_token_decimals(revenue_mint)?,
-    )?;
-
-    Ok(())
+    )
 }

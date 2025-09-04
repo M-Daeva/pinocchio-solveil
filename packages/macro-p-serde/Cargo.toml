@@ -1,7 +1,7 @@
 [package]
-name = "macro-zc-serde"
+name = "macro-p-serde"
 version = "1.0.0"
-description = "Macro to implement Zero Copy ser/de for accounts"
+description = "Macro to group commonly used bytemuck traits"
 repository = { workspace = true }
 edition = { workspace = true }
 authors = { workspace = true }

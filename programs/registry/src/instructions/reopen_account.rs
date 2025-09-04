@@ -4,8 +4,9 @@ use {
             AccountCheck, ProgramAccount, ProgramAccountCheck, ProgramAccountInit, SignerAccount,
             SystemProgram,
         },
+        converters::deserialize,
         helpers::{create_account_with_signer, get_clock_time},
-        types::{AccountData, ZeroCopyDeserialize},
+        types::{StorageR, StorageW},
     },
     pinocchio::{account_info::AccountInfo, seeds, ProgramResult},
     registry_cpi::{
@@ -16,9 +17,7 @@ use {
 };
 
 pub fn reopen_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult {
-    let InstructionData { max_data_size } =
-        InstructionData::deserialize_from(instruction_data, 0)?.0;
-
+    let ix: &InstructionData = deserialize(instruction_data)?;
     let Accounts {
         system_program,
         sender,
@@ -39,26 +38,28 @@ pub fn reopen_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Prog
 
     // === load storages ===
 
-    let config = AccountData::<Config>::init(config)?.load()?;
-
-    let mut user_id_storage = AccountData::<UserId>::init(user_id)?;
-    let mut user_id = user_id_storage.load()?;
+    let config = StorageR::<Config>::load(config)?;
+    let mut user_id = StorageW::<UserId>::load(user_id)?;
 
     // === use guards ===
 
     // only closed account can be open
-    if user_id.is_open {
+    if user_id.get_is_open_flag() {
         Err(AnyError::Custom(CustomError::OpenAccountTwice))?;
     }
 
+    user_id.set_is_open_flag(true);
+    let max_data_size = ix.max_data_size.get();
+    let user_seed_id = &user_id.id.get_raw();
+
     // validate max allocated data size
-    if max_data_size < config.data_size_range.min || max_data_size > config.data_size_range.max {
+    if max_data_size < config.data_size_range.min.get()
+        || max_data_size > config.data_size_range.max.get()
+    {
         Err(AnyError::Custom(CustomError::MaxDataSizeIsOutOfRange))?;
     }
 
     // === init and write pda ===
-
-    let user_seed_id = &user_id.id.to_le_bytes();
 
     // user_account
     create_account_with_signer(
@@ -68,10 +69,10 @@ pub fn reopen_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Prog
         &seeds!(SEED::USER_ACCOUNT, user_seed_id, &[user_id.account_bump]),
         &crate::ID,
     )?;
-    AccountData::init(user_account)?.save(UserAccount {
-        data: String::default(),
-        nonce: 0,
-        max_size: max_data_size,
+    StorageW::update(user_account, |x| {
+        *x = UserAccount::default();
+        x.max_size.set(max_data_size);
+        Ok(())
     })?;
 
     // user_rotation_state
@@ -85,16 +86,10 @@ pub fn reopen_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Prog
         ),
         &crate::ID,
     )?;
-    AccountData::init(user_rotation_state)?.save(RotationState {
-        owner: *sender.key(),
-        new_owner: None,
-        expiration_date: get_clock_time()?,
-    })?;
-
-    // === save storages ===
-
-    user_id.is_open = true;
-    user_id_storage.save(user_id)?;
-
-    Ok(())
+    StorageW::<RotationState>::update(user_rotation_state, |x| {
+        x.owner = *sender.key();
+        x.new_owner = *sender.key();
+        x.expiration_date.set(get_clock_time()?);
+        Ok(())
+    })
 }
