@@ -72,6 +72,17 @@ where
 #[p_serde]
 pub struct BitField(u8);
 
+impl From<bool> for BitField {
+    #[inline]
+    fn from(x: bool) -> Self {
+        if x {
+            Self(1)
+        } else {
+            Self(0)
+        }
+    }
+}
+
 impl BitField {
     #[inline]
     pub fn get_raw(&self) -> u8 {

@@ -22,8 +22,8 @@ use {
     },
 };
 
-fn init_app() -> TestResult<App> {
-    let mut app = App::new(false);
+fn init_app(is_log_displayed: bool) -> TestResult<App> {
+    let mut app = App::new(is_log_displayed);
 
     app.registry_try_init(
         AppUser::Admin,
@@ -40,7 +40,7 @@ fn init_app() -> TestResult<App> {
 
 #[test]
 fn init_default() -> TestResult<()> {
-    let app = init_app()?;
+    let app = init_app(false)?;
 
     assert_eq!(
         app.registry_query_config()?,
@@ -71,290 +71,290 @@ fn init_default() -> TestResult<()> {
     Ok(())
 }
 
-// #[test]
-// fn init_admin_guard() -> TestResult<()> {
-//     let mut app = App::new(false);
-//     app.wait(CLOCK_TIME_MIN + 1);
+#[test]
+fn init_admin_guard() -> TestResult<()> {
+    let mut app = App::new(false);
+    app.wait(CLOCK_TIME_MIN + 1);
 
-//     // only specified admin can init devnet/mainnet program
-//     let res = app
-//         .registry_try_init(
-//             AppUser::Admin,
-//             None,
-//             Some(AssetItem {
-//                 amount: ACCOUNT_REGISTRATION_FEE_AMOUNT,
-//                 asset: AppToken::USDC.pubkey(),
-//             }),
-//             None,
-//         )
-//         .unwrap_err();
-//     assert_error(res, AuthError::Unauthorized);
+    // only specified admin can init devnet/mainnet program
+    let res = app
+        .registry_try_init(
+            AppUser::Admin,
+            None,
+            Some(AssetItem {
+                amount: Uint64::from(ACCOUNT_REGISTRATION_FEE_AMOUNT),
+                asset: AppToken::USDC.pubkey(),
+            }),
+            None,
+        )
+        .unwrap_err();
+    assert_error(res, AuthError::Unauthorized);
 
-//     Ok(())
-// }
+    Ok(())
+}
 
-// #[test]
-// fn update_config_default() -> TestResult<()> {
-//     let mut app = init_app()?;
+#[test]
+fn update_config_default() -> TestResult<()> {
+    let mut app = init_app(false)?;
 
-//     app.registry_try_update_config(
-//         AppUser::Admin,
-//         None,
-//         None,
-//         None,
-//         None,
-//         Some(Range {
-//             min: 2 * ACCOUNT_DATA_SIZE_MIN,
-//             max: ACCOUNT_DATA_SIZE_MAX,
-//         }),
-//     )?;
+    app.registry_try_update_config(
+        AppUser::Admin,
+        None,
+        None,
+        None,
+        None,
+        Some(Range {
+            min: Uint32::from(2 * ACCOUNT_DATA_SIZE_MIN),
+            max: Uint32::from(ACCOUNT_DATA_SIZE_MAX),
+        }),
+    )?;
 
-//     assert_eq!(
-//         app.registry_query_config()?,
-//         Config {
-//             admin: AppUser::Admin.pubkey(),
-//             is_paused: false,
-//             rotation_timeout: ROTATION_TIMEOUT,
-//             registration_fee: AssetItem {
-//                 amount: ACCOUNT_REGISTRATION_FEE_AMOUNT,
-//                 asset: AppToken::USDC.pubkey(),
-//             },
-//             data_size_range: Range {
-//                 min: 2 * ACCOUNT_DATA_SIZE_MIN,
-//                 max: ACCOUNT_DATA_SIZE_MAX,
-//             }
-//         }
-//     );
+    assert_eq!(
+        app.registry_query_config()?,
+        Config {
+            admin: AppUser::Admin.pubkey(),
+            is_paused: BitField::from(false),
+            rotation_timeout: Uint32::from(ROTATION_TIMEOUT),
+            registration_fee: AssetItem {
+                amount: Uint64::from(ACCOUNT_REGISTRATION_FEE_AMOUNT),
+                asset: AppToken::USDC.pubkey(),
+            },
+            data_size_range: Range {
+                min: Uint32::from(2 * ACCOUNT_DATA_SIZE_MIN),
+                max: Uint32::from(ACCOUNT_DATA_SIZE_MAX),
+            }
+        }
+    );
 
-//     Ok(())
-// }
+    Ok(())
+}
 
-// #[test]
-// fn transfer_admin() -> TestResult<()> {
-//     let mut app = init_app()?;
+#[test]
+fn transfer_admin() -> TestResult<()> {
+    let mut app = init_app(false)?;
 
-//     // only admin can rotate admin
-//     let res = app
-//         .registry_try_update_config(AppUser::Alice, Some(AppUser::Alice), None, None, None, None)
-//         .unwrap_err();
-//     assert_error(res, AuthError::Unauthorized);
+    // only admin can rotate admin
+    let res = app
+        .registry_try_update_config(AppUser::Alice, Some(AppUser::Alice), None, None, None, None)
+        .unwrap_err();
+    assert_error(res, AuthError::Unauthorized);
 
-//     // new admin isn't specified
-//     let res = app
-//         .registry_try_confirm_admin_rotation(AppUser::Alice)
-//         .unwrap_err();
-//     assert_error(res, AuthError::NoNewOwner);
+    // new admin isn't specified
+    let res = app
+        .registry_try_confirm_admin_rotation(AppUser::Alice)
+        .unwrap_err();
+    assert_error(res, AuthError::NoNewOwner);
 
-//     // the admin can't be new admin
-//     let res = app
-//         .registry_try_update_config(AppUser::Admin, Some(AppUser::Admin), None, None, None, None)
-//         .unwrap_err();
-//     assert_error(res, AuthError::UselessRotation);
+    // the admin can't be new admin
+    let res = app
+        .registry_try_update_config(AppUser::Admin, Some(AppUser::Admin), None, None, None, None)
+        .unwrap_err();
+    assert_error(res, AuthError::UselessRotation);
 
-//     // too late to confirm admin rotation
-//     app.registry_try_update_config(AppUser::Admin, Some(AppUser::Alice), None, None, None, None)?;
-//     app.wait(ROTATION_TIMEOUT as u64);
-//     let res = app
-//         .registry_try_confirm_admin_rotation(AppUser::Alice)
-//         .unwrap_err();
-//     assert_error(res, AuthError::TransferOwnerDeadline);
+    // too late to confirm admin rotation
+    app.registry_try_update_config(AppUser::Admin, Some(AppUser::Alice), None, None, None, None)?;
+    app.wait(ROTATION_TIMEOUT as u64);
+    let res = app
+        .registry_try_confirm_admin_rotation(AppUser::Alice)
+        .unwrap_err();
+    assert_error(res, AuthError::TransferOwnerDeadline);
 
-//     // only new admin can confirm admin rotation
-//     app.registry_try_update_config(AppUser::Admin, Some(AppUser::Alice), None, None, None, None)?;
-//     let res = app
-//         .registry_try_confirm_admin_rotation(AppUser::Bob)
-//         .unwrap_err();
-//     assert_error(res, AuthError::Unauthorized);
+    // only new admin can confirm admin rotation
+    app.registry_try_update_config(AppUser::Admin, Some(AppUser::Alice), None, None, None, None)?;
+    let res = app
+        .registry_try_confirm_admin_rotation(AppUser::Bob)
+        .unwrap_err();
+    assert_error(res, AuthError::Unauthorized);
 
-//     // success
-//     app.registry_try_confirm_admin_rotation(AppUser::Alice)?;
-//     assert_eq!(app.registry_query_config()?.admin, AppUser::Alice.pubkey());
+    // success
+    app.registry_try_confirm_admin_rotation(AppUser::Alice)?;
+    assert_eq!(app.registry_query_config()?.admin, AppUser::Alice.pubkey());
 
-//     // new admin isn't specified after rotation
-//     let res = app
-//         .registry_try_confirm_admin_rotation(AppUser::Admin)
-//         .unwrap_err();
-//     assert_error(res, AuthError::NoNewOwner);
+    // new admin isn't specified after rotation
+    let res = app
+        .registry_try_confirm_admin_rotation(AppUser::Admin)
+        .unwrap_err();
+    assert_error(res, AuthError::NoNewOwner);
 
-//     Ok(())
-// }
+    Ok(())
+}
 
-// #[test]
-// fn create_account_guards() -> TestResult<()> {
-//     const MAX_DATA_SIZE: u32 = 1_000;
+#[test]
+fn create_account_guards() -> TestResult<()> {
+    const MAX_DATA_SIZE: u32 = 1_000;
 
-//     let mut app = init_app()?;
+    let mut app = init_app(false)?;
 
-//     // user can't create account with improper user_id
-//     app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, Some(5))
-//         .unwrap_err();
+    // user can't create account with improper user_id
+    app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, Some(5))
+        .unwrap_err();
 
-//     // user can't create account with too small data
-//     let res = app
-//         .registry_try_create_account(AppUser::Alice, 1, None)
-//         .unwrap_err();
-//     assert_error(res, CustomError::MaxDataSizeIsOutOfRange);
+    // user can't create account with too small data
+    let res = app
+        .registry_try_create_account(AppUser::Alice, 1, None)
+        .unwrap_err();
+    assert_error(res, CustomError::MaxDataSizeIsOutOfRange);
 
-//     // user can't create account with too much data
-//     let res = app
-//         .registry_try_create_account(AppUser::Alice, ACCOUNT_DATA_SIZE_MAX + 1, None)
-//         .unwrap_err();
-//     assert_error(res, CustomError::MaxDataSizeIsOutOfRange);
+    // user can't create account with too much data
+    let res = app
+        .registry_try_create_account(AppUser::Alice, ACCOUNT_DATA_SIZE_MAX + 1, None)
+        .unwrap_err();
+    assert_error(res, CustomError::MaxDataSizeIsOutOfRange);
 
-//     // user can't create account when program is paused
-//     app.registry_try_update_config(AppUser::Admin, None, Some(true), None, None, None)?;
-//     let res = app
-//         .registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, None)
-//         .unwrap_err();
-//     app.registry_try_update_config(AppUser::Admin, None, Some(false), None, None, None)?;
-//     assert_error(res, CustomError::ContractIsPaused);
+    // user can't create account when program is paused
+    app.registry_try_update_config(AppUser::Admin, None, Some(true), None, None, None)?;
+    let res = app
+        .registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, None)
+        .unwrap_err();
+    app.registry_try_update_config(AppUser::Admin, None, Some(false), None, None, None)?;
+    assert_error(res, CustomError::ContractIsPaused);
 
-//     // user can't create account twice
-//     app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, None)?;
-//     // 1) with the same user_id
-//     app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, Some(1))
-//         .unwrap_err();
-//     // 2) with a new user_id
-//     app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, None)
-//         .unwrap_err();
-//     // 3) even if it's closed
-//     // app.registry_try_close_account(AppUser::Alice, None)?;
-//     // app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, Some(1))
-//     //     .unwrap_err();
-//     // app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, None)
-//     //     .unwrap_err();
-//     // app.registry_try_reopen_account(AppUser::Alice, MAX_DATA_SIZE)?;
+    // user can't create account twice
+    app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, None)?;
+    // 1) with the same user_id
+    app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, Some(1))
+        .unwrap_err();
+    // 2) with a new user_id
+    app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, None)
+        .unwrap_err();
+    // 3) even if it's closed
+    // app.registry_try_close_account(AppUser::Alice, None)?;
+    // app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, Some(1))
+    //     .unwrap_err();
+    // app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, None)
+    //     .unwrap_err();
+    // app.registry_try_reopen_account(AppUser::Alice, MAX_DATA_SIZE)?;
 
-//     // // other user can't create account with the same user_id
-//     // app.registry_try_create_account(AppUser::Bob, MAX_DATA_SIZE, Some(1))
-//     //     .unwrap_err();
+    // // other user can't create account with the same user_id
+    // app.registry_try_create_account(AppUser::Bob, MAX_DATA_SIZE, Some(1))
+    //     .unwrap_err();
 
-//     Ok(())
-// }
+    Ok(())
+}
 
-// #[test]
-// fn create_and_activate_account_default() -> TestResult<()> {
-//     const MAX_DATA_SIZE: u32 = 1_000;
+#[test]
+fn create_and_activate_account_default() -> TestResult<()> {
+    const MAX_DATA_SIZE: u32 = 1_000;
 
-//     let mut app = init_app()?;
+    let mut app = init_app(false)?;
 
-//     app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, None)?;
+    app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, None)?;
 
-//     let user_id = app.registry_query_user_id(AppUser::Alice)?;
-//     assert_eq!(user_id.id, 1);
-//     assert_eq!(user_id.is_open, true);
-//     assert_eq!(user_id.is_activated, false);
+    let user_id = app.registry_query_user_id(AppUser::Alice)?;
+    assert_eq!(user_id.id.get(), 1);
+    assert_eq!(user_id.get_is_open_flag(), true);
+    assert_eq!(user_id.get_is_activated_flag(), false);
 
-//     // assert_eq!(
-//     //     app.registry_query_user_account(AppUser::Alice)?,
-//     //     UserAccount {
-//     //         data: String::default(),
-//     //         nonce: 0,
-//     //         max_size: MAX_DATA_SIZE
-//     //     }
-//     // );
+    // assert_eq!(
+    //     app.registry_query_user_account(AppUser::Alice)?,
+    //     UserAccount {
+    //         data: String::default(),
+    //         nonce: 0,
+    //         max_size: MAX_DATA_SIZE
+    //     }
+    // );
 
-//     let alice_usdc_before = app.get_balance(AppUser::Alice, AppToken::USDC);
-//     app.registry_try_activate_account(AppUser::Alice, None, None)?;
+    let alice_usdc_before = app.get_balance(AppUser::Alice, AppToken::USDC);
+    app.registry_try_activate_account(AppUser::Alice, None, None)?;
 
-//     let alice_usdc_after = app.get_balance(AppUser::Alice, AppToken::USDC);
-//     assert_eq!(
-//         alice_usdc_before - alice_usdc_after,
-//         ACCOUNT_REGISTRATION_FEE_AMOUNT
-//     );
+    let alice_usdc_after = app.get_balance(AppUser::Alice, AppToken::USDC);
+    assert_eq!(
+        alice_usdc_before - alice_usdc_after,
+        ACCOUNT_REGISTRATION_FEE_AMOUNT
+    );
 
-//     let user_id = app.registry_query_user_id(AppUser::Alice)?;
-//     assert_eq!(user_id.id, 1);
-//     assert_eq!(user_id.is_open, true);
-//     assert_eq!(user_id.is_activated, true);
+    let user_id = app.registry_query_user_id(AppUser::Alice)?;
+    assert_eq!(user_id.id.get(), 1);
+    assert_eq!(user_id.get_is_open_flag(), true);
+    assert_eq!(user_id.get_is_activated_flag(), true);
 
-//     Ok(())
-// }
+    Ok(())
+}
 
-// #[test]
-// fn activate_account_guards() -> TestResult<()> {
-//     const MAX_DATA_SIZE: u32 = 1_000;
+#[test]
+fn activate_account_guards() -> TestResult<()> {
+    const MAX_DATA_SIZE: u32 = 1_000;
 
-//     let mut app = init_app()?;
+    let mut app = init_app(false)?;
 
-//     // user can't activate nonexistent account
-//     app.registry_try_activate_account(AppUser::Alice, None, None)
-//         .unwrap_err();
+    // user can't activate nonexistent account
+    app.registry_try_activate_account(AppUser::Alice, None, None)
+        .unwrap_err();
 
-//     // user can't activate closed account
-//     app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, None)?;
-//     app.registry_try_close_account(AppUser::Alice, None)?;
-//     let res = app
-//         .registry_try_activate_account(AppUser::Alice, None, None)
-//         .unwrap_err();
-//     assert_error(res, CustomError::AccountIsNotOpened);
+    // user can't activate closed account
+    app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, None)?;
+    app.registry_try_close_account(AppUser::Alice, None)?;
+    let res = app
+        .registry_try_activate_account(AppUser::Alice, None, None)
+        .unwrap_err();
+    assert_error(res, CustomError::AccountIsNotOpened);
 
-//     // user can't activate account using wrong token
-//     app.registry_try_reopen_account(AppUser::Alice, MAX_DATA_SIZE)?;
-//     app.get_or_create_ata(
-//         AppUser::Admin,
-//         &app.pda.registry_config(),
-//         &pin_to_sol_pubkey(&AppToken::PYTH.pubkey()),
-//     )?;
-//     let res = app
-//         .registry_try_activate_account(AppUser::Alice, None, Some(AppToken::PYTH))
-//         .unwrap_err();
-//     assert_error(res, CustomError::WrongAssetType);
+    // user can't activate account using wrong token
+    app.registry_try_reopen_account(AppUser::Alice, MAX_DATA_SIZE)?;
+    app.get_or_create_ata(
+        AppUser::Admin,
+        &app.pda.registry_config(),
+        &pin_to_sol_pubkey(&AppToken::PYTH.pubkey()),
+    )?;
+    let res = app
+        .registry_try_activate_account(AppUser::Alice, None, Some(AppToken::PYTH))
+        .unwrap_err();
+    assert_error(res, CustomError::WrongAssetType);
 
-//     // user can't activate account twice
-//     app.registry_try_activate_account(AppUser::Alice, None, None)?;
-//     let res = app
-//         .registry_try_activate_account(AppUser::Alice, None, None)
-//         .unwrap_err();
-//     assert_error(res, CustomError::ActivateAccountTwice);
+    // user can't activate account twice
+    app.registry_try_activate_account(AppUser::Alice, None, None)?;
+    let res = app
+        .registry_try_activate_account(AppUser::Alice, None, None)
+        .unwrap_err();
+    assert_error(res, CustomError::ActivateAccountTwice);
 
-//     Ok(())
-// }
+    Ok(())
+}
 
-// #[test]
-// fn activate_account_for_other_user() -> TestResult<()> {
-//     const MAX_DATA_SIZE: u32 = 1_000;
+#[test]
+fn activate_account_for_other_user() -> TestResult<()> {
+    const MAX_DATA_SIZE: u32 = 1_000;
 
-//     let mut app = init_app()?;
+    let mut app = init_app(false)?;
 
-//     app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, None)?;
-//     app.registry_try_activate_account(AppUser::Bob, Some(AppUser::Alice), None)?;
+    app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, None)?;
+    app.registry_try_activate_account(AppUser::Bob, Some(AppUser::Alice), None)?;
 
-//     // assert_eq!(
-//     //     app.registry_query_user_account(AppUser::Alice)?.max_size,
-//     //     MAX_DATA_SIZE
-//     // );
+    // assert_eq!(
+    //     app.registry_query_user_account(AppUser::Alice)?.max_size,
+    //     MAX_DATA_SIZE
+    // );
 
-//     Ok(())
-// }
+    Ok(())
+}
 
-// #[test]
-// fn withdraw_revenue_default() -> TestResult<()> {
-//     const MAX_DATA_SIZE: u32 = 1_000;
+#[test]
+fn withdraw_revenue_default() -> TestResult<()> {
+    const MAX_DATA_SIZE: u32 = 1_000;
 
-//     let mut app = init_app()?;
+    let mut app = init_app(false)?;
 
-//     app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, None)?;
-//     app.registry_try_activate_account(AppUser::Alice, None, None)?;
+    app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, None)?;
+    app.registry_try_activate_account(AppUser::Alice, None, None)?;
 
-//     let admin_usdc_before = app.get_balance(AppUser::Admin, AppToken::USDC);
+    let admin_usdc_before = app.get_balance(AppUser::Admin, AppToken::USDC);
 
-//     app.registry_try_withdraw_revenue(AppUser::Admin, None, None, None)?;
+    app.registry_try_withdraw_revenue(AppUser::Admin, None, None, None)?;
 
-//     let admin_usdc_after = app.get_balance(AppUser::Admin, AppToken::USDC);
-//     assert_eq!(
-//         admin_usdc_after - admin_usdc_before,
-//         ACCOUNT_REGISTRATION_FEE_AMOUNT
-//     );
+    let admin_usdc_after = app.get_balance(AppUser::Admin, AppToken::USDC);
+    assert_eq!(
+        admin_usdc_after - admin_usdc_before,
+        ACCOUNT_REGISTRATION_FEE_AMOUNT
+    );
 
-//     Ok(())
-// }
+    Ok(())
+}
 
 // #[test]
 // fn withdraw_revenue_by_amount_to_recipient() -> TestResult<()> {
 //     const MAX_DATA_SIZE: u32 = 1_000;
 
-//     let mut app = init_app()?;
+//     let mut app = init_app(false)?;
 
 //     app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, None)?;
 //     app.registry_try_activate_account(AppUser::Alice, None, None)?;
@@ -386,7 +386,7 @@ fn init_default() -> TestResult<()> {
 // fn withdraw_revenue_guards() -> TestResult<()> {
 //     const MAX_DATA_SIZE: u32 = 1_000;
 
-//     let mut app = init_app()?;
+//     let mut app = init_app(false)?;
 
 //     app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, None)?;
 //     app.registry_try_activate_account(AppUser::Alice, None, None)?;
@@ -431,7 +431,7 @@ fn init_default() -> TestResult<()> {
 // fn close_account_guards() -> TestResult<()> {
 //     const MAX_DATA_SIZE_0: u32 = 1_000;
 
-//     let mut app = init_app()?;
+//     let mut app = init_app(false)?;
 
 //     // account must be created first
 //     app.registry_try_close_account(AppUser::Alice, None)
@@ -455,7 +455,7 @@ fn init_default() -> TestResult<()> {
 //     const MAX_DATA_SIZE_0: u32 = 1_000;
 //     const MAX_DATA_SIZE_1: u32 = 1_000;
 
-//     let mut app = init_app()?;
+//     let mut app = init_app(false)?;
 
 //     app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE_0, None)?;
 //     app.registry_try_activate_account(AppUser::Alice, None, None)?;
@@ -485,7 +485,7 @@ fn init_default() -> TestResult<()> {
 // fn reopen_account_guards() -> TestResult<()> {
 //     const MAX_DATA_SIZE_0: u32 = 1_000;
 
-//     let mut app = init_app()?;
+//     let mut app = init_app(false)?;
 
 //     // account must be created first
 //     app.registry_try_reopen_account(AppUser::Alice, MAX_DATA_SIZE_0)
@@ -507,7 +507,7 @@ fn init_default() -> TestResult<()> {
 //     const NONCE_0: u64 = 1;
 //     const NONCE_1: u64 = 2;
 
-//     let mut app = init_app()?;
+//     let mut app = init_app(false)?;
 
 //     app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, None)?;
 //     app.registry_try_activate_account(AppUser::Alice, None, None)?;
@@ -536,7 +536,7 @@ fn init_default() -> TestResult<()> {
 //     const NONCE_0: u64 = 1;
 //     const NONCE_1: u64 = 2;
 
-//     let mut app = init_app()?;
+//     let mut app = init_app(false)?;
 
 //     for user in [AppUser::Alice, AppUser::Bob] {
 //         app.registry_try_create_account(user, MAX_DATA_SIZE, None)?;
@@ -572,7 +572,7 @@ fn init_default() -> TestResult<()> {
 //     const DATA_0: &str = "encrypted_secrets_0";
 //     const NONCE_0: u64 = 1;
 
-//     let mut app = init_app()?;
+//     let mut app = init_app(false)?;
 
 //     app.registry_try_create_account(AppUser::Alice, MAX_DATA_SIZE, None)?;
 //     app.registry_try_activate_account(AppUser::Alice, None, None)?;

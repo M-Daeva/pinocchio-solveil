@@ -9,7 +9,7 @@ use {
             TestResult,
         },
     },
-    base::types::InstructionSerialize,
+    base::types::{InstructionSerialize, Uint32, Uint64},
     litesvm::types::TransactionMetadata,
     registry_cpi::{
         state::{
@@ -32,73 +32,73 @@ pub trait CounterExtension {
         account_data_size_range: Option<Range>,
     ) -> TestResult<TransactionMetadata>;
 
-    // fn registry_try_update_config(
-    //     &mut self,
-    //     sender: AppUser,
-    //     admin: Option<AppUser>,
-    //     is_paused: Option<bool>,
-    //     rotation_timeout: Option<u32>,
-    //     registration_fee_amount: Option<u64>,
-    //     data_size_range: Option<Range>,
-    // ) -> TestResult<TransactionMetadata>;
+    fn registry_try_update_config(
+        &mut self,
+        sender: AppUser,
+        admin: Option<AppUser>,
+        is_paused: Option<bool>,
+        rotation_timeout: Option<u32>,
+        registration_fee_amount: Option<u64>,
+        data_size_range: Option<Range>,
+    ) -> TestResult<TransactionMetadata>;
 
-    // fn registry_try_confirm_admin_rotation(
-    //     &mut self,
-    //     sender: AppUser,
-    // ) -> TestResult<TransactionMetadata>;
+    fn registry_try_confirm_admin_rotation(
+        &mut self,
+        sender: AppUser,
+    ) -> TestResult<TransactionMetadata>;
 
-    // fn registry_try_withdraw_revenue(
-    //     &mut self,
-    //     sender: AppUser,
-    //     amount: Option<u64>,
-    //     recipient: Option<AppUser>,
-    //     revenue_asset: Option<AppToken>, // to test guards
-    // ) -> TestResult<TransactionMetadata>;
+    fn registry_try_withdraw_revenue(
+        &mut self,
+        sender: AppUser,
+        amount: Option<u64>,
+        recipient: Option<AppUser>,
+        revenue_asset: Option<AppToken>, // to test guards
+    ) -> TestResult<TransactionMetadata>;
 
-    // fn registry_try_create_account(
-    //     &mut self,
-    //     sender: AppUser,
-    //     max_data_size: u32,
-    //     expected_user_id: Option<u32>, // to test guards
-    // ) -> TestResult<TransactionMetadata>;
+    fn registry_try_create_account(
+        &mut self,
+        sender: AppUser,
+        max_data_size: u32,
+        expected_user_id: Option<u32>, // to test guards
+    ) -> TestResult<TransactionMetadata>;
 
-    // fn registry_try_close_account(
-    //     &mut self,
-    //     sender: AppUser,
-    //     user: Option<AppUser>, // to test guards
-    // ) -> TestResult<TransactionMetadata>;
+    fn registry_try_close_account(
+        &mut self,
+        sender: AppUser,
+        user: Option<AppUser>, // to test guards
+    ) -> TestResult<TransactionMetadata>;
 
-    // fn registry_try_reopen_account(
-    //     &mut self,
-    //     sender: AppUser,
-    //     max_data_size: u32,
-    // ) -> TestResult<TransactionMetadata>;
+    fn registry_try_reopen_account(
+        &mut self,
+        sender: AppUser,
+        max_data_size: u32,
+    ) -> TestResult<TransactionMetadata>;
 
-    // fn registry_try_activate_account(
-    //     &mut self,
-    //     sender: AppUser,
-    //     user: Option<AppUser>,
-    //     revenue_asset: Option<AppToken>, // to test guards
-    // ) -> TestResult<TransactionMetadata>;
+    fn registry_try_activate_account(
+        &mut self,
+        sender: AppUser,
+        user: Option<AppUser>,
+        revenue_asset: Option<AppToken>, // to test guards
+    ) -> TestResult<TransactionMetadata>;
 
-    // fn registry_try_write_data(
-    //     &mut self,
-    //     sender: AppUser,
-    //     data: &str,
-    //     nonce: u64,
-    // ) -> TestResult<TransactionMetadata>;
+    fn registry_try_write_data(
+        &mut self,
+        sender: AppUser,
+        data: &str,
+        nonce: u64,
+    ) -> TestResult<TransactionMetadata>;
 
-    // fn registry_try_request_account_rotation(
-    //     &mut self,
-    //     sender: AppUser,
-    //     new_owner: AppUser,
-    // ) -> TestResult<TransactionMetadata>;
+    fn registry_try_request_account_rotation(
+        &mut self,
+        sender: AppUser,
+        new_owner: AppUser,
+    ) -> TestResult<TransactionMetadata>;
 
-    // fn registry_try_confirm_account_rotation(
-    //     &mut self,
-    //     sender: AppUser,
-    //     prev_owner: AppUser,
-    // ) -> TestResult<TransactionMetadata>;
+    fn registry_try_confirm_account_rotation(
+        &mut self,
+        sender: AppUser,
+        prev_owner: AppUser,
+    ) -> TestResult<TransactionMetadata>;
 
     fn registry_query_config(&self) -> TestResult<Config>;
 
@@ -193,518 +193,546 @@ impl CounterExtension for App {
         )
     }
 
-    // fn registry_try_update_config(
-    //     &mut self,
-    //     sender: AppUser,
-    //     admin: Option<AppUser>,
-    //     is_paused: Option<bool>,
-    //     rotation_timeout: Option<u32>,
-    //     registration_fee_amount: Option<u64>,
-    //     data_size_range: Option<Range>,
-    // ) -> TestResult<TransactionMetadata> {
-    //     // programs
-    //     let ProgramId {
-    //         registry: program_id,
-    //         ..
-    //     } = self.program_id;
-
-    //     // signers
-    //     let signers = &[sender.keypair()];
-    //     let sender = sender.pubkey();
-
-    //     // pda
-    //     let config = self.pda.registry_config();
-    //     let admin_rotation_state = self.pda.registry_admin_rotation_state();
-
-    //     let accounts = types::update_config::TestAccounts {
-    //         sender,
-    //         config,
-    //         admin_rotation_state,
-    //     }
-    //     .to_account_metas();
-
-    //     let instruction_data = &types::update_config::InstructionData {
-    //         admin: admin.map(|x| sol_to_pin_pubkey(&x.pubkey())),
-    //         is_paused,
-    //         rotation_timeout,
-    //         registration_fee_amount,
-    //         data_size_range,
-    //     }
-    //     .serialize()
-    //     .map_err(TestError::from_raw_error)?;
-
-    //     send_tx_with_ix(
-    //         self,
-    //         &program_id,
-    //         &accounts,
-    //         &instruction_data,
-    //         signers,
-    //         &[],
-    //     )
-    // }
-
-    // fn registry_try_confirm_admin_rotation(
-    //     &mut self,
-    //     sender: AppUser,
-    // ) -> TestResult<TransactionMetadata> {
-    //     // programs
-    //     let ProgramId {
-    //         registry: program_id,
-    //         ..
-    //     } = self.program_id;
-
-    //     // signers
-    //     let signers = &[sender.keypair()];
-    //     let sender = sender.pubkey();
-
-    //     // pda
-    //     let config = self.pda.registry_config();
-    //     let admin_rotation_state = self.pda.registry_admin_rotation_state();
-
-    //     // confirm_admin_rotation uses update_config account
-    //     let accounts = types::update_config::TestAccounts {
-    //         sender,
-    //         config,
-    //         admin_rotation_state,
-    //     }
-    //     .to_account_metas();
-
-    //     let instruction_data = &types::confirm_admin_rotation::InstructionData {}
-    //         .serialize()
-    //         .map_err(TestError::from_raw_error)?;
-
-    //     send_tx_with_ix(
-    //         self,
-    //         &program_id,
-    //         &accounts,
-    //         &instruction_data,
-    //         signers,
-    //         &[],
-    //     )
-    // }
-
-    // fn registry_try_withdraw_revenue(
-    //     &mut self,
-    //     sender: AppUser,
-    //     amount: Option<u64>,
-    //     recipient: Option<AppUser>,
-    //     revenue_asset: Option<AppToken>, // to test guards
-    // ) -> TestResult<TransactionMetadata> {
-    //     // programs
-    //     let ProgramId {
-    //         system_program,
-    //         token_program,
-    //         associated_token_program,
-    //         registry: program_id,
-    //         ..
-    //     } = self.program_id;
-
-    //     let recipient = recipient.unwrap_or(sender).pubkey();
-
-    //     // signers
-    //     let signers = &[sender.keypair()];
-    //     let sender = sender.pubkey();
-
-    //     // mint
-    //     let revenue_mint = match revenue_asset {
-    //         Some(x) => x.pubkey(),
-    //         _ => pin_to_sol_pubkey(&self.registry_query_config()?.registration_fee.asset),
-    //     };
-
-    //     // pda
-    //     let bump = self.pda.registry_bump();
-    //     let config = self.pda.registry_config();
-
-    //     // ata
-    //     let revenue_recipient_ata = App::get_ata(&recipient, &revenue_mint);
-    //     let revenue_app_ata = App::get_ata(&config, &revenue_mint);
-
-    //     let accounts = types::withdraw_revenue::TestAccounts {
-    //         system_program,
-    //         token_program,
-    //         associated_token_program,
-    //         sender,
-    //         recipient,
-    //         bump,
-    //         config,
-    //         revenue_mint,
-    //         revenue_recipient_ata,
-    //         revenue_app_ata,
-    //     }
-    //     .to_account_metas();
-
-    //     let instruction_data = &types::withdraw_revenue::InstructionData { amount }
-    //         .serialize()
-    //         .map_err(TestError::from_raw_error)?;
-
-    //     send_tx_with_ix(
-    //         self,
-    //         &program_id,
-    //         &accounts,
-    //         &instruction_data,
-    //         signers,
-    //         &[],
-    //     )
-    // }
-
-    // fn registry_try_create_account(
-    //     &mut self,
-    //     sender: AppUser,
-    //     max_data_size: u32,
-    //     expected_user_id: Option<u32>, // to test guards
-    // ) -> TestResult<TransactionMetadata> {
-    //     // programs
-    //     let ProgramId {
-    //         system_program,
-    //         registry: program_id,
-    //         ..
-    //     } = self.program_id;
-
-    //     // signers
-    //     let signers = &[sender.keypair()];
-    //     let sender = sender.pubkey();
-
-    //     // pda
-    //     let bump = self.pda.registry_bump();
-    //     let config = self.pda.registry_config();
-    //     let user_counter = self.pda.registry_user_counter();
-
-    //     let user_id = self.pda.registry_user_id(sender);
-    //     let expected_user_id =
-    //         expected_user_id.unwrap_or(self.registry_query_user_counter()?.last_user_id + 1);
-    //     let user_account = self.pda.registry_user_account(expected_user_id);
-    //     let user_rotation_state = self.pda.registry_user_rotation_state(expected_user_id);
-
-    //     let accounts = types::create_account::TestAccounts {
-    //         system_program,
-    //         sender,
-    //         bump,
-    //         config,
-    //         user_counter,
-    //         user_id,
-    //         user_account,
-    //         user_rotation_state,
-    //     }
-    //     .to_account_metas();
-
-    //     let instruction_data = &types::create_account::InstructionData { max_data_size }
-    //         .serialize()
-    //         .map_err(TestError::from_raw_error)?;
-
-    //     send_tx_with_ix(
-    //         self,
-    //         &program_id,
-    //         &accounts,
-    //         &instruction_data,
-    //         signers,
-    //         &[],
-    //     )
-    // }
-
-    // fn registry_try_close_account(
-    //     &mut self,
-    //     sender: AppUser,
-    //     user: Option<AppUser>, // to test guards
-    // ) -> TestResult<TransactionMetadata> {
-    //     // programs
-    //     let ProgramId {
-    //         system_program,
-    //         registry: program_id,
-    //         ..
-    //     } = self.program_id;
-
-    //     let user = user.unwrap_or(sender);
-
-    //     // signers
-    //     let signers = &[sender.keypair()];
-    //     let sender = sender.pubkey();
-
-    //     // pda
-    //     let user_id = self.pda.registry_user_id(user.pubkey());
-    //     let id = self.registry_query_user_id(user)?.id;
-    //     let user_account = self.pda.registry_user_account(id);
-    //     let user_rotation_state = self.pda.registry_user_rotation_state(id);
-
-    //     let accounts = types::close_account::TestAccounts {
-    //         system_program,
-    //         sender,
-    //         user_id,
-    //         user_account,
-    //         user_rotation_state,
-    //     }
-    //     .to_account_metas();
-
-    //     let instruction_data = &types::close_account::InstructionData {}
-    //         .serialize()
-    //         .map_err(TestError::from_raw_error)?;
-
-    //     send_tx_with_ix(
-    //         self,
-    //         &program_id,
-    //         &accounts,
-    //         &instruction_data,
-    //         signers,
-    //         &[],
-    //     )
-    // }
-
-    // fn registry_try_reopen_account(
-    //     &mut self,
-    //     sender: AppUser,
-    //     max_data_size: u32,
-    // ) -> TestResult<TransactionMetadata> {
-    //     // programs
-    //     let ProgramId {
-    //         system_program,
-    //         registry: program_id,
-    //         ..
-    //     } = self.program_id;
-
-    //     // signers
-    //     let signers = &[sender.keypair()];
-    //     let payer = sender.pubkey();
-
-    //     // pda
-    //     let bump = self.pda.registry_bump();
-    //     let config = self.pda.registry_config();
-
-    //     let user_id = self.pda.registry_user_id(payer);
-    //     let id = self.registry_query_user_id(sender)?.id;
-    //     let user_account = self.pda.registry_user_account(id);
-    //     let user_rotation_state = self.pda.registry_user_rotation_state(id);
-
-    //     let accounts = types::reopen_account::TestAccounts {
-    //         system_program,
-    //         sender: payer,
-    //         bump,
-    //         config,
-    //         user_id,
-    //         user_account,
-    //         user_rotation_state,
-    //     }
-    //     .to_account_metas();
-
-    //     let instruction_data = &types::reopen_account::InstructionData { max_data_size }
-    //         .serialize()
-    //         .map_err(TestError::from_raw_error)?;
-
-    //     send_tx_with_ix(
-    //         self,
-    //         &program_id,
-    //         &accounts,
-    //         &instruction_data,
-    //         signers,
-    //         &[],
-    //     )
-    // }
-
-    // fn registry_try_activate_account(
-    //     &mut self,
-    //     sender: AppUser,
-    //     user: Option<AppUser>,
-    //     revenue_asset: Option<AppToken>, // to test guards
-    // ) -> TestResult<TransactionMetadata> {
-    //     // programs
-    //     let ProgramId {
-    //         system_program,
-    //         token_program,
-    //         associated_token_program,
-    //         registry: program_id,
-    //         ..
-    //     } = self.program_id;
-
-    //     let user = user.unwrap_or(sender).pubkey();
-
-    //     // signers
-    //     let signers = &[sender.keypair()];
-    //     let sender = sender.pubkey();
-
-    //     // mint
-    //     let revenue_mint = match revenue_asset {
-    //         Some(x) => x.pubkey(),
-    //         _ => pin_to_sol_pubkey(&self.registry_query_config()?.registration_fee.asset),
-    //     };
-
-    //     // pda
-    //     let bump = self.pda.registry_bump();
-    //     let config = self.pda.registry_config();
-    //     let user_id = self.pda.registry_user_id(user);
-
-    //     // ata
-    //     let revenue_sender_ata = App::get_ata(&sender, &revenue_mint);
-    //     let revenue_app_ata = App::get_ata(&config, &revenue_mint);
-
-    //     let accounts = types::activate_account::TestAccounts {
-    //         system_program,
-    //         token_program,
-    //         associated_token_program,
-    //         sender,
-    //         bump,
-    //         config,
-    //         user_id,
-    //         revenue_mint,
-    //         revenue_sender_ata,
-    //         revenue_app_ata,
-    //     }
-    //     .to_account_metas();
-
-    //     let instruction_data = &types::activate_account::InstructionData {}
-    //         .serialize()
-    //         .map_err(TestError::from_raw_error)?;
-
-    //     send_tx_with_ix(
-    //         self,
-    //         &program_id,
-    //         &accounts,
-    //         &instruction_data,
-    //         signers,
-    //         &[],
-    //     )
-    // }
-
-    // fn registry_try_write_data(
-    //     &mut self,
-    //     sender: AppUser,
-    //     data: &str,
-    //     nonce: u64,
-    // ) -> TestResult<TransactionMetadata> {
-    //     // programs
-    //     let ProgramId {
-    //         registry: program_id,
-    //         ..
-    //     } = self.program_id;
-
-    //     // signers
-    //     let signers = &[sender.keypair()];
-    //     let payer = sender.pubkey();
-
-    //     // pda
-    //     let user_id = self.pda.registry_user_id(payer);
-    //     let id = self.registry_query_user_id(sender)?.id;
-    //     let user_account = self.pda.registry_user_account(id);
-
-    //     let accounts = types::write_data::TestAccounts {
-    //         sender: payer,
-    //         user_id,
-    //         user_account,
-    //     }
-    //     .to_account_metas();
-
-    //     let mut buffer: [u8; ACCOUNT_DATA_SIZE_MAX as usize] =
-    //         [0u8; ACCOUNT_DATA_SIZE_MAX as usize];
-    //     for (i, data_byte) in data.as_bytes().iter().enumerate() {
-    //         buffer[i] = *data_byte;
-    //     }
-
-    //     let instruction_data = &types::write_data::InstructionData {
-    //         data: buffer,
-    //         nonce: nonce.to_le_bytes(),
-    //     }
-    //     .serialize()
-    //     .map_err(TestError::from_raw_error)?;
-
-    //     send_tx_with_ix(
-    //         self,
-    //         &program_id,
-    //         &accounts,
-    //         &instruction_data,
-    //         signers,
-    //         &[],
-    //     )
-    // }
-
-    // fn registry_try_request_account_rotation(
-    //     &mut self,
-    //     sender: AppUser,
-    //     new_owner: AppUser,
-    // ) -> TestResult<TransactionMetadata> {
-    //     // programs
-    //     let ProgramId {
-    //         registry: program_id,
-    //         ..
-    //     } = self.program_id;
-
-    //     // signers
-    //     let signers = &[sender.keypair()];
-    //     let payer = sender.pubkey();
-
-    //     // pda
-    //     let bump = self.pda.registry_bump();
-    //     let config = self.pda.registry_config();
-
-    //     let user_id = self.pda.registry_user_id(payer);
-    //     let id = self.registry_query_user_id(sender)?.id;
-    //     let user_rotation_state = self.pda.registry_user_rotation_state(id);
-
-    //     let accounts = types::request_account_rotation::TestAccounts {
-    //         sender: payer,
-    //         bump,
-    //         config,
-    //         user_id,
-    //         user_rotation_state,
-    //     }
-    //     .to_account_metas();
-
-    //     let instruction_data = &types::request_account_rotation::InstructionData {
-    //         new_owner: sol_to_pin_pubkey(&new_owner.pubkey()),
-    //     }
-    //     .serialize()
-    //     .map_err(TestError::from_raw_error)?;
-
-    //     send_tx_with_ix(
-    //         self,
-    //         &program_id,
-    //         &accounts,
-    //         &instruction_data,
-    //         signers,
-    //         &[],
-    //     )
-    // }
-
-    // fn registry_try_confirm_account_rotation(
-    //     &mut self,
-    //     sender: AppUser,
-    //     prev_owner: AppUser,
-    // ) -> TestResult<TransactionMetadata> {
-    //     // programs
-    //     let ProgramId {
-    //         system_program,
-    //         registry: program_id,
-    //         ..
-    //     } = self.program_id;
-
-    //     // signers
-    //     let signers = &[sender.keypair()];
-    //     let payer = sender.pubkey();
-
-    //     // pda
-    //     let user_id_pre = self.pda.registry_user_id(prev_owner.pubkey());
-    //     let user_id = self.pda.registry_user_id(payer);
-    //     let user_id_value_pre = self.registry_query_user_id(prev_owner)?.id;
-    //     let user_rotation_state = self.pda.registry_user_rotation_state(user_id_value_pre);
-
-    //     let accounts = types::confirm_account_rotation::TestAccounts {
-    //         system_program,
-    //         sender: payer,
-    //         user_id_pre,
-    //         user_id,
-    //         user_rotation_state,
-    //     }
-    //     .to_account_metas();
-
-    //     let instruction_data = &types::confirm_account_rotation::InstructionData {}
-    //         .serialize()
-    //         .map_err(TestError::from_raw_error)?;
-
-    //     send_tx_with_ix(
-    //         self,
-    //         &program_id,
-    //         &accounts,
-    //         &instruction_data,
-    //         signers,
-    //         &[],
-    //     )
-    // }
+    fn registry_try_update_config(
+        &mut self,
+        sender: AppUser,
+        admin: Option<AppUser>,
+        is_paused: Option<bool>,
+        rotation_timeout: Option<u32>,
+        registration_fee_amount: Option<u64>,
+        data_size_range: Option<Range>,
+    ) -> TestResult<TransactionMetadata> {
+        // programs
+        let ProgramId {
+            registry: program_id,
+            ..
+        } = self.program_id;
+
+        // signers
+        let signers = &[sender.keypair()];
+        let sender = sender.pubkey();
+
+        // pda
+        let config = self.pda.registry_config();
+        let admin_rotation_state = self.pda.registry_admin_rotation_state();
+
+        let accounts = types::update_config::TestAccounts {
+            sender,
+            config,
+            admin_rotation_state,
+        }
+        .to_account_metas();
+
+        let mut instruction_data = types::update_config::InstructionData::default();
+        if let Some(x) = admin {
+            instruction_data.set_admin_flag(true);
+            instruction_data.admin = sol_to_pin_pubkey(&x.pubkey());
+        }
+        if let Some(x) = is_paused {
+            instruction_data.set_is_paused_flag(true);
+            instruction_data.is_paused.set_bit(x);
+        }
+        if let Some(x) = rotation_timeout {
+            instruction_data.set_rotation_timeout_flag(true);
+            instruction_data.rotation_timeout.set(x);
+        }
+        if let Some(x) = registration_fee_amount {
+            instruction_data.set_registration_fee_amount_flag(true);
+            instruction_data.registration_fee_amount.set(x);
+        }
+        if let Some(x) = data_size_range {
+            instruction_data.set_data_size_range_flag(true);
+            instruction_data.data_size_range = x;
+        }
+
+        let instruction_data = &instruction_data
+            .serialize()
+            .map_err(TestError::from_raw_error)?;
+
+        send_tx_with_ix(
+            self,
+            &program_id,
+            &accounts,
+            &instruction_data,
+            signers,
+            &[],
+        )
+    }
+
+    fn registry_try_confirm_admin_rotation(
+        &mut self,
+        sender: AppUser,
+    ) -> TestResult<TransactionMetadata> {
+        // programs
+        let ProgramId {
+            registry: program_id,
+            ..
+        } = self.program_id;
+
+        // signers
+        let signers = &[sender.keypair()];
+        let sender = sender.pubkey();
+
+        // pda
+        let config = self.pda.registry_config();
+        let admin_rotation_state = self.pda.registry_admin_rotation_state();
+
+        // confirm_admin_rotation uses update_config account
+        let accounts = types::update_config::TestAccounts {
+            sender,
+            config,
+            admin_rotation_state,
+        }
+        .to_account_metas();
+
+        let instruction_data = &types::confirm_admin_rotation::InstructionData {}
+            .serialize()
+            .map_err(TestError::from_raw_error)?;
+
+        send_tx_with_ix(
+            self,
+            &program_id,
+            &accounts,
+            &instruction_data,
+            signers,
+            &[],
+        )
+    }
+
+    fn registry_try_withdraw_revenue(
+        &mut self,
+        sender: AppUser,
+        amount: Option<u64>,
+        recipient: Option<AppUser>,
+        revenue_asset: Option<AppToken>, // to test guards
+    ) -> TestResult<TransactionMetadata> {
+        // programs
+        let ProgramId {
+            system_program,
+            token_program,
+            associated_token_program,
+            registry: program_id,
+            ..
+        } = self.program_id;
+
+        let recipient = recipient.unwrap_or(sender).pubkey();
+
+        // signers
+        let signers = &[sender.keypair()];
+        let sender = sender.pubkey();
+
+        // mint
+        let revenue_mint = match revenue_asset {
+            Some(x) => x.pubkey(),
+            _ => pin_to_sol_pubkey(&self.registry_query_config()?.registration_fee.asset),
+        };
+
+        // pda
+        let bump = self.pda.registry_bump();
+        let config = self.pda.registry_config();
+
+        // ata
+        let revenue_recipient_ata = App::get_ata(&recipient, &revenue_mint);
+        let revenue_app_ata = App::get_ata(&config, &revenue_mint);
+
+        let accounts = types::withdraw_revenue::TestAccounts {
+            system_program,
+            token_program,
+            associated_token_program,
+            sender,
+            recipient,
+            bump,
+            config,
+            revenue_mint,
+            revenue_recipient_ata,
+            revenue_app_ata,
+        }
+        .to_account_metas();
+
+        let mut instruction_data = types::withdraw_revenue::InstructionData::default();
+        if let Some(x) = amount {
+            instruction_data.flags.set_bit(true);
+            instruction_data.amount.set(x);
+        }
+
+        let instruction_data = &instruction_data
+            .serialize()
+            .map_err(TestError::from_raw_error)?;
+
+        send_tx_with_ix(
+            self,
+            &program_id,
+            &accounts,
+            &instruction_data,
+            signers,
+            &[],
+        )
+    }
+
+    fn registry_try_create_account(
+        &mut self,
+        sender: AppUser,
+        max_data_size: u32,
+        expected_user_id: Option<u32>, // to test guards
+    ) -> TestResult<TransactionMetadata> {
+        // programs
+        let ProgramId {
+            system_program,
+            registry: program_id,
+            ..
+        } = self.program_id;
+
+        // signers
+        let signers = &[sender.keypair()];
+        let sender = sender.pubkey();
+
+        // pda
+        let bump = self.pda.registry_bump();
+        let config = self.pda.registry_config();
+        let user_counter = self.pda.registry_user_counter();
+
+        let user_id = self.pda.registry_user_id(sender);
+        let expected_user_id =
+            expected_user_id.unwrap_or(self.registry_query_user_counter()?.last_user_id.get() + 1);
+        let user_account = self.pda.registry_user_account(expected_user_id);
+        let user_rotation_state = self.pda.registry_user_rotation_state(expected_user_id);
+
+        let accounts = types::create_account::TestAccounts {
+            system_program,
+            sender,
+            bump,
+            config,
+            user_counter,
+            user_id,
+            user_account,
+            user_rotation_state,
+        }
+        .to_account_metas();
+
+        let instruction_data = &types::create_account::InstructionData {
+            max_data_size: Uint32::from(max_data_size),
+        }
+        .serialize()
+        .map_err(TestError::from_raw_error)?;
+
+        send_tx_with_ix(
+            self,
+            &program_id,
+            &accounts,
+            &instruction_data,
+            signers,
+            &[],
+        )
+    }
+
+    fn registry_try_close_account(
+        &mut self,
+        sender: AppUser,
+        user: Option<AppUser>, // to test guards
+    ) -> TestResult<TransactionMetadata> {
+        // programs
+        let ProgramId {
+            system_program,
+            registry: program_id,
+            ..
+        } = self.program_id;
+
+        let user = user.unwrap_or(sender);
+
+        // signers
+        let signers = &[sender.keypair()];
+        let sender = sender.pubkey();
+
+        // pda
+        let user_id = self.pda.registry_user_id(user.pubkey());
+        let id = self.registry_query_user_id(user)?.id;
+        let user_account = self.pda.registry_user_account(id.get());
+        let user_rotation_state = self.pda.registry_user_rotation_state(id.get());
+
+        let accounts = types::close_account::TestAccounts {
+            system_program,
+            sender,
+            user_id,
+            user_account,
+            user_rotation_state,
+        }
+        .to_account_metas();
+
+        let instruction_data = &types::close_account::InstructionData {}
+            .serialize()
+            .map_err(TestError::from_raw_error)?;
+
+        send_tx_with_ix(
+            self,
+            &program_id,
+            &accounts,
+            &instruction_data,
+            signers,
+            &[],
+        )
+    }
+
+    fn registry_try_reopen_account(
+        &mut self,
+        sender: AppUser,
+        max_data_size: u32,
+    ) -> TestResult<TransactionMetadata> {
+        // programs
+        let ProgramId {
+            system_program,
+            registry: program_id,
+            ..
+        } = self.program_id;
+
+        // signers
+        let signers = &[sender.keypair()];
+        let payer = sender.pubkey();
+
+        // pda
+        let bump = self.pda.registry_bump();
+        let config = self.pda.registry_config();
+
+        let user_id = self.pda.registry_user_id(payer);
+        let id = self.registry_query_user_id(sender)?.id;
+        let user_account = self.pda.registry_user_account(id.get());
+        let user_rotation_state = self.pda.registry_user_rotation_state(id.get());
+
+        let accounts = types::reopen_account::TestAccounts {
+            system_program,
+            sender: payer,
+            bump,
+            config,
+            user_id,
+            user_account,
+            user_rotation_state,
+        }
+        .to_account_metas();
+
+        let instruction_data = &types::reopen_account::InstructionData {
+            max_data_size: Uint32::from(max_data_size),
+        }
+        .serialize()
+        .map_err(TestError::from_raw_error)?;
+
+        send_tx_with_ix(
+            self,
+            &program_id,
+            &accounts,
+            &instruction_data,
+            signers,
+            &[],
+        )
+    }
+
+    fn registry_try_activate_account(
+        &mut self,
+        sender: AppUser,
+        user: Option<AppUser>,
+        revenue_asset: Option<AppToken>, // to test guards
+    ) -> TestResult<TransactionMetadata> {
+        // programs
+        let ProgramId {
+            system_program,
+            token_program,
+            associated_token_program,
+            registry: program_id,
+            ..
+        } = self.program_id;
+
+        let user = user.unwrap_or(sender).pubkey();
+
+        // signers
+        let signers = &[sender.keypair()];
+        let sender = sender.pubkey();
+
+        // mint
+        let revenue_mint = match revenue_asset {
+            Some(x) => x.pubkey(),
+            _ => pin_to_sol_pubkey(&self.registry_query_config()?.registration_fee.asset),
+        };
+
+        // pda
+        let bump = self.pda.registry_bump();
+        let config = self.pda.registry_config();
+        let user_id = self.pda.registry_user_id(user);
+
+        // ata
+        let revenue_sender_ata = App::get_ata(&sender, &revenue_mint);
+        let revenue_app_ata = App::get_ata(&config, &revenue_mint);
+
+        let accounts = types::activate_account::TestAccounts {
+            system_program,
+            token_program,
+            associated_token_program,
+            sender,
+            bump,
+            config,
+            user_id,
+            revenue_mint,
+            revenue_sender_ata,
+            revenue_app_ata,
+        }
+        .to_account_metas();
+
+        let instruction_data = &types::activate_account::InstructionData {}
+            .serialize()
+            .map_err(TestError::from_raw_error)?;
+
+        send_tx_with_ix(
+            self,
+            &program_id,
+            &accounts,
+            &instruction_data,
+            signers,
+            &[],
+        )
+    }
+
+    fn registry_try_write_data(
+        &mut self,
+        sender: AppUser,
+        data: &str,
+        nonce: u64,
+    ) -> TestResult<TransactionMetadata> {
+        // programs
+        let ProgramId {
+            registry: program_id,
+            ..
+        } = self.program_id;
+
+        // signers
+        let signers = &[sender.keypair()];
+        let payer = sender.pubkey();
+
+        // pda
+        let user_id = self.pda.registry_user_id(payer);
+        let id = self.registry_query_user_id(sender)?.id;
+        let user_account = self.pda.registry_user_account(id.get());
+
+        let accounts = types::write_data::TestAccounts {
+            sender: payer,
+            user_id,
+            user_account,
+        }
+        .to_account_metas();
+
+        let mut buffer: [u8; ACCOUNT_DATA_SIZE_MAX as usize] =
+            [0u8; ACCOUNT_DATA_SIZE_MAX as usize];
+        for (i, data_byte) in data.as_bytes().iter().enumerate() {
+            buffer[i] = *data_byte;
+        }
+
+        let instruction_data = &types::write_data::InstructionData {
+            data: buffer,
+            nonce: Uint64::from(nonce),
+        }
+        .serialize()
+        .map_err(TestError::from_raw_error)?;
+
+        send_tx_with_ix(
+            self,
+            &program_id,
+            &accounts,
+            &instruction_data,
+            signers,
+            &[],
+        )
+    }
+
+    fn registry_try_request_account_rotation(
+        &mut self,
+        sender: AppUser,
+        new_owner: AppUser,
+    ) -> TestResult<TransactionMetadata> {
+        // programs
+        let ProgramId {
+            registry: program_id,
+            ..
+        } = self.program_id;
+
+        // signers
+        let signers = &[sender.keypair()];
+        let payer = sender.pubkey();
+
+        // pda
+        let bump = self.pda.registry_bump();
+        let config = self.pda.registry_config();
+
+        let user_id = self.pda.registry_user_id(payer);
+        let id = self.registry_query_user_id(sender)?.id;
+        let user_rotation_state = self.pda.registry_user_rotation_state(id.get());
+
+        let accounts = types::request_account_rotation::TestAccounts {
+            sender: payer,
+            bump,
+            config,
+            user_id,
+            user_rotation_state,
+        }
+        .to_account_metas();
+
+        let instruction_data = &types::request_account_rotation::InstructionData {
+            new_owner: sol_to_pin_pubkey(&new_owner.pubkey()),
+        }
+        .serialize()
+        .map_err(TestError::from_raw_error)?;
+
+        send_tx_with_ix(
+            self,
+            &program_id,
+            &accounts,
+            &instruction_data,
+            signers,
+            &[],
+        )
+    }
+
+    fn registry_try_confirm_account_rotation(
+        &mut self,
+        sender: AppUser,
+        prev_owner: AppUser,
+    ) -> TestResult<TransactionMetadata> {
+        // programs
+        let ProgramId {
+            system_program,
+            registry: program_id,
+            ..
+        } = self.program_id;
+
+        // signers
+        let signers = &[sender.keypair()];
+        let payer = sender.pubkey();
+
+        // pda
+        let user_id_pre = self.pda.registry_user_id(prev_owner.pubkey());
+        let user_id = self.pda.registry_user_id(payer);
+        let user_id_value_pre = self.registry_query_user_id(prev_owner)?.id;
+        let user_rotation_state = self
+            .pda
+            .registry_user_rotation_state(user_id_value_pre.get());
+
+        let accounts = types::confirm_account_rotation::TestAccounts {
+            system_program,
+            sender: payer,
+            user_id_pre,
+            user_id,
+            user_rotation_state,
+        }
+        .to_account_metas();
+
+        let instruction_data = &types::confirm_account_rotation::InstructionData {}
+            .serialize()
+            .map_err(TestError::from_raw_error)?;
+
+        send_tx_with_ix(
+            self,
+            &program_id,
+            &accounts,
+            &instruction_data,
+            signers,
+            &[],
+        )
+    }
 
     fn registry_query_config(&self) -> TestResult<Config> {
         get_data(&self.litesvm, &self.pda.registry_config())

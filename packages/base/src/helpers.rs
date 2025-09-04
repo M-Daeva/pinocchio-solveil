@@ -45,7 +45,7 @@ fn set_bit(field: u8, bit: u8) -> u8 {
 
 #[inline]
 fn reset_bit(field: u8, bit: u8) -> u8 {
-    field ^ 1 << bit
+    field & !(1 << bit)
 }
 
 #[inline]
