@@ -47,14 +47,14 @@ if [ -d "./packages" ]; then
   done
 fi
 
-# 4) Replace pubkey in Anchor.toml for localnet and devnet
-ANCHOR_TOML="./Anchor.toml"
-if [ -f "$ANCHOR_TOML" ]; then
-  sed -i.bak -E "/\[programs\.localnet\]/,/\[/{s#(${NAME}[[:space:]]*=[[:space:]]*\")[^\"]+(\".*)#\1$PUBKEY\2#}" "$ANCHOR_TOML"
-  sed -i.bak -E "/\[programs\.devnet\]/,/\[/{s#(${NAME}[[:space:]]*=[[:space:]]*\")[^\"]+(\".*)#\1$PUBKEY\2#}" "$ANCHOR_TOML"
-  rm -f "${ANCHOR_TOML}.bak"
-else
-  echo "File not found: $ANCHOR_TOML"
-fi
+# # 4) Replace pubkey in Anchor.toml for localnet and devnet
+# ANCHOR_TOML="./Anchor.toml"
+# if [ -f "$ANCHOR_TOML" ]; then
+#   sed -i.bak -E "/\[programs\.localnet\]/,/\[/{s#(${NAME}[[:space:]]*=[[:space:]]*\")[^\"]+(\".*)#\1$PUBKEY\2#}" "$ANCHOR_TOML"
+#   sed -i.bak -E "/\[programs\.devnet\]/,/\[/{s#(${NAME}[[:space:]]*=[[:space:]]*\")[^\"]+(\".*)#\1$PUBKEY\2#}" "$ANCHOR_TOML"
+#   rm -f "${ANCHOR_TOML}.bak"
+# else
+#   echo "File not found: $ANCHOR_TOML"
+# fi
 
 echo "Updated pubkey: $PUBKEY"

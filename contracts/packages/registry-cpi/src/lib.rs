@@ -18,4 +18,4 @@ pub mod types {
     pub mod write_data;
 }
 
-declare_id!("4ibrEMW5F6hKnkW4jVedswYv6H6VtwPN6ar6dvXDN1nT");
+declare_id!("89KoDhPxWcegVeGrr8sAg3sn7H7EaH6edtDg9qx8Jh19");

@@ -1,14 +1,19 @@
-# 1. build and test:                        ./test.sh
-# 2. build and test with "show-output":     ./test.sh s
-# 3. test:                                  ./test.sh l
-# 4. test with "show-output":               ./test.sh ls
+# 1. build and test with "show-output":     ./test.sh s
+# 2. build and test:                        ./test.sh
 
-if [[ "$1" == "l" ]]; then
-    (cd tests && clear && cargo test)
-elif [[ "$1" == "ls" ]]; then
-    (cd tests && clear && cargo show)
-elif [[ "$1" == "s" ]]; then
-    ./build.sh && (cd tests && clear && cargo show)
+(
+    clear
+
+    for program in programs/*/; do
+        if [ -d "$program" ]; then
+            echo "Building $(basename "$program")..."
+            cd "$program" && cargo build-sbf && cd - > /dev/null
+        fi
+    done
+)
+
+if [[ "$1" == "s" ]]; then
+    (cd tests && clear && cargo test -- --show-output)
 else
-    ./build.sh && (cd tests && clear && cargo test)
+    (cd tests && clear && cargo test)
 fi
