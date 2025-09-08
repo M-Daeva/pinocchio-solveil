@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "data": "I8DvNhcw8npI/bvcB1bqBn7xE60WxAz9B+HsWDNdJbr7CsKYpfhNBhaW5sPDB8q4rzzvuKWFadhne6BNhA+dB/kD8TPRjZQR4mvjvExStynP",
+    "nonce": "01989f63fced",
+    "maxSize": 1000
+  },
+  {
+    "id": 2,
+    "data": "phCkvr6axa0nXqTuqiOxmarAY8Jl82kqj74w1NuBGlUKrbE1SgGbrw2QHSvhUkxe6Whw59sup3tysW4i1OrOYr9Y9yklKzuhZyfd",
+    "nonce": "01989f6b51e3",
+    "maxSize": 1000
+  },
+  {
+    "id": 3,
+    "data": "",
+    "nonce": "00",
+    "maxSize": 10000
+  }
+]
