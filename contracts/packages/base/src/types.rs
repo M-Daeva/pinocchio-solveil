@@ -100,6 +100,7 @@ where
 }
 
 #[p_serde]
+#[derive(shank::ShankType)]
 pub struct BitField(u8);
 
 impl From<bool> for BitField {
@@ -146,6 +147,7 @@ impl BitField {
 }
 
 #[p_serde]
+#[derive(shank::ShankType)]
 pub struct Uint16([u8; 2]);
 
 impl From<u16> for Uint16 {
@@ -178,6 +180,7 @@ impl Uint16 {
 }
 
 #[p_serde]
+#[derive(shank::ShankType)]
 pub struct Uint32([u8; 4]);
 
 impl From<u32> for Uint32 {
@@ -210,6 +213,7 @@ impl Uint32 {
 }
 
 #[p_serde]
+#[derive(shank::ShankType)]
 pub struct Uint64([u8; 8]);
 
 impl From<u64> for Uint64 {
@@ -242,6 +246,7 @@ impl Uint64 {
 }
 
 #[p_serde]
+#[derive(shank::ShankType)]
 pub struct Uint128([u8; 16]);
 
 impl From<u128> for Uint128 {

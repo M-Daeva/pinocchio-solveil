@@ -9,6 +9,7 @@ use {
     bytemuck::{Pod, Zeroable},
     litesvm::{types::TransactionMetadata, LiteSVM},
     pinocchio::program_error,
+    registry_cpi::PROGRAM_ID,
     solana_compute_budget::compute_budget::ComputeBudget,
     solana_instruction::{AccountMeta, Instruction},
     solana_keypair::Keypair,
@@ -223,7 +224,7 @@ impl App {
             associated_token_program: spl_associated_token_account::ID,
 
             // custom
-            registry: registry_cpi::ID.into(),
+            registry: pinocchio_pubkey::from_str(PROGRAM_ID).into(),
         };
 
         // specify PDA

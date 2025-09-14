@@ -1,0 +1,19 @@
+{
+  "version": "1.0.0",
+  "name": "registry",
+  "instructions": [
+    {
+      "name": "Init",
+      "accounts": [],
+      "args": [],
+      "discriminant": {
+        "type": "u8",
+        "value": 0
+      }
+    }
+  ],
+  "metadata": {
+    "origin": "shank",
+    "address": "89KoDhPxWcegVeGrr8sAg3sn7H7EaH6edtDg9qx8Jh19"
+  }
+}

@@ -27,5 +27,6 @@ solana-pubkey = { workspace = true }
 strum = { workspace = true }
 strum_macros = { workspace = true }
 bytemuck = { workspace = true }
+shank = { workspace = true }
 
 macro-p-serde = { workspace = true }

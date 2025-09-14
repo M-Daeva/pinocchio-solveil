@@ -115,6 +115,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "anyhow"
+version = "1.0.99"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b0674a1ddeecb70197781e945de4b3b8ffb61fa939a5597bcf48503737663100"
+
+[[package]]
 name = "ark-bn254"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -309,6 +315,7 @@ dependencies = [
  "pinocchio-pubkey",
  "pinocchio-system",
  "pinocchio-token",
+ "shank",
  "solana-instruction",
  "solana-pubkey",
  "strum",
@@ -2267,6 +2274,7 @@ dependencies = [
  "pinocchio-log",
  "pinocchio-pubkey",
  "registry-cpi",
+ "shank",
 ]
 
 [[package]]
@@ -2284,6 +2292,7 @@ dependencies = [
  "pinocchio-log",
  "pinocchio-pubkey",
  "pinocchio-system",
+ "shank",
  "solana-instruction",
  "solana-pubkey",
  "strum",
@@ -2527,6 +2536,52 @@ checksum = "75872d278a8f37ef87fa0ddbda7802605cb18344497949862c0d4dcb291eba60"
 dependencies = [
  "digest 0.10.7",
  "keccak",
+]
+
+[[package]]
+name = "shank"
+version = "0.4.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "acacd11d5f6c23c917cba20b5958cc24a63ecbc9f4b5e0692b41bd8016eb44d5"
+dependencies = [
+ "shank_macro",
+]
+
+[[package]]
+name = "shank_macro"
+version = "0.4.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b9249dc9a94754dac8b18085d33a25038915877669564a17732e02c67fea036"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "shank_macro_impl",
+ "shank_render",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "shank_macro_impl"
+version = "0.4.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eb6a32de33f7c537e68c5061c99bf9859b19a725fa78d5c8282b16fbf9455fc5"
+dependencies = [
+ "anyhow",
+ "proc-macro2",
+ "quote",
+ "serde",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "shank_render"
+version = "0.4.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7809e7ac6f979b0e3d9ddba8a4e8e73fe239f62bef9d953784e516ff08f526e4"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "shank_macro_impl",
 ]
 
 [[package]]

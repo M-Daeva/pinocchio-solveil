@@ -18,4 +18,5 @@ pub mod types {
     pub mod write_data;
 }
 
+pub const PROGRAM_ID: &str = "89KoDhPxWcegVeGrr8sAg3sn7H7EaH6edtDg9qx8Jh19";
 declare_id!("89KoDhPxWcegVeGrr8sAg3sn7H7EaH6edtDg9qx8Jh19");

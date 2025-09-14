@@ -10,6 +10,7 @@ use {
     pinocchio_pubkey::pubkey,
 };
 
+#[derive(shank::ShankType)]
 #[repr(u8)]
 pub enum Discriminator {
     // admin
@@ -54,6 +55,7 @@ pub const ACCOUNT_DATA_SIZE_MAX: u32 = 4096;
 
 /// to store bumps for all app accounts
 #[p_serde]
+#[derive(shank::ShankAccount)]
 pub struct Bump {
     pub config: u8,
     pub user_counter: u8,
@@ -61,6 +63,7 @@ pub struct Bump {
 }
 
 #[p_serde]
+#[derive(shank::ShankAccount)]
 pub struct Config {
     /// can update the config and execute priveledged instructions
     pub admin: Pubkey,
@@ -72,6 +75,7 @@ pub struct Config {
 
 /// for indexing
 #[p_serde]
+#[derive(shank::ShankAccount)]
 pub struct UserCounter {
     pub last_user_id: Uint32,
 }
@@ -79,6 +83,7 @@ pub struct UserCounter {
 /// to transfer ownership from one address to another in 2 steps (for security reasons) \
 /// used both for app admin and user accounts
 #[p_serde]
+#[derive(shank::ShankAccount)]
 pub struct RotationState {
     pub owner: Pubkey,
     pub new_owner: Pubkey,
@@ -87,8 +92,11 @@ pub struct RotationState {
 
 /// get by user: Pubkey
 #[p_serde]
+#[derive(shank::ShankAccount)]
 pub struct UserId {
+    #[idl_type("u8")]
     pub flags: BitField,
+    #[idl_type("u32")]
     pub id: Uint32,
     pub account_bump: u8,
     pub rotation_state_bump: u8,

@@ -12,7 +12,7 @@ use {
     r#macro_account::AccountMetas,
 };
 
-#[derive(AccountTryFrom, AccountMetas)]
+#[derive(AccountTryFrom, AccountMetas, shank::ShankType)]
 pub struct Accounts<'a> {
     pub system_program: &'a AccountInfo,
 

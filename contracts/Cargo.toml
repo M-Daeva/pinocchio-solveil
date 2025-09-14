@@ -51,6 +51,7 @@ spl-associated-token-account = "7.0.0"
 spl-token = "8.0.0"
 solana-kite = "0.1.4"
 bytemuck = { version = "1.23.2", features = ["derive"] }
+shank = "0.4.5"
 
 macro-account = { path = "./packages/macro-account" }
 macro-p-serde = { path = "./packages/macro-p-serde" }

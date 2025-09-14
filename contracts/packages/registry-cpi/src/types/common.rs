@@ -9,12 +9,14 @@ use {
 };
 
 #[p_serde]
+#[derive(shank::ShankType)]
 pub struct AssetItem {
     pub amount: Uint64,
     pub asset: Pubkey,
 }
 
 #[p_serde]
+#[derive(shank::ShankType)]
 pub struct Range {
     pub min: Uint32,
     pub max: Uint32,

@@ -19,6 +19,7 @@ pinocchio = { workspace = true }
 pinocchio-pubkey = { workspace = true }
 pinocchio-log = { workspace = true }
 bytemuck = { workspace = true }
+shank = { workspace = true }
 
 base = { workspace = true }
 macro-error = { workspace = true }

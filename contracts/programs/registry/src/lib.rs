@@ -7,12 +7,14 @@ use {
         account_info::AccountInfo, entrypoint, program_error::ProgramError, pubkey::Pubkey,
         ProgramResult,
     },
-    registry_cpi::{state::Discriminator as D, ID},
+    pinocchio_pubkey::declare_id,
+    registry_cpi::{state::Discriminator as D, PROGRAM_ID},
 };
 
 mod instructions;
 use instructions as i;
 
+declare_id!("89KoDhPxWcegVeGrr8sAg3sn7H7EaH6edtDg9qx8Jh19");
 entrypoint!(process_instruction);
 
 pub fn process_instruction(
@@ -45,4 +47,10 @@ pub fn process_instruction(
             instruction(accounts, data)
         }
     }
+}
+
+#[derive(Clone, Debug, PartialEq, shank::ShankInstruction)]
+#[repr(u8)]
+pub enum MyProjectInstruction {
+    Init,
 }
