@@ -1,0 +1,17 @@
+{
+  "additionalPrograms": [],
+  "kind": "rootNode",
+  "program": {
+    "accounts": [],
+    "definedTypes": [],
+    "errors": [],
+    "instructions": [],
+    "kind": "programNode",
+    "name": "registry",
+    "pdas": [],
+    "publicKey": "",
+    "version": "1.0.0"
+  },
+  "standard": "codama",
+  "version": "1.0.0"
+}

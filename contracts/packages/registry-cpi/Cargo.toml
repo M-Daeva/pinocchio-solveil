@@ -16,6 +16,7 @@ dev = []
 std = []
 
 [dependencies]
+codama = { workspace = true }
 pinocchio = { workspace = true }
 pinocchio-log = { workspace = true }
 pinocchio-system = { workspace = true }
@@ -32,3 +33,8 @@ macro-test-ser = { workspace = true }
 macro-try-from = { workspace = true }
 macro-error = { workspace = true }
 base = { workspace = true }
+
+
+[build-dependencies]
+codama = { workspace = true }
+serde_json = { workspace = true }
