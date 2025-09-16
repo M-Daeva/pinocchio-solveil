@@ -130,7 +130,7 @@ impl UserId {
 #[repr(C)]
 pub struct UserAccount {
     /// encrypted user data
-    pub data: [u8; ACCOUNT_DATA_SIZE_MAX as usize],
+    pub data: [u8; 4_096], // TODO: codama can't recognize `pub data: [u8; ACCOUNT_DATA_SIZE_MAX as usize]`
     /// encryption nonce
     pub nonce: Uint64,
     /// allocated storage capacity
