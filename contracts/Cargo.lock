@@ -626,6 +626,7 @@ version = "0.1.0"
 dependencies = [
  "codama",
  "serde_json",
+ "syn 2.0.106",
 ]
 
 [[package]]

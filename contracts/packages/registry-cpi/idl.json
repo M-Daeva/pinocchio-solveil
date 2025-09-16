@@ -1,0 +1,284 @@
+{
+  "additionalPrograms": [],
+  "kind": "rootNode",
+  "program": {
+    "accounts": [
+      {
+        "data": {
+          "fields": [
+            {
+              "kind": "structFieldTypeNode",
+              "name": "config",
+              "type": {
+                "endian": "le",
+                "format": "u8",
+                "kind": "numberTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "userCounter",
+              "type": {
+                "endian": "le",
+                "format": "u8",
+                "kind": "numberTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "rotationState",
+              "type": {
+                "endian": "le",
+                "format": "u8",
+                "kind": "numberTypeNode"
+              }
+            }
+          ],
+          "kind": "structTypeNode"
+        },
+        "kind": "accountNode",
+        "name": "bump"
+      },
+      {
+        "data": {
+          "fields": [
+            {
+              "kind": "structFieldTypeNode",
+              "name": "admin",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "isPaused",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "bitField"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "rotationTimeout",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "uint32"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "registrationFee",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "assetItem"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "dataSizeRange",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "range"
+              }
+            }
+          ],
+          "kind": "structTypeNode"
+        },
+        "kind": "accountNode",
+        "name": "config"
+      },
+      {
+        "data": {
+          "fields": [
+            {
+              "kind": "structFieldTypeNode",
+              "name": "lastUserId",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "uint32"
+              }
+            }
+          ],
+          "kind": "structTypeNode"
+        },
+        "kind": "accountNode",
+        "name": "userCounter"
+      },
+      {
+        "data": {
+          "fields": [
+            {
+              "kind": "structFieldTypeNode",
+              "name": "owner",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "newOwner",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "expirationDate",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "uint64"
+              }
+            }
+          ],
+          "kind": "structTypeNode"
+        },
+        "kind": "accountNode",
+        "name": "rotationState"
+      },
+      {
+        "data": {
+          "fields": [
+            {
+              "kind": "structFieldTypeNode",
+              "name": "flags",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "bitField"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "id",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "uint32"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "accountBump",
+              "type": {
+                "endian": "le",
+                "format": "u8",
+                "kind": "numberTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "rotationStateBump",
+              "type": {
+                "endian": "le",
+                "format": "u8",
+                "kind": "numberTypeNode"
+              }
+            }
+          ],
+          "kind": "structTypeNode"
+        },
+        "kind": "accountNode",
+        "name": "userId"
+      },
+      {
+        "data": {
+          "fields": [
+            {
+              "kind": "structFieldTypeNode",
+              "name": "data",
+              "type": {
+                "count": {
+                  "kind": "fixedCountNode",
+                  "value": 4096
+                },
+                "item": {
+                  "endian": "le",
+                  "format": "u8",
+                  "kind": "numberTypeNode"
+                },
+                "kind": "arrayTypeNode"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "nonce",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "uint64"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "maxSize",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "uint32"
+              }
+            }
+          ],
+          "kind": "structTypeNode"
+        },
+        "kind": "accountNode",
+        "name": "userAccount"
+      }
+    ],
+    "definedTypes": [
+      {
+        "kind": "definedTypeNode",
+        "name": "assetItem",
+        "type": {
+          "fields": [
+            {
+              "kind": "structFieldTypeNode",
+              "name": "amount",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "uint64"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "asset",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            }
+          ],
+          "kind": "structTypeNode"
+        }
+      },
+      {
+        "kind": "definedTypeNode",
+        "name": "range",
+        "type": {
+          "fields": [
+            {
+              "kind": "structFieldTypeNode",
+              "name": "min",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "uint32"
+              }
+            },
+            {
+              "kind": "structFieldTypeNode",
+              "name": "max",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "uint32"
+              }
+            }
+          ],
+          "kind": "structTypeNode"
+        }
+      }
+    ],
+    "errors": [],
+    "instructions": [],
+    "kind": "programNode",
+    "name": "registryCpi",
+    "pdas": [],
+    "publicKey": "89KoDhPxWcegVeGrr8sAg3sn7H7EaH6edtDg9qx8Jh19",
+    "version": "1.0.0"
+  },
+  "standard": "codama",
+  "version": "1.0.0"
+}
