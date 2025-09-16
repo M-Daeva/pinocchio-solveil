@@ -310,7 +310,6 @@ dependencies = [
  "pinocchio-pubkey",
  "pinocchio-system",
  "pinocchio-token",
- "serde_json",
  "solana-instruction",
  "solana-pubkey",
  "strum",
@@ -619,6 +618,14 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.106",
+]
+
+[[package]]
+name = "codama-cli"
+version = "0.1.0"
+dependencies = [
+ "codama",
+ "serde_json",
 ]
 
 [[package]]
@@ -2454,7 +2461,6 @@ dependencies = [
  "pinocchio-log",
  "pinocchio-pubkey",
  "registry-cpi",
- "serde_json",
 ]
 
 [[package]]
@@ -2473,7 +2479,6 @@ dependencies = [
  "pinocchio-log",
  "pinocchio-pubkey",
  "pinocchio-system",
- "serde_json",
  "solana-instruction",
  "solana-pubkey",
  "strum",

@@ -24,8 +24,3 @@ bytemuck = { workspace = true }
 base = { workspace = true }
 macro-error = { workspace = true }
 registry-cpi = { workspace = true }
-
-
-[build-dependencies]
-codama = { workspace = true }
-serde_json = { workspace = true }

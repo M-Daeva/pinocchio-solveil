@@ -5,7 +5,7 @@ authors = ["M. Daeva <embedmad@gmail.com>"]
 license = "BSL-1.1"
 
 [workspace]
-members = ["programs/*", "packages/*", "tests"]
+members = ["programs/*", "packages/*", "tests", "codama-cli"]
 exclude = []
 resolver = "2"
 
