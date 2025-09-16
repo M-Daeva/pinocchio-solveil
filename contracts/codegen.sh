@@ -9,11 +9,8 @@
 #   exit 1
 # fi
 
-# # Generate IDL first
-# if [[ ! -x client/.crates/bin/shank ]]; then
-#   echo "Installing shank locally..."
-#   cargo install shank-cli --root client/.crates --version 0.4.2
-# fi
+# Generate IDL first
+(cd schema && clear && cargo run --bin generate-idl)
 
 # mkdir -p client/idl
 # client/.crates/bin/shank idl --crate-root program --out-dir client/idl --out-filename solana_pinocchio_starter.json
