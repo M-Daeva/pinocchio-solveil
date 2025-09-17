@@ -42,14 +42,15 @@ fn profiling_registry() -> TestResult<()> {
         .registry_try_write_data(AppUser::Alice, DATA_0, NONCE_0)?
         .compute_units_consumed;
 
+    // branch: codama, commit: 365174d600f5daf229c48c115d736ebd3ac6ebd2
     const PROGRAM_NAME: &str = PROGRAM_NAME_REGISTRY;
     const PREVIOUS_RESULT: &str = "
 ==================== previous result ====================
 registry program size: 49240 B
-registry init instruction: 36700 CU
-registry create_account instruction: 19114 CU
-registry activate_account instruction: 14222 CU
-registry write_data instruction: 4785 CU
+registry init instruction: 45700 CU
+registry create_account instruction: 26614 CU
+registry activate_account instruction: 24722 CU
+registry write_data instruction: 3285 CU
 ==================== current result =====================";
 
     println!("{}", PREVIOUS_RESULT);
