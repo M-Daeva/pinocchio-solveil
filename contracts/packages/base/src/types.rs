@@ -6,16 +6,16 @@ use {
     },
     bytemuck::{Pod, Zeroable},
     codama::CodamaType,
+    core::marker::PhantomData,
     macro_p_serde::p_serde,
     pinocchio::{
         account_info::{AccountInfo, Ref, RefMut},
         program_error::ProgramError,
         ProgramResult,
     },
-    std::marker::PhantomData,
 };
 
-pub type Result<T> = std::result::Result<T, ProgramError>;
+pub type Result<T> = core::result::Result<T, ProgramError>;
 
 // Account data wrapper for immutable operations
 pub struct StorageR<'a, T> {

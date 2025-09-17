@@ -87,7 +87,7 @@ pub fn derive_account_try_from(input: TokenStream) -> TokenStream {
         impl #impl_generics TryFrom<& #lifetime [AccountInfo]> for #struct_name #ty_generics #where_clause {
             type Error = ProgramError;
 
-            fn try_from(accounts: & #lifetime [AccountInfo]) -> std::result::Result<Self, Self::Error> {
+            fn try_from(accounts: & #lifetime [AccountInfo]) -> core::result::Result<Self, Self::Error> {
                 let #destructure_pattern = accounts
                 else {
                     return Err(ProgramError::NotEnoughAccountKeys);

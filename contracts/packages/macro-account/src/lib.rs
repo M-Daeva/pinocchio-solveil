@@ -229,8 +229,8 @@ fn levenshtein_distance(s1: &str, s2: &str) -> usize {
             } else {
                 1
             };
-            matrix[i][j] = std::cmp::min(
-                std::cmp::min(
+            matrix[i][j] = core::cmp::min(
+                core::cmp::min(
                     matrix[i - 1][j] + 1, // deletion
                     matrix[i][j - 1] + 1, // insertion
                 ),

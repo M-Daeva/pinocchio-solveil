@@ -257,7 +257,7 @@ impl From<AppToken> for AppAsset {
     }
 }
 
-pub type TestResult<T> = std::result::Result<T, TestError>;
+pub type TestResult<T> = core::result::Result<T, TestError>;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TestError {
