@@ -138,6 +138,7 @@ build() {
 # Generate IDL schema files
 schema() {
     (cd schema && clear && cargo run --bin generate-idl)
+    (cd ../scripts && codama run js)
 
     # mkdir -p client/idl
     # client/.crates/bin/shank idl --crate-root program --out-dir client/idl --out-filename solana_pinocchio_starter.json

@@ -1,0 +1,22 @@
+{
+    "idl": "../contracts/schema/idl.json",
+    "before": [],
+    "scripts": {
+        "js": {
+            "from": "@codama/renderers-js",
+            "args": [
+                "src/common/schema/codama"
+            ]
+        },
+        "rust": {
+            "from": "@codama/renderers-rust",
+            "args": [
+                "clients/rust/src/generated",
+                {
+                    "crateFolder": "clients/rust",
+                    "formatCode": true
+                }
+            ]
+        }
+    }
+}

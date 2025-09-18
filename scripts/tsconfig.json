@@ -1,10 +1,10 @@
 {
   "include": [
-    "./migrations",
-    "./scripts",
-    "./tests"
+    "./src/backend",
+    "./scripts"
   ],
   "exclude": [
+    "./src/frontend",
     "./dist"
   ],
   "compilerOptions": {
