@@ -1,15 +1,20 @@
-use {crate::traits::ErrorIndexOffset, strum_macros::EnumIter};
+use {
+    crate::traits::ErrorIndexOffset, codama::CodamaErrors, strum_macros::EnumIter, thiserror::Error,
+};
 
 #[repr(u8)]
-#[derive(Clone, Copy, Debug, Eq, PartialEq, EnumIter)]
+#[derive(CodamaErrors, Error, Clone, Copy, Debug, Eq, PartialEq, EnumIter)]
 pub enum AuthError {
-    // "Sender doesn't have access permissions!"
+    #[error("Sender doesn't have access permissions!")]
     Unauthorized,
-    // "New owner wasn't specified!"
+
+    #[error("New owner wasn't specified!")]
     NoNewOwner,
-    // "Sender can't be the new owner!"
+
+    #[error("Sender can't be the new owner!")]
     UselessRotation,
-    // "It's too late to accept owner role!"
+
+    #[error("It's too late to accept owner role!")]
     TransferOwnerDeadline,
 }
 

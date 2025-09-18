@@ -314,6 +314,7 @@ dependencies = [
  "solana-pubkey",
  "strum",
  "strum_macros",
+ "thiserror 2.0.16",
 ]
 
 [[package]]
@@ -2457,7 +2458,6 @@ version = "1.0.0"
 dependencies = [
  "base",
  "bytemuck",
- "codama",
  "macro-error",
  "pinocchio",
  "pinocchio-log",
@@ -2485,6 +2485,7 @@ dependencies = [
  "solana-pubkey",
  "strum",
  "strum_macros",
+ "thiserror 2.0.16",
 ]
 
 [[package]]

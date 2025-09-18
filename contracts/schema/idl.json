@@ -270,7 +270,86 @@
           }
         }
       ],
-      "errors": [],
+      "errors": [
+        {
+          "code": 0,
+          "kind": "errorNode",
+          "message": "Parameters are not provided!",
+          "name": "noParameters"
+        },
+        {
+          "code": 1,
+          "kind": "errorNode",
+          "message": "Wrong asset type!",
+          "name": "wrongAssetType"
+        },
+        {
+          "code": 2,
+          "kind": "errorNode",
+          "message": "Zero amount to send!",
+          "name": "zeroAmount"
+        },
+        {
+          "code": 3,
+          "kind": "errorNode",
+          "message": "Exceeded available asset amount!",
+          "name": "exceededAvailableAssetAmount"
+        },
+        {
+          "code": 4,
+          "kind": "errorNode",
+          "message": "The contract is temporary paused!",
+          "name": "contractIsPaused"
+        },
+        {
+          "code": 5,
+          "kind": "errorNode",
+          "message": "Max data size is out of range!",
+          "name": "maxDataSizeIsOutOfRange"
+        },
+        {
+          "code": 6,
+          "kind": "errorNode",
+          "message": "Max data size is exceeded!",
+          "name": "maxDataSizeIsExceeded"
+        },
+        {
+          "code": 7,
+          "kind": "errorNode",
+          "message": "Wrong user ID!",
+          "name": "wrongUserId"
+        },
+        {
+          "code": 8,
+          "kind": "errorNode",
+          "message": "Account can't be activated twice!",
+          "name": "activateAccountTwice"
+        },
+        {
+          "code": 9,
+          "kind": "errorNode",
+          "message": "Account isn't activated!",
+          "name": "accountIsNotActivated"
+        },
+        {
+          "code": 10,
+          "kind": "errorNode",
+          "message": "Account can't be opened twice!",
+          "name": "openAccountTwice"
+        },
+        {
+          "code": 11,
+          "kind": "errorNode",
+          "message": "Account isn't opened!",
+          "name": "accountIsNotOpened"
+        },
+        {
+          "code": 12,
+          "kind": "errorNode",
+          "message": "Nonce must be unique!",
+          "name": "badNonce"
+        }
+      ],
       "instructions": [],
       "kind": "programNode",
       "name": "registryCpi",
@@ -357,10 +436,35 @@
         }
       }
     ],
-    "errors": [],
+    "errors": [
+      {
+        "code": 0,
+        "kind": "errorNode",
+        "message": "Sender doesn't have access permissions!",
+        "name": "unauthorized"
+      },
+      {
+        "code": 1,
+        "kind": "errorNode",
+        "message": "New owner wasn't specified!",
+        "name": "noNewOwner"
+      },
+      {
+        "code": 2,
+        "kind": "errorNode",
+        "message": "Sender can't be the new owner!",
+        "name": "uselessRotation"
+      },
+      {
+        "code": 3,
+        "kind": "errorNode",
+        "message": "It's too late to accept owner role!",
+        "name": "transferOwnerDeadline"
+      }
+    ],
     "instructions": [],
     "kind": "programNode",
-    "name": "registry",
+    "name": "base",
     "pdas": [],
     "publicKey": "",
     "version": "1.0.0"

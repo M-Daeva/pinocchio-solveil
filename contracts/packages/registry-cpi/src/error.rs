@@ -1,7 +1,9 @@
 use {
     base::{error::AuthError, traits::ErrorIndexOffset},
+    codama::CodamaErrors,
     macro_error::any_error,
     strum_macros::EnumIter,
+    thiserror::Error,
 };
 
 // Generate AnyError with all error types
@@ -11,33 +13,45 @@ any_error! {
 }
 
 #[repr(u8)]
-#[derive(Clone, Copy, Debug, Eq, PartialEq, EnumIter)]
+#[derive(CodamaErrors, Error, Clone, Copy, Debug, Eq, PartialEq, EnumIter)]
 pub enum CustomError {
-    // "Parameters are not provided!"
+    #[error("Parameters are not provided!")]
     NoParameters,
-    // "Wrong asset type!"
+
+    #[error("Wrong asset type!")]
     WrongAssetType,
-    // "Zero amount to send!"
+
+    #[error("Zero amount to send!")]
     ZeroAmount,
-    // "Exceeded available asset amount!"
+
+    #[error("Exceeded available asset amount!")]
     ExceededAvailableAssetAmount,
-    // "The contract is temporary paused!"
+
+    #[error("The contract is temporary paused!")]
     ContractIsPaused,
-    // "Max data size is out of range!"
+
+    #[error("Max data size is out of range!")]
     MaxDataSizeIsOutOfRange,
-    // "Max data size is exceeded!"
+
+    #[error("Max data size is exceeded!")]
     MaxDataSizeIsExceeded,
-    // "Wrong user ID!"
+
+    #[error("Wrong user ID!")]
     WrongUserId,
-    // "Account can't be activated twice!"
+
+    #[error("Account can't be activated twice!")]
     ActivateAccountTwice,
-    // "Account isn't activated!"
+
+    #[error("Account isn't activated!")]
     AccountIsNotActivated,
-    // "Account can't be opened twice!"
+
+    #[error("Account can't be opened twice!")]
     OpenAccountTwice,
-    // "Account isn't opened!"
+
+    #[error("Account isn't opened!")]
     AccountIsNotOpened,
-    // "Nonce must be unique!"
+
+    #[error("Nonce must be unique!")]
     BadNonce,
 }
 

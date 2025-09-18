@@ -6,6 +6,5 @@
  * @see https://github.com/codama-idl/codama
  */
 
-import { type Address } from '@solana/kit';
-
-export const REGISTRY_PROGRAM_ADDRESS = '' as Address<''>;
+export * from './base';
+export * from './registryCpi';

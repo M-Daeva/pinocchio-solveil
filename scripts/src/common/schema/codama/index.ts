@@ -7,5 +7,6 @@
  */
 
 export * from './accounts';
+export * from './errors';
 export * from './programs';
 export * from './types';
