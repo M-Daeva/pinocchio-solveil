@@ -6,7 +6,25 @@
  * @see https://github.com/codama-idl/codama
  */
 
-import { type Address } from '@solana/kit';
+import {
+  containsBytes,
+  getU8Encoder,
+  type Address,
+  type ReadonlyUint8Array,
+} from '@solana/kit';
+import {
+  type ParsedActivateAccountInstruction,
+  type ParsedCloseAccountInstruction,
+  type ParsedConfirmAccountRotationInstruction,
+  type ParsedConfirmAdminRotationInstruction,
+  type ParsedCreateAccountInstruction,
+  type ParsedInitInstruction,
+  type ParsedReopenAccountInstruction,
+  type ParsedRequestAccountRotationInstruction,
+  type ParsedUpdateConfigInstruction,
+  type ParsedWithdrawRevenueInstruction,
+  type ParsedWriteDataInstruction,
+} from '../instructions';
 
 export const REGISTRY_CPI_PROGRAM_ADDRESS =
   '89KoDhPxWcegVeGrr8sAg3sn7H7EaH6edtDg9qx8Jh19' as Address<'89KoDhPxWcegVeGrr8sAg3sn7H7EaH6edtDg9qx8Jh19'>;
@@ -19,3 +37,96 @@ export enum RegistryCpiAccount {
   UserId,
   UserAccount,
 }
+
+export enum RegistryCpiInstruction {
+  Init,
+  UpdateConfig,
+  ConfirmAdminRotation,
+  WithdrawRevenue,
+  CreateAccount,
+  CloseAccount,
+  ReopenAccount,
+  ActivateAccount,
+  WriteData,
+  RequestAccountRotation,
+  ConfirmAccountRotation,
+}
+
+export function identifyRegistryCpiInstruction(
+  instruction: { data: ReadonlyUint8Array } | ReadonlyUint8Array
+): RegistryCpiInstruction {
+  const data = 'data' in instruction ? instruction.data : instruction;
+  if (containsBytes(data, getU8Encoder().encode(0), 0)) {
+    return RegistryCpiInstruction.Init;
+  }
+  if (containsBytes(data, getU8Encoder().encode(1), 0)) {
+    return RegistryCpiInstruction.UpdateConfig;
+  }
+  if (containsBytes(data, getU8Encoder().encode(2), 0)) {
+    return RegistryCpiInstruction.ConfirmAdminRotation;
+  }
+  if (containsBytes(data, getU8Encoder().encode(3), 0)) {
+    return RegistryCpiInstruction.WithdrawRevenue;
+  }
+  if (containsBytes(data, getU8Encoder().encode(4), 0)) {
+    return RegistryCpiInstruction.CreateAccount;
+  }
+  if (containsBytes(data, getU8Encoder().encode(5), 0)) {
+    return RegistryCpiInstruction.CloseAccount;
+  }
+  if (containsBytes(data, getU8Encoder().encode(6), 0)) {
+    return RegistryCpiInstruction.ReopenAccount;
+  }
+  if (containsBytes(data, getU8Encoder().encode(7), 0)) {
+    return RegistryCpiInstruction.ActivateAccount;
+  }
+  if (containsBytes(data, getU8Encoder().encode(8), 0)) {
+    return RegistryCpiInstruction.WriteData;
+  }
+  if (containsBytes(data, getU8Encoder().encode(9), 0)) {
+    return RegistryCpiInstruction.RequestAccountRotation;
+  }
+  if (containsBytes(data, getU8Encoder().encode(10), 0)) {
+    return RegistryCpiInstruction.ConfirmAccountRotation;
+  }
+  throw new Error(
+    'The provided instruction could not be identified as a registryCpi instruction.'
+  );
+}
+
+export type ParsedRegistryCpiInstruction<
+  TProgram extends string = '89KoDhPxWcegVeGrr8sAg3sn7H7EaH6edtDg9qx8Jh19',
+> =
+  | ({
+      instructionType: RegistryCpiInstruction.Init;
+    } & ParsedInitInstruction<TProgram>)
+  | ({
+      instructionType: RegistryCpiInstruction.UpdateConfig;
+    } & ParsedUpdateConfigInstruction<TProgram>)
+  | ({
+      instructionType: RegistryCpiInstruction.ConfirmAdminRotation;
+    } & ParsedConfirmAdminRotationInstruction<TProgram>)
+  | ({
+      instructionType: RegistryCpiInstruction.WithdrawRevenue;
+    } & ParsedWithdrawRevenueInstruction<TProgram>)
+  | ({
+      instructionType: RegistryCpiInstruction.CreateAccount;
+    } & ParsedCreateAccountInstruction<TProgram>)
+  | ({
+      instructionType: RegistryCpiInstruction.CloseAccount;
+    } & ParsedCloseAccountInstruction<TProgram>)
+  | ({
+      instructionType: RegistryCpiInstruction.ReopenAccount;
+    } & ParsedReopenAccountInstruction<TProgram>)
+  | ({
+      instructionType: RegistryCpiInstruction.ActivateAccount;
+    } & ParsedActivateAccountInstruction<TProgram>)
+  | ({
+      instructionType: RegistryCpiInstruction.WriteData;
+    } & ParsedWriteDataInstruction<TProgram>)
+  | ({
+      instructionType: RegistryCpiInstruction.RequestAccountRotation;
+    } & ParsedRequestAccountRotationInstruction<TProgram>)
+  | ({
+      instructionType: RegistryCpiInstruction.ConfirmAccountRotation;
+    } & ParsedConfirmAccountRotationInstruction<TProgram>);
