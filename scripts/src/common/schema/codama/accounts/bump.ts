@@ -27,7 +27,7 @@ import {
   type FixedSizeEncoder,
   type MaybeAccount,
   type MaybeEncodedAccount,
-} from '@solana/kit';
+} from 'gill';
 
 export type Bump = {
   config: number;

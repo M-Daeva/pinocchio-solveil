@@ -1,7 +1,6 @@
 import { AES, enc } from "crypto-js";
 import util from "util";
 import { all, create } from "mathjs";
-import * as anchor from "@coral-xyz/anchor";
 import * as spl from "@solana/spl-token";
 import { Network, TxParams } from "../interfaces";
 import { getSimulationComputeUnits } from "@solana-developers/helpers";
@@ -31,7 +30,7 @@ export function li(object: any) {
       showHidden: false,
       depth: null,
       colors: true,
-    })
+    }),
   );
 }
 
@@ -103,7 +102,7 @@ export function encrypt(data: string, key: string): string {
 
 export function decrypt(
   encryptedData: string,
-  key: string
+  key: string,
 ): string | undefined {
   // "Malformed UTF-8 data" workaround
   try {
@@ -116,12 +115,12 @@ export function decrypt(
 
 export function getPaginationAmount(
   maxPaginationAmount: number,
-  maxCount: number
+  maxCount: number,
 ): number {
   // limit maxPaginationAmount
   maxPaginationAmount = Math.min(
     maxPaginationAmount,
-    maxCount || maxPaginationAmount
+    maxCount || maxPaginationAmount,
   );
 
   // update maxPaginationAmount to balance the load
@@ -140,7 +139,7 @@ const math = create(all, {
 });
 
 export function numberFrom(
-  value: number | string | bigint | undefined | null
+  value: number | string | bigint | undefined | null,
 ): math.BigNumber {
   if (typeof value === "undefined" || value === "") {
     return math.bignumber(0);
@@ -161,7 +160,7 @@ export function publicKeyFromString(publicKey: anchor.web3.PublicKey | string) {
 
 export function getProgram<IDL extends anchor.Idl = anchor.Idl>(
   provider: anchor.AnchorProvider,
-  idl: IDL
+  idl: IDL,
 ): anchor.Program<IDL> {
   return new anchor.Program<IDL>(idl, provider);
 }
@@ -173,7 +172,7 @@ export function getRpc(network: Network): string {
 export function getProvider(
   wallet: anchor.Wallet,
   rpc: string,
-  commitment: anchor.web3.Commitment
+  commitment: anchor.web3.Commitment,
 ): anchor.AnchorProvider {
   const connection = new Connection(rpc, commitment);
   const provider = new anchor.AnchorProvider(connection, wallet, {
@@ -187,7 +186,7 @@ export function getProvider(
 export async function handleTx(
   provider: anchor.AnchorProvider,
   instructions: TransactionInstruction[],
-  params: TxParams
+  params: TxParams,
 ): Promise<anchor.web3.TransactionSignature> {
   const { connection, wallet } = provider;
 
@@ -208,8 +207,8 @@ export async function handleTx(
     ? Math.ceil(
         prioritizationFees.reduce(
           (acc, cur) => acc + cur.prioritizationFee,
-          0
-        ) / prioritizationFees.length
+          0,
+        ) / prioritizationFees.length,
       )
     : 0;
 
@@ -221,13 +220,13 @@ export async function handleTx(
         connection,
         instructions,
         wallet.publicKey,
-        lookupTables
+        lookupTables,
       ),
       connection.getLatestBlockhash(),
     ]);
 
   instructions.unshift(
-    ComputeBudgetProgram.setComputeUnitPrice({ microLamports })
+    ComputeBudgetProgram.setComputeUnitPrice({ microLamports }),
   );
 
   units = cpu.k * (units || 0) + cpu.b;
@@ -271,7 +270,7 @@ export function getHandleTx(provider: anchor.AnchorProvider) {
   return async (
     instructions: TransactionInstruction[],
     params: TxParams,
-    isDisplayed: boolean
+    isDisplayed: boolean,
   ): Promise<anchor.web3.TransactionSignature> => {
     const tx = await handleTx(provider, instructions, params);
     return logAndReturn(tx, isDisplayed);
@@ -283,7 +282,7 @@ export async function getOrCreateAtaInstructions(
   payer: PublicKey,
   mintPubkey: PublicKey,
   ownerPubkey: PublicKey,
-  allowOwnerOffCurve: boolean
+  allowOwnerOffCurve: boolean,
 ): Promise<{
   ata: anchor.web3.PublicKey;
   ixs: anchor.web3.TransactionInstruction[];
@@ -294,7 +293,7 @@ export async function getOrCreateAtaInstructions(
     ownerPubkey,
     allowOwnerOffCurve,
     spl.TOKEN_PROGRAM_ID,
-    spl.ASSOCIATED_TOKEN_PROGRAM_ID
+    spl.ASSOCIATED_TOKEN_PROGRAM_ID,
   );
 
   // check if the account exists and is properly initialized
@@ -303,7 +302,7 @@ export async function getOrCreateAtaInstructions(
       connection,
       associatedToken,
       undefined,
-      spl.TOKEN_PROGRAM_ID
+      spl.TOKEN_PROGRAM_ID,
     );
 
     // account exists and is properly initialized
@@ -319,7 +318,7 @@ export async function getOrCreateAtaInstructions(
       ownerPubkey,
       mintPubkey,
       spl.TOKEN_PROGRAM_ID,
-      spl.ASSOCIATED_TOKEN_PROGRAM_ID
+      spl.ASSOCIATED_TOKEN_PROGRAM_ID,
     );
 
     return {
@@ -367,7 +366,7 @@ type RustIntType = "u8" | "u16" | "u32" | "u64" | "u128";
  */
 export function numberToRustBuffer(
   value: number,
-  rustType: RustIntType
+  rustType: RustIntType,
 ): Buffer {
   // Validate input bounds for each type
   const maxValues = {
@@ -391,7 +390,7 @@ export function numberToRustBuffer(
   if (rustType === "u8") {
     if (value < 0 || value > maxValues.u8 || !Number.isInteger(value)) {
       throw new Error(
-        `Value ${value} is out of range for u8 (0-${maxValues.u8})`
+        `Value ${value} is out of range for u8 (0-${maxValues.u8})`,
       );
     }
     return Buffer.from([value]);
@@ -402,7 +401,7 @@ export function numberToRustBuffer(
     const maxValue = maxValues[rustType] as number;
     if (value < 0 || value > maxValue || !Number.isInteger(value)) {
       throw new Error(
-        `Value ${value} is out of range for ${rustType} (0-${maxValue})`
+        `Value ${value} is out of range for ${rustType} (0-${maxValue})`,
       );
     }
 
@@ -419,7 +418,7 @@ export function numberToRustBuffer(
     } else {
       if (!Number.isInteger(value) || value < 0) {
         throw new Error(
-          `Value ${value} must be a non-negative integer for ${rustType}`
+          `Value ${value} must be a non-negative integer for ${rustType}`,
         );
       }
       bigintValue = BigInt(value);
@@ -428,7 +427,7 @@ export function numberToRustBuffer(
     const maxValue = maxValues[rustType] as bigint;
     if (bigintValue < BigInt(0) || bigintValue > maxValue) {
       throw new Error(
-        `Value ${bigintValue} is out of range for ${rustType} (0-${maxValue})`
+        `Value ${bigintValue} is out of range for ${rustType} (0-${maxValue})`,
       );
     }
 
@@ -436,7 +435,7 @@ export function numberToRustBuffer(
     return new anchor.BN(bigintValue.toString()).toArrayLike(
       Buffer,
       "le",
-      byteSizes[rustType]
+      byteSizes[rustType],
     );
   }
 

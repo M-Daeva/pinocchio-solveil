@@ -31,6 +31,8 @@ import { Registry } from "../schema/types/registry";
 import { DexAdapter } from "../schema/types/dex_adapter";
 import { ClmmMock } from "../schema/types/clmm_mock";
 
+import { getInitInstruction } from "../schema/codama/instructions/init";
+
 export class RegistryHelpers {
   private provider: anchor.AnchorProvider;
   private program: anchor.Program<Registry>;
@@ -39,16 +41,16 @@ export class RegistryHelpers {
   private handleTx: (
     instructions: anchor.web3.TransactionInstruction[],
     params: TxParams,
-    isDisplayed: boolean
+    isDisplayed: boolean,
   ) => Promise<anchor.web3.TransactionSignature>;
 
   private getTokenProgram: (
-    mint: anchor.web3.PublicKey
+    mint: anchor.web3.PublicKey,
   ) => Promise<anchor.web3.PublicKey>;
 
   constructor(
     provider: anchor.AnchorProvider,
-    program: anchor.Program<Registry>
+    program: anchor.Program<Registry>,
   ) {
     this.provider = provider;
     this.program = program;
@@ -61,8 +63,37 @@ export class RegistryHelpers {
     args: IRegistry.InitArgs,
     revenueMint: PublicKey,
     params: TxParams = {},
-    isDisplayed: boolean = false
+    isDisplayed: boolean = false,
   ): Promise<anchor.web3.TransactionSignature> {
+    const ix = await this.program.methods
+      .init(...IARegistry.convertInitArgs(args))
+      .accounts({
+        tokenProgram: await this.getTokenProgram(revenueMint),
+        revenueMint,
+        sender: this.sender,
+      })
+      .instruction();
+
+    return await this.handleTx([ix], params, isDisplayed);
+  }
+
+  async tryInitCodama(
+    args: IRegistry.InitArgs,
+    revenueMint: PublicKey,
+    params: TxParams = {},
+    isDisplayed: boolean = false,
+  ): Promise<anchor.web3.TransactionSignature> {
+    // const a = getInitInstruction({});
+
+    // TODO
+    // How anchor IDL substitute other accs?
+    // sender: TransactionSigner<TAccountSender>;
+    // bump: Address<TAccountBump>;
+    // config: Address<TAccountConfig>;
+    // userCounter: Address<TAccountUserCounter>;
+    // adminRotationState: Address<TAccountAdminRotationState>;
+    // revenueMint: Address<TAccountRevenueMint>;
+    // revenueAppAta: Address<TAccountRevenueAppAta>;
     const ix = await this.program.methods
       .init(...IARegistry.convertInitArgs(args))
       .accounts({
@@ -78,7 +109,7 @@ export class RegistryHelpers {
   async tryUpdateConfig(
     args: IRegistry.UpdateConfigArgs,
     params: TxParams = {},
-    isDisplayed: boolean = false
+    isDisplayed: boolean = false,
   ): Promise<anchor.web3.TransactionSignature> {
     const ix = await this.program.methods
       .updateConfig(...IARegistry.convertUpdateConfigArgs(args))
@@ -92,7 +123,7 @@ export class RegistryHelpers {
 
   async tryConfirmAdminRotation(
     params: TxParams = {},
-    isDisplayed: boolean = false
+    isDisplayed: boolean = false,
   ): Promise<anchor.web3.TransactionSignature> {
     const ix = await this.program.methods
       .confirmAdminRotation()
@@ -109,7 +140,7 @@ export class RegistryHelpers {
     revenueMint: PublicKey,
     recipient?: PublicKey,
     params: TxParams = {},
-    isDisplayed: boolean = false
+    isDisplayed: boolean = false,
   ): Promise<anchor.web3.TransactionSignature> {
     const ix = await this.program.methods
       .withdrawRevenue(...IARegistry.convertWithdrawRevenueArgs(args))
@@ -127,7 +158,7 @@ export class RegistryHelpers {
   async tryCreateAccount(
     maxDataSize: number,
     params: TxParams = {},
-    isDisplayed: boolean = false
+    isDisplayed: boolean = false,
   ): Promise<anchor.web3.TransactionSignature> {
     const { lastUserId } = await this.queryUserCounter();
     const expectedUserId = lastUserId + 1;
@@ -150,7 +181,7 @@ export class RegistryHelpers {
     maxDataSize: number,
     revenueMint: PublicKey,
     params: TxParams = {},
-    isDisplayed: boolean = false
+    isDisplayed: boolean = false,
   ): Promise<anchor.web3.TransactionSignature> {
     const { lastUserId } = await this.queryUserCounter();
     const expectedUserId = lastUserId + 1;
@@ -182,7 +213,7 @@ export class RegistryHelpers {
   async simulateCreateAccount(
     maxDataSize: number,
     lamportsPerCu: number = 10_000,
-    isDisplayed: boolean = false
+    isDisplayed: boolean = false,
   ) {
     const { lastUserId } = await this.queryUserCounter();
     const expectedUserId = lastUserId + 1;
@@ -221,7 +252,7 @@ export class RegistryHelpers {
 
   async tryCloseAccount(
     params: TxParams = {},
-    isDisplayed: boolean = false
+    isDisplayed: boolean = false,
   ): Promise<anchor.web3.TransactionSignature> {
     const ix = await this.program.methods
       .closeAccount()
@@ -236,7 +267,7 @@ export class RegistryHelpers {
   async tryReopenAccount(
     args: IRegistry.ReopenAccountArgs,
     params: TxParams = {},
-    isDisplayed: boolean = false
+    isDisplayed: boolean = false,
   ): Promise<anchor.web3.TransactionSignature> {
     const ix = await this.program.methods
       .reopenAccount(...IARegistry.convertReopenAccountArgs(args))
@@ -252,7 +283,7 @@ export class RegistryHelpers {
     args: IRegistry.ActivateAccountArgs,
     revenueMint: PublicKey,
     params: TxParams = {},
-    isDisplayed: boolean = false
+    isDisplayed: boolean = false,
   ): Promise<anchor.web3.TransactionSignature> {
     const ix = await this.program.methods
       .activateAccount(args.user || this.sender)
@@ -270,7 +301,7 @@ export class RegistryHelpers {
     wallet: MessageSigningWallet,
     data: DataRecord[],
     params: TxParams = {},
-    isDisplayed: boolean = false
+    isDisplayed: boolean = false,
   ): Promise<anchor.web3.TransactionSignature> {
     const encKey = await generateEncryptionKey(wallet);
     const timestamp = getTimestamp();
@@ -289,11 +320,11 @@ export class RegistryHelpers {
   async tryRequestAccountRotation(
     args: IRegistry.RequestAccountRotationArgs,
     params: TxParams = {},
-    isDisplayed: boolean = false
+    isDisplayed: boolean = false,
   ): Promise<anchor.web3.TransactionSignature> {
     const ix = await this.program.methods
       .requestAccountRotation(
-        ...IARegistry.convertRequestAccountRotationArgs(args)
+        ...IARegistry.convertRequestAccountRotationArgs(args),
       )
       .accounts({
         sender: this.sender,
@@ -306,7 +337,7 @@ export class RegistryHelpers {
   async tryConfirmAccountRotation(
     prevOwner: PublicKey,
     params: TxParams = {},
-    isDisplayed: boolean = false
+    isDisplayed: boolean = false,
   ): Promise<anchor.web3.TransactionSignature> {
     const [userIdPrePda] = this.getUserIdPda(prevOwner);
     const [userIdPda] = this.getUserIdPda(this.sender);
@@ -336,7 +367,7 @@ export class RegistryHelpers {
   async queryUserCounter(isDisplayed: boolean = false) {
     const [pda] = PublicKey.findProgramAddressSync(
       [Buffer.from("user_counter")],
-      this.program.programId
+      this.program.programId,
     );
     const res = await this.program.account.userCounter.fetch(pda);
 
@@ -346,7 +377,7 @@ export class RegistryHelpers {
   async queryAdminRotationState(isDisplayed: boolean = false) {
     const [pda] = PublicKey.findProgramAddressSync(
       [Buffer.from("admin_rotation_state")],
-      this.program.programId
+      this.program.programId,
     );
     const res = await this.program.account.rotationState.fetch(pda);
 
@@ -443,13 +474,13 @@ export class RegistryHelpers {
     wallet: MessageSigningWallet,
     dataEncrypted: string,
     nonce: anchor.BN,
-    isDisplayed: boolean = false
+    isDisplayed: boolean = false,
   ) {
     const encKey = await generateEncryptionKey(wallet);
     const res: DataRecord[] = decryptDeserialize(
       encKey,
       nonce.toString(),
-      dataEncrypted
+      dataEncrypted,
     );
 
     return logAndReturn(res, isDisplayed);
@@ -474,12 +505,12 @@ export class RegistryHelpers {
       configPda,
       true,
       spl.TOKEN_PROGRAM_ID,
-      spl.ASSOCIATED_TOKEN_PROGRAM_ID
+      spl.ASSOCIATED_TOKEN_PROGRAM_ID,
     );
 
     const res = await ChainHelpers.getAtaTokenBalance(
       this.provider.connection,
-      ata
+      ata,
     );
 
     return logAndReturn(res, isDisplayed);
@@ -488,28 +519,28 @@ export class RegistryHelpers {
   getConfigPda() {
     return PublicKey.findProgramAddressSync(
       [Buffer.from("config")],
-      this.program.programId
+      this.program.programId,
     );
   }
 
   getUserIdPda(user: PublicKey) {
     return PublicKey.findProgramAddressSync(
       [Buffer.from("user_id"), user.toBuffer()],
-      this.program.programId
+      this.program.programId,
     );
   }
 
   getUserAccountPda(id: number) {
     return PublicKey.findProgramAddressSync(
       [Buffer.from("user_account"), numberToRustBuffer(id, "u32")],
-      this.program.programId
+      this.program.programId,
     );
   }
 
   getUserRotationStatePda(id: number) {
     return PublicKey.findProgramAddressSync(
       [Buffer.from("user_rotation_state"), numberToRustBuffer(id, "u32")],
-      this.program.programId
+      this.program.programId,
     );
   }
 }
@@ -524,18 +555,18 @@ export class DexAdapterHelpers {
   private handleTx: (
     instructions: anchor.web3.TransactionInstruction[],
     params: TxParams,
-    isDisplayed: boolean
+    isDisplayed: boolean,
   ) => Promise<anchor.web3.TransactionSignature>;
 
   private getTokenProgram: (
-    mint: anchor.web3.PublicKey
+    mint: anchor.web3.PublicKey,
   ) => Promise<anchor.web3.PublicKey>;
 
   constructor(
     provider: anchor.AnchorProvider,
     program: anchor.Program<DexAdapter>,
     registryProgramId: PublicKey,
-    clmmMockProgram: anchor.Program<ClmmMock>
+    clmmMockProgram: anchor.Program<ClmmMock>,
   ) {
     this.provider = provider;
     this.program = program;
@@ -549,7 +580,7 @@ export class DexAdapterHelpers {
   async tryInit(
     args: IDexAdapter.InitArgs,
     params: TxParams = {},
-    isDisplayed: boolean = false
+    isDisplayed: boolean = false,
   ): Promise<anchor.web3.TransactionSignature> {
     const ix = await this.program.methods
       .init(...IADexAdapter.convertInitArgs(args))
@@ -564,7 +595,7 @@ export class DexAdapterHelpers {
   async tryUpdateConfig(
     args: IDexAdapter.UpdateConfigArgs,
     params: TxParams = {},
-    isDisplayed: boolean = false
+    isDisplayed: boolean = false,
   ): Promise<anchor.web3.TransactionSignature> {
     const ix = await this.program.methods
       .updateConfig(...IADexAdapter.convertUpdateConfigArgs(args))
@@ -578,7 +609,7 @@ export class DexAdapterHelpers {
 
   async tryConfirmAdminRotation(
     params: TxParams = {},
-    isDisplayed: boolean = false
+    isDisplayed: boolean = false,
   ): Promise<anchor.web3.TransactionSignature> {
     const ix = await this.program.methods
       .confirmAdminRotation()
@@ -593,7 +624,7 @@ export class DexAdapterHelpers {
   async trySaveRoute(
     args: IDexAdapter.SaveRouteArgs,
     params: TxParams = {},
-    isDisplayed: boolean = false
+    isDisplayed: boolean = false,
   ): Promise<anchor.web3.TransactionSignature> {
     const ix = await this.program.methods
       .saveRoute(...IADexAdapter.convertSaveRouteArgs(args))
@@ -608,7 +639,7 @@ export class DexAdapterHelpers {
   async trySwap(
     args: IDexAdapter.SwapArgs,
     params: TxParams = {},
-    isDisplayed: boolean = false
+    isDisplayed: boolean = false,
   ): Promise<anchor.web3.TransactionSignature> {
     const [tokenIn, tokenOut, amountIn, amountOutMinimum] =
       IADexAdapter.convertSwapArgs(args);
@@ -621,17 +652,17 @@ export class DexAdapterHelpers {
     // ATA
     const inputTokenSenderAta = getAssociatedTokenAddressSync(
       tokenIn,
-      this.sender
+      this.sender,
     );
     const outputTokenSenderAta = getAssociatedTokenAddressSync(
       tokenOut,
-      this.sender
+      this.sender,
     );
 
     // Build remaining accounts for the route
     const remainingAccounts = await this.buildRemainingAccountsForRoute(
       tokenIn,
-      tokenOut
+      tokenOut,
     );
 
     const accounts = {
@@ -663,7 +694,7 @@ export class DexAdapterHelpers {
   async trySwapAndActivate(
     args: IDexAdapter.SwapArgs,
     params: TxParams = {},
-    isDisplayed: boolean = false
+    isDisplayed: boolean = false,
   ): Promise<anchor.web3.TransactionSignature> {
     const [tokenIn, tokenOut, amountIn, amountOutMinimum] =
       IADexAdapter.convertSwapArgs(args);
@@ -678,22 +709,22 @@ export class DexAdapterHelpers {
     // ATA
     const inputTokenSenderAta = getAssociatedTokenAddressSync(
       tokenIn,
-      this.sender
+      this.sender,
     );
     const outputTokenSenderAta = getAssociatedTokenAddressSync(
       tokenOut,
-      this.sender
+      this.sender,
     );
     const revenueAppAta = getAssociatedTokenAddressSync(
       tokenOut,
       registryConfig,
-      true
+      true,
     );
 
     // Build remaining accounts for the route
     const remainingAccounts = await this.buildRemainingAccountsForRoute(
       tokenIn,
-      tokenOut
+      tokenOut,
     );
 
     const accounts = {
@@ -730,7 +761,7 @@ export class DexAdapterHelpers {
   async trySwapAndUnwrapSol(
     args: IDexAdapter.SwapArgs,
     params: TxParams = {},
-    isDisplayed: boolean = false
+    isDisplayed: boolean = false,
   ): Promise<anchor.web3.TransactionSignature> {
     const [tokenIn, tokenOut, amountIn, amountOutMinimum] =
       IADexAdapter.convertSwapArgs(args);
@@ -743,17 +774,17 @@ export class DexAdapterHelpers {
     // ATA
     const inputTokenSenderAta = getAssociatedTokenAddressSync(
       tokenIn,
-      this.sender
+      this.sender,
     );
     const outputTokenSenderAta = getAssociatedTokenAddressSync(
       tokenOut,
-      this.sender
+      this.sender,
     );
 
     // Build remaining accounts for the route
     const remainingAccounts = await this.buildRemainingAccountsForRoute(
       tokenIn,
-      tokenOut
+      tokenOut,
     );
 
     const accounts = {
@@ -784,7 +815,7 @@ export class DexAdapterHelpers {
 
   private async buildRemainingAccountsForRoute(
     mintIn: PublicKey,
-    mintOut: PublicKey
+    mintOut: PublicKey,
   ): Promise<AccountMeta[]> {
     // Query route from PDA and build token sequence
     const { value: routeItems } = await this.queryRoute(mintIn, mintOut);
@@ -806,7 +837,7 @@ export class DexAdapterHelpers {
       const [poolState] = this.getClmmMockPoolStatePda(
         ammConfig,
         token0Mint,
-        token1Mint
+        token1Mint,
       );
       const [observationState] = this.getClmmMockObservationStatePda(poolState);
 
@@ -828,7 +859,7 @@ export class DexAdapterHelpers {
       // Output token account (user's ATA)
       const outputTokenAccount = getAssociatedTokenAddressSync(
         tokenB,
-        this.sender
+        this.sender,
       );
 
       // Add accounts in the exact order expected by the program
@@ -839,7 +870,7 @@ export class DexAdapterHelpers {
         { pubkey: inputVault, isSigner: false, isWritable: true }, // input_vault (writable)
         { pubkey: outputVault, isSigner: false, isWritable: true }, // output_vault (writable)
         { pubkey: outputMintForAccounts, isSigner: false, isWritable: false }, // output_mint (readonly)
-        { pubkey: observationState, isSigner: false, isWritable: true } // observation_state (writable)
+        { pubkey: observationState, isSigner: false, isWritable: true }, // observation_state (writable)
       );
     }
 
@@ -857,28 +888,28 @@ export class DexAdapterHelpers {
   getRegistryConfigPda() {
     return PublicKey.findProgramAddressSync(
       [Buffer.from("config")],
-      this.registryProgramId
+      this.registryProgramId,
     );
   }
 
   getRegistryUserIdPda() {
     return PublicKey.findProgramAddressSync(
       [Buffer.from("user_id"), this.sender.toBuffer()],
-      this.registryProgramId
+      this.registryProgramId,
     );
   }
 
   getClmmMockAmmConfigPda(ammConfigIndex: number) {
     return PublicKey.findProgramAddressSync(
       [Buffer.from("amm_config"), numberToRustBuffer(ammConfigIndex, "u16")],
-      this.clmmMockProgram.programId
+      this.clmmMockProgram.programId,
     );
   }
 
   getClmmMockPoolStatePda(
     ammConfig: PublicKey,
     token0Mint: PublicKey,
-    token1Mint: PublicKey
+    token1Mint: PublicKey,
   ) {
     return PublicKey.findProgramAddressSync(
       [
@@ -887,56 +918,56 @@ export class DexAdapterHelpers {
         token0Mint.toBuffer(),
         token1Mint.toBuffer(),
       ],
-      this.clmmMockProgram.programId
+      this.clmmMockProgram.programId,
     );
   }
 
   getClmmMockObservationStatePda(poolState: PublicKey) {
     return PublicKey.findProgramAddressSync(
       [Buffer.from("observation"), poolState.toBuffer()],
-      this.clmmMockProgram.programId
+      this.clmmMockProgram.programId,
     );
   }
 
   getClmmMockTokenVault0Pda(poolState: PublicKey, token0Mint: PublicKey) {
     return PublicKey.findProgramAddressSync(
       [Buffer.from("pool_vault"), poolState.toBuffer(), token0Mint.toBuffer()],
-      this.clmmMockProgram.programId
+      this.clmmMockProgram.programId,
     );
   }
 
   getClmmMockTokenVault1Pda(poolState: PublicKey, token1Mint: PublicKey) {
     return PublicKey.findProgramAddressSync(
       [Buffer.from("pool_vault"), poolState.toBuffer(), token1Mint.toBuffer()],
-      this.clmmMockProgram.programId
+      this.clmmMockProgram.programId,
     );
   }
 
   getBumpPda() {
     return PublicKey.findProgramAddressSync(
       [Buffer.from("bump")],
-      this.program.programId
+      this.program.programId,
     );
   }
 
   getConfigPda() {
     return PublicKey.findProgramAddressSync(
       [Buffer.from("config")],
-      this.program.programId
+      this.program.programId,
     );
   }
 
   getAdminRotationStatePda() {
     return PublicKey.findProgramAddressSync(
       [Buffer.from("admin_rotation_state")],
-      this.program.programId
+      this.program.programId,
     );
   }
 
   getRoutePda(mintFirst: PublicKey, mintLast: PublicKey) {
     return PublicKey.findProgramAddressSync(
       [Buffer.from("route"), mintFirst.toBuffer(), mintLast.toBuffer()],
-      this.program.programId
+      this.program.programId,
     );
   }
 
@@ -965,7 +996,7 @@ export class DexAdapterHelpers {
   async queryRoute(
     mintFirst: PublicKey,
     mintLast: PublicKey,
-    isDisplayed: boolean = false
+    isDisplayed: boolean = false,
   ) {
     const [pda] = this.getRoutePda(mintFirst, mintLast);
     const res = await this.program.account.route.fetch(pda);
@@ -990,19 +1021,18 @@ export class DexAdapterHelpers {
     ammConfigIndex: number,
     mintA: PublicKey,
     mintB: PublicKey,
-    isDisplayed: boolean = false
+    isDisplayed: boolean = false,
   ) {
     const [ammConfigPda] = this.getClmmMockAmmConfigPda(ammConfigIndex);
     const [token0Mint, token1Mint] = this.sortMints(mintA, mintB);
     const [poolStatePda] = this.getClmmMockPoolStatePda(
       ammConfigPda,
       token0Mint,
-      token1Mint
+      token1Mint,
     );
 
-    const res = await this.clmmMockProgram.account.poolState.fetch(
-      poolStatePda
-    );
+    const res =
+      await this.clmmMockProgram.account.poolState.fetch(poolStatePda);
 
     return logAndReturn(res, isDisplayed);
   }
@@ -1013,7 +1043,7 @@ export class ChainHelpers {
   private handleTx: (
     instructions: anchor.web3.TransactionInstruction[],
     params: TxParams,
-    isDisplayed: boolean
+    isDisplayed: boolean,
   ) => Promise<anchor.web3.TransactionSignature>;
 
   constructor(provider: anchor.AnchorProvider) {
@@ -1023,11 +1053,11 @@ export class ChainHelpers {
 
   async requestAirdrop(
     publicKey: anchor.web3.PublicKey | string,
-    amount: number
+    amount: number,
   ): Promise<anchor.web3.TransactionSignature> {
     const signature = await this.provider.connection.requestAirdrop(
       publicKeyFromString(publicKey),
-      amount * anchor.web3.LAMPORTS_PER_SOL
+      amount * anchor.web3.LAMPORTS_PER_SOL,
     );
 
     const { blockhash, lastValidBlockHeight } =
@@ -1046,11 +1076,11 @@ export class ChainHelpers {
     mintKeypair: anchor.web3.Keypair,
     decimals: number,
     params: TxParams = {},
-    isDisplayed: boolean = false
+    isDisplayed: boolean = false,
   ): Promise<anchor.web3.TransactionSignature> {
     // https://solanacookbook.com/references/token.html#how-to-create-a-new-token
     const rent = await spl.getMinimumBalanceForRentExemptMint(
-      this.provider.connection
+      this.provider.connection,
     );
 
     const instructions: anchor.web3.TransactionInstruction[] = [
@@ -1067,7 +1097,7 @@ export class ChainHelpers {
         mintKeypair.publicKey,
         decimals,
         this.provider.wallet.publicKey, // mint authority
-        this.provider.wallet.publicKey // freeze authority (you can use `null` to disable it. when you disable it, you can't turn it on again)
+        this.provider.wallet.publicKey, // freeze authority (you can use `null` to disable it. when you disable it, you can't turn it on again)
       ),
     ];
 
@@ -1085,14 +1115,14 @@ export class ChainHelpers {
     ownerPubkey: PublicKey,
     allowOwnerOffCurve = false,
     params: TxParams = {},
-    isDisplayed: boolean = false
+    isDisplayed: boolean = false,
   ) {
     const { ata, ixs } = await getOrCreateAtaInstructions(
       this.provider.connection,
       this.provider.wallet.publicKey,
       mintPubkey,
       ownerPubkey,
-      allowOwnerOffCurve
+      allowOwnerOffCurve,
     );
 
     if (ixs.length) {
@@ -1108,7 +1138,7 @@ export class ChainHelpers {
     mint: PublicKey | string,
     recipient: PublicKey | string,
     params: TxParams = {},
-    isDisplayed: boolean = false
+    isDisplayed: boolean = false,
   ): Promise<anchor.web3.TransactionSignature> {
     const pkMint = publicKeyFromString(mint);
     const pkRecipient = publicKeyFromString(recipient);
@@ -1118,7 +1148,7 @@ export class ChainHelpers {
       this.provider.wallet.publicKey,
       pkMint,
       pkRecipient,
-      true
+      true,
     );
 
     const { decimals } = await spl.getMint(this.provider.connection, pkMint);
@@ -1130,7 +1160,7 @@ export class ChainHelpers {
         ataRecipient,
         this.provider.wallet.publicKey,
         amount * 10 ** decimals,
-        decimals
+        decimals,
       ),
     ];
 
@@ -1142,7 +1172,7 @@ export class ChainHelpers {
     mint: PublicKey | string,
     to: PublicKey | string,
     params: TxParams = {},
-    isDisplayed: boolean = false
+    isDisplayed: boolean = false,
   ) {
     const pkFrom = this.provider.wallet.publicKey;
     const pkTo = publicKeyFromString(to);
@@ -1155,9 +1185,9 @@ export class ChainHelpers {
           this.provider.wallet.publicKey,
           pkMint,
           owner,
-          true
-        )
-      )
+          true,
+        ),
+      ),
     );
 
     const { decimals } = await spl.getMint(this.provider.connection, pkMint);
@@ -1171,7 +1201,7 @@ export class ChainHelpers {
         infoTo.ata,
         this.provider.wallet.publicKey,
         amount * 10 ** decimals,
-        decimals
+        decimals,
       ),
     ];
 
@@ -1180,10 +1210,10 @@ export class ChainHelpers {
 
   async getBalance(
     publicKey: PublicKey | string,
-    isDisplayed: boolean = false
+    isDisplayed: boolean = false,
   ): Promise<number> {
     const balance = await this.provider.connection.getBalance(
-      publicKeyFromString(publicKey)
+      publicKeyFromString(publicKey),
     );
 
     return logAndReturn(balance / anchor.web3.LAMPORTS_PER_SOL, isDisplayed);
@@ -1191,7 +1221,7 @@ export class ChainHelpers {
 
   static async getAtaTokenBalance(
     connection: anchor.web3.Connection,
-    ownerAta: PublicKey
+    ownerAta: PublicKey,
   ): Promise<number> {
     let uiAmount: number | null = 0;
 
@@ -1207,7 +1237,7 @@ export class ChainHelpers {
   async getTokenBalance(
     mint: PublicKey | string,
     owner: PublicKey | string,
-    isDisplayed: boolean = false
+    isDisplayed: boolean = false,
   ): Promise<number> {
     const pkMint = publicKeyFromString(mint);
     const pkOwner = publicKeyFromString(owner);
@@ -1217,12 +1247,12 @@ export class ChainHelpers {
       pkOwner,
       true,
       spl.TOKEN_PROGRAM_ID,
-      spl.ASSOCIATED_TOKEN_PROGRAM_ID
+      spl.ASSOCIATED_TOKEN_PROGRAM_ID,
     );
 
     const uiAmount = await ChainHelpers.getAtaTokenBalance(
       this.provider.connection,
-      ata
+      ata,
     );
 
     return logAndReturn(uiAmount, isDisplayed);
@@ -1240,7 +1270,7 @@ export class ChainHelpers {
   async getCuPrice(
     endpoint: string,
     programId: PublicKey | undefined = undefined,
-    isDisplayed: boolean = false
+    isDisplayed: boolean = false,
   ) {
     const myHeaders = new Headers();
     myHeaders.append("Content-Type", "application/json");
@@ -1279,7 +1309,7 @@ export class ChainHelpers {
   async wrapSol(
     amount: number,
     params: TxParams = {},
-    isDisplayed: boolean = false
+    isDisplayed: boolean = false,
   ): Promise<anchor.web3.TransactionSignature> {
     const owner = this.provider.wallet.publicKey;
     const amountInLamports = amount * anchor.web3.LAMPORTS_PER_SOL;
@@ -1291,7 +1321,7 @@ export class ChainHelpers {
         owner,
         spl.NATIVE_MINT, // WSOL mint address
         owner,
-        false
+        false,
       );
 
     const instructions: anchor.web3.TransactionInstruction[] = [
@@ -1312,14 +1342,14 @@ export class ChainHelpers {
   async unwrapSol(
     amount?: number,
     params: TxParams = {},
-    isDisplayed: boolean = false
+    isDisplayed: boolean = false,
   ): Promise<anchor.web3.TransactionSignature> {
     const owner = this.provider.wallet.publicKey;
 
     const wsolAta = await spl.getAssociatedTokenAddress(
       spl.NATIVE_MINT,
       owner,
-      false
+      false,
     );
 
     // Get current WSOL balance if amount not specified
@@ -1335,7 +1365,7 @@ export class ChainHelpers {
 
     const { decimals } = await spl.getMint(
       this.provider.connection,
-      spl.NATIVE_MINT
+      spl.NATIVE_MINT,
     );
     const amountInTokens = amountToUnwrap * 10 ** decimals;
 
@@ -1349,14 +1379,14 @@ export class ChainHelpers {
               wsolAta, // Transfer to self to adjust balance
               owner,
               amountInTokens,
-              decimals
+              decimals,
             ),
           ]
         : []),
       spl.createCloseAccountInstruction(
         wsolAta,
         owner, // Destination for remaining SOL
-        owner // Owner
+        owner, // Owner
       ),
     ];
 
