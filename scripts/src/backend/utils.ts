@@ -3,7 +3,7 @@ import { floor, getLast } from "../common/utils";
 import { readFile, writeFile } from "fs";
 import { networks, ProgramName, UTILS, PATH } from "../common/config";
 import { Network } from "../common/interfaces";
-import { loadKeypairSignerFromFile } from "gill/dist/node";
+import { loadKeypairSignerFromFile } from "gill/node";
 
 const { ENCODING, MS_PER_SECOND } = UTILS;
 
@@ -136,37 +136,37 @@ export async function readKeypair(keypairPath: string): Promise<CryptoKeyPair> {
   return (await loadKeypairSignerFromFile(keypairPath)).keyPair;
 }
 
-export async function writeKeypair(
-  keypairPath: string,
-  keypair: CryptoKeyPair,
-): Promise<void> {
-  await Bun.file(keypairPath).write(keypair);
-}
+// export async function writeKeypair(
+//   keypairPath: string,
+//   keypair: CryptoKeyPair,
+// ): Promise<void> {
+//   await Bun.file(keypairPath).write(keypair);
+// }
 
-export function getKeypairPath(program: ProgramName): string {
-  return rootPath(
-    `./target/deploy/${program.toLowerCase()}-data-account-keypair.json`,
-  );
-}
+// export function getKeypairPath(program: ProgramName): string {
+//   return rootPath(
+//     `./target/deploy/${program.toLowerCase()}-data-account-keypair.json`,
+//   );
+// }
 
-export function getWallet(ownerKeypair: CryptoKeyPair): anchor.Wallet {
-  return new anchor.Wallet(ownerKeypair);
-}
+// export function getWallet(ownerKeypair: CryptoKeyPair): anchor.Wallet {
+//   return new anchor.Wallet(ownerKeypair);
+// }
 
-export async function updateAddresses(
-  keypairList: [ProgramName, CryptoKeyPair][],
-): Promise<void> {
-  const filePath = rootPath(PATH.TO_CONFIG);
+// export async function updateAddresses(
+//   keypairList: [ProgramName, CryptoKeyPair][],
+// ): Promise<void> {
+//   const filePath = rootPath(PATH.TO_CONFIG);
 
-  // Read the file content
-  let content = await readFile(filePath, ENCODING as BufferEncoding);
+//   // Read the file content
+//   let content = await readFile(filePath, ENCODING as BufferEncoding);
 
-  // For each key-value pair, update the corresponding PROGRAM_ADDRESS field
-  for (const [key, newValue] of keypairList) {
-    const regex = new RegExp(`(\\b${key}\\b\\s*:\\s*")[^"]*(")`, "g");
-    content = content.replace(regex, `$1${newValue.publicKey.toString()}$2`);
-  }
+//   // For each key-value pair, update the corresponding PROGRAM_ADDRESS field
+//   for (const [key, newValue] of keypairList) {
+//     const regex = new RegExp(`(\\b${key}\\b\\s*:\\s*")[^"]*(")`, "g");
+//     content = content.replace(regex, `$1${newValue.publicKey.toString()}$2`);
+//   }
 
-  // Write the updated content back to the file
-  await writeFile(filePath, content, ENCODING as BufferEncoding);
-}
+//   // Write the updated content back to the file
+//   await writeFile(filePath, content, ENCODING as BufferEncoding);
+// }

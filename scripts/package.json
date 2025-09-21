@@ -18,7 +18,7 @@
   "private": true,
   "scripts": {
     "app": "bun run scripts/backend/app.ts",
-    "store": "bun run src/backend/services/store.ts",
+    "store": "ts-node ./src/backend/services/store.ts",
     "codegen": "bun run scripts/backend/generate-types.ts",
     "dev": "bun run --watch scripts/backend/app.ts",
     "capture-user-account": "bun run scripts/backend/capture/user-account.ts",

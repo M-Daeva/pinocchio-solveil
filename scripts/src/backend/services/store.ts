@@ -1,5 +1,4 @@
 import { loadKeypairSignerFromFile } from "gill/node";
-import { readFileSync } from "fs";
 import path from "path";
 import {
   createSolanaRpc,
@@ -14,16 +13,157 @@ import {
   appendTransactionMessageInstructions,
   DevnetUrl,
   LAMPORTS_PER_SOL,
+  Instruction,
+  InstructionWithAccounts,
+  InstructionWithData,
+  InstructionWithSigners,
+  Address,
+  AccountRole,
+  generateKeyPairSigner,
 } from "gill";
 import { rootPath } from "../utils";
 import { PATH } from "../../common/config";
-import { l } from "../../common/utils";
+import { l, li, numberFrom } from "../../common/utils";
+import { readFile } from "fs/promises";
 
 // Configuration
 const RPC_URL = "https://api.devnet.solana.com"; // Change to mainnet for production
 const PROGRAM_SO_PATH = "./target/deploy/your_program.so"; // Path to your compiled program
+const KEYPAIR_PATH = "~/.config/solana/id.json"; // Path to your wallet keypair
+
+// BPF Loader Upgradeable program ID
+const BPF_LOADER_UPGRADEABLE_PROGRAM_ID =
+  "BPFLoaderUpgradeab1e11111111111111111111111" as Address;
+
+// System program and sysvar addresses
+const SYSTEM_PROGRAM_ID = "11111111111111111111111111111111" as Address;
+const RENT_SYSVAR_ID = "SysvarRent111111111111111111111111111111111" as Address;
+const CLOCK_SYSVAR_ID =
+  "SysvarC1ock11111111111111111111111111111111" as Address;
+
+// BPF Loader Upgradeable instruction discriminators
+const BPF_LOADER_UPGRADEABLE_INSTRUCTIONS = {
+  INITIALIZE_BUFFER: 0,
+  WRITE: 1,
+  DEPLOY_WITH_MAX_DATA_LEN: 2,
+  UPGRADE: 3,
+  SET_AUTHORITY: 4,
+  CLOSE: 5,
+} as const;
+
+// Helper function to create BPF Loader Upgradeable deploy instruction
+function createBpfLoaderUpgradeableDeployInstruction(params: {
+  payerAccount: Address;
+  programDataAccount: Address;
+  programAccount: Address;
+  bufferAccount: Address;
+  rentSysvarAccount: Address;
+  clockSysvarAccount: Address;
+  systemProgramAccount: Address;
+  authorityAccount?: Address;
+  maxDataLength: bigint;
+}): Instruction<typeof BPF_LOADER_UPGRADEABLE_PROGRAM_ID> {
+  // Create instruction data
+  const instructionData = new Uint8Array(12); // 4 bytes discriminator + 8 bytes max_data_len
+  const view = new DataView(instructionData.buffer);
+
+  // Set instruction discriminator (DEPLOY_WITH_MAX_DATA_LEN = 2)
+  view.setUint32(
+    0,
+    BPF_LOADER_UPGRADEABLE_INSTRUCTIONS.DEPLOY_WITH_MAX_DATA_LEN,
+    true,
+  );
+
+  // Set max data length (8 bytes, little-endian)
+  view.setBigUint64(4, params.maxDataLength, true);
+
+  return {
+    programAddress: BPF_LOADER_UPGRADEABLE_PROGRAM_ID,
+    data: instructionData,
+    accounts: [
+      { address: params.payerAccount, role: AccountRole.WRITABLE_SIGNER },
+      { address: params.programDataAccount, role: AccountRole.WRITABLE },
+      { address: params.programAccount, role: AccountRole.WRITABLE },
+      { address: params.bufferAccount, role: AccountRole.WRITABLE },
+      { address: params.rentSysvarAccount, role: AccountRole.READONLY },
+      { address: params.clockSysvarAccount, role: AccountRole.READONLY },
+      { address: params.systemProgramAccount, role: AccountRole.READONLY },
+      ...(params.authorityAccount
+        ? [
+            {
+              address: params.authorityAccount,
+              role: AccountRole.READONLY_SIGNER,
+            },
+          ]
+        : []),
+    ],
+  };
+}
+
+// Helper function to create write buffer instruction
+function createBpfLoaderUpgradeableWriteInstruction(params: {
+  bufferAccount: Address;
+  authorityAccount: Address;
+  offset: number;
+  data: Uint8Array;
+}): Instruction<typeof BPF_LOADER_UPGRADEABLE_PROGRAM_ID> {
+  // Create instruction data: discriminator (4 bytes) + offset (4 bytes) + data
+  const instructionData = new Uint8Array(8 + params.data.length);
+  const view = new DataView(instructionData.buffer);
+
+  // Set instruction discriminator (WRITE = 1)
+  view.setUint32(0, BPF_LOADER_UPGRADEABLE_INSTRUCTIONS.WRITE, true);
+
+  // Set offset
+  view.setUint32(4, params.offset, true);
+
+  // Copy data
+  instructionData.set(params.data, 8);
+
+  return {
+    programAddress: BPF_LOADER_UPGRADEABLE_PROGRAM_ID,
+    data: instructionData,
+    accounts: [
+      { address: params.bufferAccount, role: AccountRole.WRITABLE },
+      { address: params.authorityAccount, role: AccountRole.READONLY_SIGNER },
+    ],
+  };
+}
+
+// Helper function to create initialize buffer instruction
+function createBpfLoaderUpgradeableInitializeBufferInstruction(params: {
+  bufferAccount: Address;
+  authorityAccount: Address;
+}): Instruction<typeof BPF_LOADER_UPGRADEABLE_PROGRAM_ID> {
+  // Create instruction data with discriminator and authority pubkey
+  const instructionData = new Uint8Array(36); // 4 bytes discriminator + 32 bytes pubkey
+  const view = new DataView(instructionData.buffer);
+
+  // Set instruction discriminator (INITIALIZE_BUFFER = 0)
+  view.setUint32(
+    0,
+    BPF_LOADER_UPGRADEABLE_INSTRUCTIONS.INITIALIZE_BUFFER,
+    true,
+  );
+
+  // TODO: Add authority pubkey bytes starting at offset 4
+  // For now, we'll leave it as zeros which means no authority
+
+  return {
+    programAddress: BPF_LOADER_UPGRADEABLE_PROGRAM_ID,
+    data: instructionData,
+    accounts: [
+      { address: params.bufferAccount, role: AccountRole.WRITABLE },
+      { address: RENT_SYSVAR_ID, role: AccountRole.READONLY },
+    ],
+  };
+}
 
 async function deployProgram() {
+  // Configuration
+  const RPC_URL = "https://api.devnet.solana.com"; // Change to mainnet for production
+  const PROGRAM_SO_PATH = "../target/deploy/registry.so"; // Path to your compiled program
+
   try {
     l("🚀 Starting Solana program deployment with Gill...");
 
@@ -33,6 +173,7 @@ async function deployProgram() {
     const client = createSolanaClient({ urlOrMoniker: "devnet" });
 
     // TODO: client.simulateTransaction instead of getSimulationComputeUnits
+    // import {ComputeBudgetInstruction} from "gill/programs"
 
     // Load the deployer keypair
     l("📝 Loading keypair...");
@@ -42,75 +183,187 @@ async function deployProgram() {
     l(`Deployer address: ${deployerSigner.address}`);
 
     // Check balance
-    const balance = await rpc.getBalance(deployerSigner.address).send();
-    l(`Deployer balance: ${balance.value / BigInt(LAMPORTS_PER_SOL)} SOL`);
+    const balance = numberFrom(
+      (await rpc.getBalance(deployerSigner.address).send()).value,
+    )
+      .div(LAMPORTS_PER_SOL)
+      .toDecimalPlaces(3)
+      .toNumber();
+    l(`Deployer balance: ${balance} SOL`);
 
-    // if (balance.value < lamports(1000000n)) {
-    //   throw new Error(
-    //     "Insufficient balance. Need at least 0.001 SOL for deployment.",
-    //   );
-    // }
+    if (balance < 0.001) {
+      throw new Error(
+        "Insufficient balance. Need at least 0.001 SOL for deployment.",
+      );
+    }
 
-    // // Read the program binary
-    // l("📖 Reading program binary...");
-    // const programBuffer = readFileSync(path.resolve(PROGRAM_SO_PATH));
-    // l(`Program size: ${programBuffer.length} bytes`);
+    // Read the program binary
+    l("📖 Reading program binary...");
+    const programBuffer = await readFile(path.resolve(PROGRAM_SO_PATH));
+    l(`Program size: ${programBuffer.length} bytes`);
 
-    // // Get recent blockhash
-    // l("🔗 Getting recent blockhash...");
-    // const { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
-
-    // // Create program deployment transaction
-    // l("🔨 Creating deployment transaction...");
-
-    // // Calculate the minimum balance needed for the program account
-    // const programAccountSpace = programBuffer.length;
-    // const { value: minBalance } = await rpc
-    //   .getMinimumBalanceForRentExemption(BigInt(programAccountSpace))
+    // Calculate the minimum balance needed for the program account
+    // const programAccountSpace = BigInt(programBuffer.length);
+    // const minimumBalanceForRentExemption = await rpc
+    //   .getMinimumBalanceForRentExemption(programAccountSpace)
     //   .send();
 
-    // // Create deployment instruction
-    // const deployInstruction = createBpfLoaderUpgradeableDeployInstruction({
-    //   payerAccount: deployerSigner.address,
-    //   programDataAccount: deployerSigner.address, // This will be generated
-    //   programAccount: deployerSigner.address, // This will be generated
-    //   bufferAccount: deployerSigner.address, // This will be generated
-    //   rentAccount: "11111111111111111111111111111111", // Rent sysvar
-    //   clockAccount: "SysvarC1ock11111111111111111111111111111111", // Clock sysvar
-    //   systemProgramAccount: "11111111111111111111111111111111", // System program
-    //   bpfLoaderUpgradeableProgramAccount:
-    //     "BPFLoaderUpgradeab1e11111111111111111111111", // BPF Loader Upgradeable
-    //   maxDataLength: BigInt(programBuffer.length),
-    // });
+    // l(
+    //   `Min Rent Exemption: ${numberFrom(minimumBalanceForRentExemption).div(LAMPORTS_PER_SOL).toFixed(3)} lamports`,
+    // );
 
-    // const transaction = createTransaction({
-    //   version: "legacy",
-    //   feePayer: deployerSigner.address,
-    //   blockhash: latestBlockhash.blockhash,
-    //   lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-    //   instructions: [deployInstruction],
-    // });
+    // Create program deployment transaction
+    l("🔨 Creating deployment transaction...");
 
-    // // Sign the transaction
-    // l("✍️  Signing transaction...");
-    // const signedTransaction =
-    //   await signTransactionMessageWithSigners(transaction);
+    // Generate keypairs for program accounts
+    l("🔑 Generating program keypairs...");
+    const programSigner = await generateKeyPairSigner();
+    const programDataSigner = await generateKeyPairSigner();
+    const bufferSigner = await generateKeyPairSigner();
 
-    // // Get transaction signature before sending
-    // const signature = getSignatureFromTransaction(signedTransaction);
-    // l(`Transaction signature: ${signature}`);
+    l(`Program ID: ${programSigner.address}`);
+    l(`Program Data Account: ${programDataSigner.address}`);
+    l(`Buffer Account: ${bufferSigner.address}`);
+
+    // Get recent blockhash
+    l("🔗 Getting recent blockhash...");
+    const { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
+
+    // Calculate required account sizes and rent
+    const bufferAccountSize = programBuffer.length + 37; // Buffer header is 37 bytes
+    const programDataAccountSize = programBuffer.length + 45; // ProgramData header is 45 bytes
+    const programAccountSize = 36; // Program account is 36 bytes
+
+    const bufferRent = await rpc
+      .getMinimumBalanceForRentExemption(BigInt(bufferAccountSize))
+      .send();
+    const programDataRent = numberFrom(
+      await rpc
+        .getMinimumBalanceForRentExemption(BigInt(programDataAccountSize))
+        .send(),
+    );
+    const programRent = numberFrom(
+      await rpc
+        .getMinimumBalanceForRentExemption(BigInt(programAccountSize))
+        .send(),
+    );
+
+    l(
+      `Buffer rent: ${numberFrom(bufferRent).div(LAMPORTS_PER_SOL).toFixed(3)} SOL`,
+    );
+    l(
+      `Program data rent: ${programDataRent.div(LAMPORTS_PER_SOL).toFixed(3)} SOL`,
+    );
+    l(`Program rent: ${programRent.div(LAMPORTS_PER_SOL).toFixed(3)} SOL`);
+
+    const instructions: Instruction[] = [];
+
+    // Step 1: Create buffer account
+    instructions.push({
+      programAddress: SYSTEM_PROGRAM_ID,
+      data: new Uint8Array([
+        0,
+        0,
+        0,
+        0, // CreateAccount discriminator
+        ...new Uint8Array(new BigUint64Array([bufferRent]).buffer),
+        ...new Uint8Array(
+          new BigUint64Array([BigInt(bufferAccountSize)]).buffer,
+        ),
+        ...Array.from(
+          { length: 32 },
+          (_, i) => BPF_LOADER_UPGRADEABLE_PROGRAM_ID.charCodeAt(i) || 0,
+        ),
+      ]),
+      accounts: [
+        { address: deployerSigner.address, role: AccountRole.WRITABLE_SIGNER },
+        { address: bufferSigner.address, role: AccountRole.WRITABLE_SIGNER },
+      ],
+    });
+
+    // Step 2: Initialize buffer
+    instructions.push(
+      createBpfLoaderUpgradeableInitializeBufferInstruction({
+        bufferAccount: bufferSigner.address,
+        authorityAccount: deployerSigner.address,
+      }),
+    );
+
+    // Step 3: Write program data to buffer (in chunks if necessary)
+    const maxChunkSize = 800; // Keep chunks small to avoid transaction size limits
+    for (
+      let offset = 0;
+      offset < programBuffer.length;
+      offset += maxChunkSize
+    ) {
+      const chunk = programBuffer.slice(offset, offset + maxChunkSize);
+      instructions.push(
+        createBpfLoaderUpgradeableWriteInstruction({
+          bufferAccount: bufferSigner.address,
+          authorityAccount: deployerSigner.address,
+          offset,
+          data: chunk,
+        }),
+      );
+    }
+
+    // Step 4: Deploy the program
+    instructions.push(
+      createBpfLoaderUpgradeableDeployInstruction({
+        payerAccount: deployerSigner.address,
+        programDataAccount: programDataSigner.address,
+        programAccount: programSigner.address,
+        bufferAccount: bufferSigner.address,
+        rentSysvarAccount: RENT_SYSVAR_ID,
+        clockSysvarAccount: CLOCK_SYSVAR_ID,
+        systemProgramAccount: SYSTEM_PROGRAM_ID,
+        authorityAccount: deployerSigner.address,
+        maxDataLength: BigInt(programBuffer.length * 2), // Allow for future upgrades
+      }),
+    );
+
+    // Create transaction
+    l("🔨 Creating deployment transaction...");
+
+    // TODO: set CU
+    const transaction = createTransaction({
+      version: "legacy",
+      feePayer: deployerSigner.address,
+      latestBlockhash,
+      instructions: instructions.slice(0, 3), // Start with first few instructions
+    });
+
+    // Sign the transaction with all required signers
+    l("✍️  Signing transaction...");
+    const signedTransaction =
+      await signTransactionMessageWithSigners(transaction);
+
+    // signers: [
+    //   deployerSigner,
+    //   bufferSigner,
+    //   programSigner,
+    //   programDataSigner,
+    // ],
+
+    // Get transaction signature before sending
+    const signature = getSignatureFromTransaction(signedTransaction);
+    l(`Transaction signature: ${signature}`);
 
     // // Send and confirm transaction
     // l("📡 Sending transaction to network...");
     // const result = await sendAndConfirmTransaction(client, signedTransaction);
 
     // l("✅ Program deployed successfully!");
+    // l(`Program ID: ${programSigner.address}`);
     // l(`Transaction signature: ${result.signature}`);
     // l(
     //   `Explorer: https://explorer.solana.com/tx/${result.signature}?cluster=devnet`,
     // );
 
-    // return result.signature;
+    // return {
+    //   programId: programSigner.address,
+    //   signature: result.signature,
+    // };
   } catch (error) {
     console.error("❌ Deployment failed:", error);
     throw error;
@@ -168,20 +421,7 @@ async function deployProgram() {
 
 // Main execution
 async function main() {
-  const args = process.argv.slice(2);
-  const command = args[0];
-
-  if (command === "deploy") {
-    await deployProgram();
-  }
-  // else if (command === "upgrade" && args[1]) {
-  //   await upgradeProgram(args[1]);
-  // }
-  else {
-    l("Usage:");
-    l("  Deploy: npm run deploy");
-    l("  Upgrade: npm run upgrade <program-id>");
-  }
+  await deployProgram();
 }
 
 main();

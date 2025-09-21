@@ -1,0 +1,44 @@
+{
+  "include": [
+    "../backend",
+    "../common",
+    "../backend/config/*.json",
+    "../common/config/*.json"
+  ],
+  "exclude": [],
+  "ts-node": {
+    "rootDir": "../",
+    "outDir": "../../dist",
+    "transpileOnly": true,
+    "files": true,
+    "compilerOptions": {
+      "target": "ES2022",
+      "moduleResolution": "nodenext",
+      "strict": true,
+      "composite": true,
+      "resolveJsonModule": true,
+      "esModuleInterop": true,
+      "allowSyntheticDefaultImports": true,
+      "module": "nodenext"
+    }
+  },
+  "compilerOptions": {
+    "rootDir": "../",
+    "outDir": "../../dist",
+    "target": "ES2022",
+    "moduleResolution": "nodenext",
+    "strict": true,
+    "composite": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "module": "nodenext",
+    // Ensure that .d.ts files are created by tsc, but not .js files
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    // "declarationMap": true,
+    "sourceMap": true,
+    // "inlineSources": true,
+    // "inlineSourceMap": true
+  }
+}
