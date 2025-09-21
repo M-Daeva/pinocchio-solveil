@@ -1,4 +1,4 @@
-import { loadKeypairSignerFromFile } from "gill/dist/node";
+import { loadKeypairSignerFromFile } from "gill/node";
 import { readFileSync } from "fs";
 import path from "path";
 import {
@@ -17,6 +17,7 @@ import {
 } from "gill";
 import { rootPath } from "../utils";
 import { PATH } from "../../common/config";
+import { l } from "../../common/utils";
 
 // Configuration
 const RPC_URL = "https://api.devnet.solana.com"; // Change to mainnet for production
@@ -24,7 +25,7 @@ const PROGRAM_SO_PATH = "./target/deploy/your_program.so"; // Path to your compi
 
 async function deployProgram() {
   try {
-    console.log("🚀 Starting Solana program deployment with Gill...");
+    l("🚀 Starting Solana program deployment with Gill...");
 
     // Create RPC connection
     const rpc = createSolanaRpc(RPC_URL);
@@ -34,17 +35,15 @@ async function deployProgram() {
     // TODO: client.simulateTransaction instead of getSimulationComputeUnits
 
     // Load the deployer keypair
-    console.log("📝 Loading keypair...");
+    l("📝 Loading keypair...");
     const deployerSigner = await loadKeypairSignerFromFile(
       rootPath(PATH.OWNER_KEYPAIR),
     );
-    console.log(`Deployer address: ${deployerSigner.address}`);
+    l(`Deployer address: ${deployerSigner.address}`);
 
     // Check balance
     const balance = await rpc.getBalance(deployerSigner.address).send();
-    console.log(
-      `Deployer balance: ${balance.value / BigInt(LAMPORTS_PER_SOL)} SOL`,
-    );
+    l(`Deployer balance: ${balance.value / BigInt(LAMPORTS_PER_SOL)} SOL`);
 
     // if (balance.value < lamports(1000000n)) {
     //   throw new Error(
@@ -53,16 +52,16 @@ async function deployProgram() {
     // }
 
     // // Read the program binary
-    // console.log("📖 Reading program binary...");
+    // l("📖 Reading program binary...");
     // const programBuffer = readFileSync(path.resolve(PROGRAM_SO_PATH));
-    // console.log(`Program size: ${programBuffer.length} bytes`);
+    // l(`Program size: ${programBuffer.length} bytes`);
 
     // // Get recent blockhash
-    // console.log("🔗 Getting recent blockhash...");
+    // l("🔗 Getting recent blockhash...");
     // const { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
 
     // // Create program deployment transaction
-    // console.log("🔨 Creating deployment transaction...");
+    // l("🔨 Creating deployment transaction...");
 
     // // Calculate the minimum balance needed for the program account
     // const programAccountSpace = programBuffer.length;
@@ -93,21 +92,21 @@ async function deployProgram() {
     // });
 
     // // Sign the transaction
-    // console.log("✍️  Signing transaction...");
+    // l("✍️  Signing transaction...");
     // const signedTransaction =
     //   await signTransactionMessageWithSigners(transaction);
 
     // // Get transaction signature before sending
     // const signature = getSignatureFromTransaction(signedTransaction);
-    // console.log(`Transaction signature: ${signature}`);
+    // l(`Transaction signature: ${signature}`);
 
     // // Send and confirm transaction
-    // console.log("📡 Sending transaction to network...");
+    // l("📡 Sending transaction to network...");
     // const result = await sendAndConfirmTransaction(client, signedTransaction);
 
-    // console.log("✅ Program deployed successfully!");
-    // console.log(`Transaction signature: ${result.signature}`);
-    // console.log(
+    // l("✅ Program deployed successfully!");
+    // l(`Transaction signature: ${result.signature}`);
+    // l(
     //   `Explorer: https://explorer.solana.com/tx/${result.signature}?cluster=devnet`,
     // );
 
@@ -121,7 +120,7 @@ async function deployProgram() {
 // // Alternative method for upgrading an existing program
 // async function upgradeProgram(programId: string) {
 //   try {
-//     console.log("🔄 Starting program upgrade...");
+//     l("🔄 Starting program upgrade...");
 
 //     const rpc = createSolanaRpc(RPC_URL);
 //     const client = createSolanaClient({ rpc });
@@ -157,8 +156,8 @@ async function deployProgram() {
 //       await signTransactionMessageWithSigners(transaction);
 //     const result = await sendAndConfirmTransaction(client, signedTransaction);
 
-//     console.log("✅ Program upgraded successfully!");
-//     console.log(`Transaction signature: ${result.signature}`);
+//     l("✅ Program upgraded successfully!");
+//     l(`Transaction signature: ${result.signature}`);
 
 //     return result.signature;
 //   } catch (error) {
@@ -179,9 +178,9 @@ async function main() {
   //   await upgradeProgram(args[1]);
   // }
   else {
-    console.log("Usage:");
-    console.log("  Deploy: npm run deploy");
-    console.log("  Upgrade: npm run upgrade <program-id>");
+    l("Usage:");
+    l("  Deploy: npm run deploy");
+    l("  Upgrade: npm run upgrade <program-id>");
   }
 }
 
