@@ -1,10 +1,8 @@
 // import { connect } from "solana-kite";
-import { fetchConfig, Config } from "../common/schema/codama/accounts";
+
 import {
   getInitInstruction,
-  getInitInstructionDataEncoder,
   InitInput,
-  InitInstruction,
   InitInstructionDataArgs,
 } from "../common/schema/codama/instructions";
 import { REGISTRY_CPI_PROGRAM_ADDRESS } from "../common/schema/codama/programs/registryCpi";
@@ -16,28 +14,22 @@ import {
 } from "gill/programs";
 import {
   createTransaction,
-  Instruction,
   getProgramDerivedAddress,
-  getAddressEncoder,
   Address,
   ProgramDerivedAddressBump,
   ReadonlyUint8Array,
-  address,
   createSolanaClient,
   createSolanaRpc,
   compileTransaction,
   signTransaction,
 } from "gill";
-import { BitField, Uint32 } from "../common/interfaces/primitives";
+import { BitField, Uint32, Uint64 } from "../common/interfaces/primitives";
 import { loadKeypairSignerFromFile } from "gill/node";
 import { rootPath } from "./utils";
 import { NETWORK_CONFIG, PATH, REVENUE_MINT } from "../common/config";
 
 import * as IRegistry from "../common/interfaces/registry";
 import { l, li, logAndReturn } from "../common/utils";
-
-// import * as IARegistry from "../interfaces/registry.anchor";
-
 // const addr = getAddressEncoder();
 
 // to get account interface from input and instruction data args interfaces
@@ -136,7 +128,7 @@ async function init(
   let flags = new BitField();
   let rotationTimeout = new Uint32();
   let accountRegistrationFee = {
-    amount: new Uint32(),
+    amount: new Uint64(),
     asset: sender.address, // placeholder
   };
   let accountDataSizeRange = { min: new Uint32(), max: new Uint32() };
@@ -148,7 +140,9 @@ async function init(
 
   if (args.accountRegistrationFee) {
     flags.setFlag(ACCOUNT_REGISTRATION_FEE, true);
-    accountRegistrationFee.amount.set(args.accountRegistrationFee.amount);
+    accountRegistrationFee.amount.set(
+      BigInt(args.accountRegistrationFee.amount),
+    );
     accountRegistrationFee.asset = args.accountRegistrationFee.asset;
   }
 
