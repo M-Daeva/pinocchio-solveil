@@ -1,155 +1,223 @@
-import * as anchor from "@coral-xyz/anchor";
-import { COMMITMENT, PATH, REVENUE_MINT } from "../common/config";
-import { getProgram, getProvider, getRpc, li } from "../common/utils";
-import { getWallet, parseNetwork, readKeypair, rootPath } from "./utils";
-import { LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
+// import { connect } from "solana-kite";
+import { fetchConfig, Config } from "../common/schema/codama/accounts";
 import {
-  ChainHelpers,
-  RegistryHelpers,
-  DexAdapterHelpers,
-} from "../common/account";
+  getInitInstruction,
+  getInitInstructionDataEncoder,
+  InitInput,
+  InitInstruction,
+  InitInstructionDataArgs,
+} from "../common/schema/codama/instructions";
+import { REGISTRY_CPI_PROGRAM_ADDRESS } from "../common/schema/codama/programs/registryCpi";
+import {
+  SYSTEM_PROGRAM_ADDRESS,
+  TOKEN_PROGRAM_ADDRESS,
+  ASSOCIATED_TOKEN_PROGRAM_ADDRESS,
+  getAssociatedTokenAccountAddress,
+} from "gill/programs";
+import {
+  createTransaction,
+  Instruction,
+  getProgramDerivedAddress,
+  getAddressEncoder,
+  Address,
+  ProgramDerivedAddressBump,
+  ReadonlyUint8Array,
+  address,
+  createSolanaClient,
+  createSolanaRpc,
+  compileTransaction,
+  signTransaction,
+} from "gill";
+import { BitField, Uint32 } from "../common/interfaces/primitives";
+import { loadKeypairSignerFromFile } from "gill/node";
+import { rootPath } from "./utils";
+import { NETWORK_CONFIG, PATH, REVENUE_MINT } from "../common/config";
 
-import { Registry } from "../common/schema/types/registry";
-import RegistryIdl from "../common/schema/idl/registry.json";
+import * as IRegistry from "../common/interfaces/registry";
+import { l, li, logAndReturn } from "../common/utils";
 
-import { DexAdapter } from "../common/schema/types/dex_adapter";
-import DexAdapterIdl from "../common/schema/idl/dex_adapter.json";
+// import * as IARegistry from "../interfaces/registry.anchor";
 
-import { ClmmMock } from "../common/schema/types/clmm_mock";
-import ClmmMockIdl from "../common/schema/idl/clmm_mock.json";
+// const addr = getAddressEncoder();
 
-async function main() {
-  const ownerKeypair = await readKeypair(rootPath(PATH.OWNER_KEYPAIR));
-  const provider = getProvider(
-    getWallet(ownerKeypair),
-    getRpc("DEVNET"),
-    COMMITMENT
+// to get account interface from input and instruction data args interfaces
+type XOR<T, U> = Omit<T, keyof U> & Omit<U, keyof T>;
+
+type Seed = ReadonlyUint8Array | string;
+type PdaResp = readonly [Address<string>, ProgramDerivedAddressBump];
+
+function getPdaFactory(
+  programId: Address,
+): (seeds: Seed[]) => Promise<PdaResp> {
+  return async (seeds: Seed[]) => {
+    return await getProgramDerivedAddress({
+      programAddress: programId,
+      seeds,
+    });
+  };
+}
+
+// TODO: add user pda
+class RegistryPda {
+  private factory: (seeds: Seed[]) => Promise<PdaResp>;
+
+  constructor(programId: Address) {
+    this.factory = getPdaFactory(programId);
+  }
+
+  async bump(): Promise<PdaResp> {
+    return this.factory(["bump"]);
+  }
+
+  async config(): Promise<PdaResp> {
+    return this.factory(["config"]);
+  }
+
+  async userCounter(): Promise<PdaResp> {
+    return this.factory(["user_counter"]);
+  }
+
+  async adminRotationState(): Promise<PdaResp> {
+    return this.factory(["admin_rotation_state"]);
+  }
+}
+
+async function init(
+  args: IRegistry.InitArgs,
+  revenueMint: Address,
+  // params: TxParams = {},
+  isDisplayed: boolean = false,
+) {
+  const rpc = createSolanaRpc(NETWORK_CONFIG.DEVNET);
+  const { sendAndConfirmTransaction, simulateTransaction } = createSolanaClient(
+    {
+      urlOrMoniker: "devnet",
+    },
   );
 
-  const chain = new ChainHelpers(provider);
-  const TX_PARAMS = {
-    cpu: { k: 1, b: 150 },
+  const sender = await loadKeypairSignerFromFile(rootPath(PATH.OWNER_KEYPAIR));
+
+  const registryPda = new RegistryPda(REGISTRY_CPI_PROGRAM_ADDRESS);
+
+  const [[bump], [config], [userCounter], [adminRotationState]] =
+    await Promise.all([
+      registryPda.bump(),
+      registryPda.config(),
+      registryPda.userCounter(),
+      registryPda.adminRotationState(),
+    ]);
+
+  // TODO: get or create
+  const revenueAppAta = await getAssociatedTokenAccountAddress(
+    revenueMint,
+    sender,
+    TOKEN_PROGRAM_ADDRESS,
+  );
+
+  const signerList: CryptoKeyPair[] = [sender.keyPair];
+
+  const ixAccs: XOR<InitInput, InitInstructionDataArgs> = {
+    systemProgram: SYSTEM_PROGRAM_ADDRESS,
+    tokenProgram: TOKEN_PROGRAM_ADDRESS,
+    associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ADDRESS,
+    sender,
+    bump,
+    config,
+    userCounter,
+    adminRotationState,
+    revenueMint,
+    revenueAppAta,
   };
 
-  const mintWsol = new PublicKey("So11111111111111111111111111111111111111112");
-  const mintUsdc = new PublicKey("USDCoctVLVnvTXBEuP9s8hntucdJokbo17RwHuNXemT");
+  const ROTATION_TIMEOUT = 0;
+  const ACCOUNT_REGISTRATION_FEE = 1;
+  const ACCOUNT_DATA_SIZE_RANGE = 2;
 
-  const registryProgram = getProgram<Registry>(provider, RegistryIdl as any);
-  const dexAdapterProgram = getProgram<DexAdapter>(
-    provider,
-    DexAdapterIdl as any
-  );
-  const clmmMockProgram = getProgram<ClmmMock>(provider, ClmmMockIdl as any);
+  let flags = new BitField();
+  let rotationTimeout = new Uint32();
+  let accountRegistrationFee = {
+    amount: new Uint32(),
+    asset: sender.address, // placeholder
+  };
+  let accountDataSizeRange = { min: new Uint32(), max: new Uint32() };
 
-  const registryAddress = registryProgram.programId;
-  const dexAdapterAddress = dexAdapterProgram.programId;
-  const dexAddress = clmmMockProgram.programId;
+  if (args.rotationTimeout) {
+    flags.setFlag(ROTATION_TIMEOUT, true);
+    rotationTimeout.set(args.rotationTimeout);
+  }
 
-  li({
-    registry: registryAddress.toString(),
-    dexAdapter: dexAdapterAddress.toString(),
-    dex: dexAddress.toString(),
+  if (args.accountRegistrationFee) {
+    flags.setFlag(ACCOUNT_REGISTRATION_FEE, true);
+    accountRegistrationFee.amount.set(args.accountRegistrationFee.amount);
+    accountRegistrationFee.asset = args.accountRegistrationFee.asset;
+  }
+
+  if (args.accountDataSizeRange) {
+    flags.setFlag(ACCOUNT_DATA_SIZE_RANGE, true);
+    accountDataSizeRange.min.set(args.accountDataSizeRange.min);
+    accountDataSizeRange.max.set(args.accountDataSizeRange.max);
+  }
+
+  const ixArgs: InitInstructionDataArgs = {
+    flags: flags.getRaw(),
+    rotationTimeout: rotationTimeout.toArray(),
+    accountRegistrationFee: {
+      amount: accountRegistrationFee.amount.toArray(),
+      asset: accountRegistrationFee.asset,
+    },
+    accountDataSizeRange: {
+      min: accountDataSizeRange.min.toArray(),
+      max: accountDataSizeRange.max.toArray(),
+    },
+  };
+
+  const ix = getInitInstruction({
+    ...ixAccs,
+    ...ixArgs,
   });
 
-  const registry = new RegistryHelpers(provider, registryProgram);
-  const dexAdapter = new DexAdapterHelpers(
-    provider,
-    dexAdapterProgram,
-    registryAddress,
-    clmmMockProgram
+  const { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
+  const txRaw = createTransaction({
+    version: "legacy",
+    feePayer: sender.address,
+    latestBlockhash,
+    instructions: [ix],
+    computeUnitLimit: 0,
+  });
+
+  const res = await simulateTransaction(txRaw);
+  li(res);
+  const {
+    value: { unitsConsumed },
+  } = res;
+
+  const tx = createTransaction({
+    version: txRaw.version,
+    feePayer: txRaw.feePayer as any,
+    latestBlockhash: txRaw.lifetimeConstraint,
+    instructions: txRaw.instructions as any,
+    computeUnitLimit: unitsConsumed,
+  });
+
+  const signedTransaction = await signTransaction(
+    signerList,
+    compileTransaction(tx),
   );
 
-  // await registry.tryInit(
-  //   { accountRegistrationFee: { amount: 100_000, asset: REVENUE_MINT.DEVNET } },
-  //   REVENUE_MINT.DEVNET,
-  //   TX_PARAMS
-  // );
-  // await registry.queryConfig(true);
+  const signature = await sendAndConfirmTransaction(signedTransaction);
 
-  const user = new PublicKey("4aPycKEbgz5tpFozhX3M22vdhPKumM4dpLwFXoFyR8WW");
-  // const userId = await registry.queryUserId(user, true);
-  // await registry.queryUserAccount(user, true);
+  // TODO: tx response instead of signature
+  return logAndReturn(signature, isDisplayed);
+}
 
-  // await registry.tryCreateAccount(420, TX_PARAMS);
-  await registry.queryUserAccount(ownerKeypair.publicKey, true);
-  // await registry.tryRequestAccountRotation({ newOwner: user }, TX_PARAMS);
-  await registry.queryUserRotationState(ownerKeypair.publicKey, true);
-
-  // await dexAdapter.tryInit(
-  //   {
-  //     registry: registryAddress,
-  //     dex: dexAddress,
-  //   },
-  //   TX_PARAMS
-  // );
-
-  // await dexAdapter.trySaveRoute(
-  //   {
-  //     mintFirst: mintWsol,
-  //     mintLast: mintUsdc,
-  //     route: [{ ammIndex: 0, tokenOut: mintUsdc }],
-  //   },
-  //   TX_PARAMS
-  // );
-
-  // await dexAdapter.queryConfig(true);
-  // await dexAdapter.queryRoute(mintWsol, mintUsdc, true);
-
-  // await chain.getTokenBalance(mintWsol, ownerKeypair.publicKey, true);
-  // await chain.wrapSol(5, TX_PARAMS);
-  // await chain.getTokenBalance(mintWsol, ownerKeypair.publicKey, true);
-
-  // Check if pool exists before swapping
-  // const AMM_CONFIG_INDEX = 0;
-
-  // await dexAdapter.queryAmmPoolState(
-  //   AMM_CONFIG_INDEX,
-  //   mintUsdc,
-  //   mintWsol,
-  //   true
-  // );
-
-  // (async () => {
-  //   const balanceWsol = await chain.getTokenBalance(
-  //     mintWsol,
-  //     ownerKeypair.publicKey
-  //   );
-  //   const balanceUsdc = await chain.getTokenBalance(
-  //     mintUsdc,
-  //     ownerKeypair.publicKey
-  //   );
-
-  //   li({
-  //     balanceWsol,
-  //     balanceUsdc,
-  //   });
-  // })();
-
-  // await dexAdapter.trySwap(
-  //   {
-  //     amountIn: 5 * LAMPORTS_PER_SOL,
-  //     amountOutMinimum: 1,
-  //     tokenIn: mintWsol,
-  //     tokenOut: mintUsdc,
-  //   },
-  //   TX_PARAMS
-  // );
-
-  // (async () => {
-  //   const balanceWsol = await chain.getTokenBalance(
-  //     mintWsol,
-  //     ownerKeypair.publicKey
-  //   );
-  //   const balanceUsdc = await chain.getTokenBalance(
-  //     mintUsdc,
-  //     ownerKeypair.publicKey
-  //   );
-
-  //   li({
-  //     balanceWsol,
-  //     balanceUsdc,
-  //   });
-  // })();
+async function main() {
+  await init(
+    {
+      rotationTimeout: 0,
+    },
+    REVENUE_MINT.DEVNET,
+    true,
+  );
 }
 
 main();

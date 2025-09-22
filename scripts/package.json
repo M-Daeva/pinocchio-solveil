@@ -17,7 +17,7 @@
   "license": "BSL-1.1",
   "private": true,
   "scripts": {
-    "app": "bun run scripts/backend/app.ts",
+    "app": "ts-node ./src/backend/app.ts",
     "store": "ts-node ./src/backend/services/store.ts",
     "codegen": "bun run scripts/backend/generate-types.ts",
     "dev": "bun run --watch scripts/backend/app.ts",
