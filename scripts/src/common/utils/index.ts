@@ -5,6 +5,7 @@ import * as spl from "@solana/spl-token";
 import { Network, TxParams } from "../interfaces";
 // import { getSimulationComputeUnits } from "@solana-developers/helpers";
 import { NETWORK_CONFIG } from "../config";
+import { BN } from "bn.js";
 import axios, {
   AxiosRequestConfig,
   AxiosInstance,
@@ -355,89 +356,89 @@ export function decimalFrom(value: math.BigNumber): string {
 //   };
 // }
 
-// type RustIntType = "u8" | "u16" | "u32" | "u64" | "u128";
+type RustIntType = "u8" | "u16" | "u32" | "u64" | "u128";
 
-// /**
-//  * Converts a TypeScript number to a Buffer based on the specified Rust integer type
-//  * @param value - The number to convert
-//  * @param rustType - The Rust integer type (u8, u16, u32, u64, u128)
-//  * @returns Buffer representing the number in little-endian format
-//  * @throws Error if the value exceeds the maximum for the specified type
-//  */
-// export function numberToRustBuffer(
-//   value: number,
-//   rustType: RustIntType,
-// ): Buffer {
-//   // Validate input bounds for each type
-//   const maxValues = {
-//     u8: 255, // 2^8 - 1
-//     u16: 65535, // 2^16 - 1
-//     u32: 4294967295, // 2^32 - 1
-//     u64: BigInt("18446744073709551615"), // 2^64 - 1 (as bigint)
-//     u128: BigInt("340282366920938463463374607431768211455"), // 2^128 - 1 (as bigint)
-//   };
+/**
+ * Converts a TypeScript number to a Buffer based on the specified Rust integer type
+ * @param value - The number to convert
+ * @param rustType - The Rust integer type (u8, u16, u32, u64, u128)
+ * @returns Buffer representing the number in little-endian format
+ * @throws Error if the value exceeds the maximum for the specified type
+ */
+export function numberToRustBuffer(
+  value: number,
+  rustType: RustIntType,
+): Buffer {
+  // Validate input bounds for each type
+  const maxValues = {
+    u8: 255, // 2^8 - 1
+    u16: 65535, // 2^16 - 1
+    u32: 4294967295, // 2^32 - 1
+    u64: BigInt("18446744073709551615"), // 2^64 - 1 (as bigint)
+    u128: BigInt("340282366920938463463374607431768211455"), // 2^128 - 1 (as bigint)
+  };
 
-//   // Byte sizes for each type
-//   const byteSizes = {
-//     u8: 1,
-//     u16: 2,
-//     u32: 4,
-//     u64: 8,
-//     u128: 16,
-//   };
+  // Byte sizes for each type
+  const byteSizes = {
+    u8: 1,
+    u16: 2,
+    u32: 4,
+    u64: 8,
+    u128: 16,
+  };
 
-//   // Handle u8 specially - simple array conversion
-//   if (rustType === "u8") {
-//     if (value < 0 || value > maxValues.u8 || !Number.isInteger(value)) {
-//       throw new Error(
-//         `Value ${value} is out of range for u8 (0-${maxValues.u8})`,
-//       );
-//     }
-//     return Buffer.from([value]);
-//   }
+  // Handle u8 specially - simple array conversion
+  if (rustType === "u8") {
+    if (value < 0 || value > maxValues.u8 || !Number.isInteger(value)) {
+      throw new Error(
+        `Value ${value} is out of range for u8 (0-${maxValues.u8})`,
+      );
+    }
+    return Buffer.from([value]);
+  }
 
-//   // Handle u16, u32 with anchor.BN for consistency
-//   if (rustType === "u16" || rustType === "u32") {
-//     const maxValue = maxValues[rustType] as number;
-//     if (value < 0 || value > maxValue || !Number.isInteger(value)) {
-//       throw new Error(
-//         `Value ${value} is out of range for ${rustType} (0-${maxValue})`,
-//       );
-//     }
+  // Handle u16, u32 with anchor.BN for consistency
+  if (rustType === "u16" || rustType === "u32") {
+    const maxValue = maxValues[rustType] as number;
+    if (value < 0 || value > maxValue || !Number.isInteger(value)) {
+      throw new Error(
+        `Value ${value} is out of range for ${rustType} (0-${maxValue})`,
+      );
+    }
 
-//     return new anchor.BN(value).toArrayLike(Buffer, "le", byteSizes[rustType]);
-//   }
+    return new BN(value).toArrayLike(Buffer, "le", byteSizes[rustType]);
+  }
 
-//   // Handle u64 and u128 - these require bigint for full range support
-//   if (rustType === "u64" || rustType === "u128") {
-//     // Convert number to bigint for large value handling
-//     let bigintValue: bigint;
+  // Handle u64 and u128 - these require bigint for full range support
+  if (rustType === "u64" || rustType === "u128") {
+    // Convert number to bigint for large value handling
+    let bigintValue: bigint;
 
-//     if (typeof value === "bigint") {
-//       bigintValue = value;
-//     } else {
-//       if (!Number.isInteger(value) || value < 0) {
-//         throw new Error(
-//           `Value ${value} must be a non-negative integer for ${rustType}`,
-//         );
-//       }
-//       bigintValue = BigInt(value);
-//     }
+    if (typeof value === "bigint") {
+      bigintValue = value;
+    } else {
+      if (!Number.isInteger(value) || value < 0) {
+        throw new Error(
+          `Value ${value} must be a non-negative integer for ${rustType}`,
+        );
+      }
+      bigintValue = BigInt(value);
+    }
 
-//     const maxValue = maxValues[rustType] as bigint;
-//     if (bigintValue < BigInt(0) || bigintValue > maxValue) {
-//       throw new Error(
-//         `Value ${bigintValue} is out of range for ${rustType} (0-${maxValue})`,
-//       );
-//     }
+    const maxValue = maxValues[rustType] as bigint;
+    if (bigintValue < BigInt(0) || bigintValue > maxValue) {
+      throw new Error(
+        `Value ${bigintValue} is out of range for ${rustType} (0-${maxValue})`,
+      );
+    }
 
-//     // For very large numbers, we need to handle them as bigint
-//     return new anchor.BN(bigintValue.toString()).toArrayLike(
-//       Buffer,
-//       "le",
-//       byteSizes[rustType],
-//     );
-//   }
+    // For very large numbers, we need to handle them as bigint
+    return new BN(bigintValue.toString()).toArrayLike(
+      Buffer,
+      "le",
+      byteSizes[rustType],
+    );
+  }
 
-//   throw new Error(`Unsupported Rust type: ${rustType}`);
-// }
+  throw new Error(`Unsupported Rust type: ${rustType}`);
+}

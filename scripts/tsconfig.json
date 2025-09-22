@@ -1,6 +1,7 @@
 {
   "include": [
     "./src/backend",
+    "./src/common",
     "./scripts"
   ],
   "exclude": [
