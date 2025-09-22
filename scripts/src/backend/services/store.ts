@@ -4,6 +4,7 @@ import { rootPath } from "../utils";
 import { PATH } from "../../common/config";
 import { l, li, numberFrom } from "../../common/utils";
 import { readFile } from "fs/promises";
+import bs58 from "bs58";
 import { loadKeypairSignerFromFile } from "gill/node";
 import {
   createSolanaRpc,
@@ -16,12 +17,11 @@ import {
   generateKeyPairSigner,
   compileTransaction,
   signTransaction,
+  SimulateTransactionFunction,
+  CompilableTransactionMessage,
+  SignaturesMap,
+  TransactionMessageBytes,
 } from "gill";
-
-// Configuration
-const RPC_URL = "https://api.devnet.solana.com"; // Change to mainnet for production
-const PROGRAM_SO_PATH = "./target/deploy/your_program.so"; // Path to your compiled program
-const KEYPAIR_PATH = "~/.config/solana/id.json"; // Path to your wallet keypair
 
 // BPF Loader Upgradeable program ID
 const BPF_LOADER_UPGRADEABLE_PROGRAM_ID =
@@ -42,6 +42,27 @@ const BPF_LOADER_UPGRADEABLE_INSTRUCTIONS = {
   SET_AUTHORITY: 4,
   CLOSE: 5,
 } as const;
+
+async function simulateTx(
+  tx:
+    | Readonly<{
+        messageBytes: TransactionMessageBytes;
+        signatures: SignaturesMap;
+      }>
+    | CompilableTransactionMessage,
+  simulateTransaction: SimulateTransactionFunction,
+) {
+  const simulationResult = await simulateTransaction(tx, {
+    commitment: "confirmed",
+  });
+
+  l("Simulation result:", simulationResult);
+
+  if (simulationResult.value.err) {
+    l("Simulation failed:", simulationResult.value.err);
+    l("Logs:", simulationResult.value.logs);
+  }
+}
 
 // Helper function to create BPF Loader Upgradeable deploy instruction
 function createBpfLoaderUpgradeableDeployInstruction(params: {
@@ -80,6 +101,7 @@ function createBpfLoaderUpgradeableDeployInstruction(params: {
       { address: params.rentSysvarAccount, role: AccountRole.READONLY },
       { address: params.clockSysvarAccount, role: AccountRole.READONLY },
       { address: params.systemProgramAccount, role: AccountRole.READONLY },
+      // Authority should be a signer for the deploy instruction
       ...(params.authorityAccount
         ? [
             {
@@ -127,8 +149,11 @@ function createBpfLoaderUpgradeableInitializeBufferInstruction(params: {
   bufferAccount: Address;
   authorityAccount: Address;
 }): Instruction<typeof BPF_LOADER_UPGRADEABLE_PROGRAM_ID> {
-  // Create instruction data with discriminator and authority pubkey
-  const instructionData = new Uint8Array(36); // 4 bytes discriminator + 32 bytes pubkey
+  // The InitializeBuffer instruction format:
+  // 4 bytes: instruction discriminator
+  // 1 byte: option (0 = None, 1 = Some)
+  // 32 bytes: authority pubkey (if option = 1)
+  const instructionData = new Uint8Array(37);
   const view = new DataView(instructionData.buffer);
 
   // Set instruction discriminator (INITIALIZE_BUFFER = 0)
@@ -138,10 +163,15 @@ function createBpfLoaderUpgradeableInitializeBufferInstruction(params: {
     true,
   );
 
-  // Add authority pubkey bytes starting at offset 4
-  const addressEncoder = getAddressEncoder();
-  const authorityBytes = addressEncoder.encode(params.authorityAccount);
-  instructionData.set(authorityBytes, 4);
+  // Set option byte to 1 (Some) for the authority
+  instructionData[4] = 1;
+
+  // Convert address string to raw bytes
+  // Solana addresses are base58 encoded, we need to decode them
+  const authorityBytes = bs58.decode(params.authorityAccount);
+
+  // Copy the 32 bytes of the authority pubkey
+  instructionData.set(authorityBytes, 5);
 
   return {
     programAddress: BPF_LOADER_UPGRADEABLE_PROGRAM_ID,
@@ -220,9 +250,9 @@ async function deployProgram() {
       .toNumber();
     l(`Deployer balance: ${balance} SOL`);
 
-    if (balance < 0.001) {
+    if (balance < 1) {
       throw new Error(
-        "Insufficient balance. Need at least 0.001 SOL for deployment.",
+        "Insufficient balance. Need at least 1 SOL for deployment.",
       );
     }
 
@@ -273,10 +303,10 @@ async function deployProgram() {
       `Program rent: ${numberFrom(programRent).div(LAMPORTS_PER_SOL).toFixed(3)} SOL`,
     );
 
-    const instructions: Instruction[] = [];
+    // Step 1: Create and initialize buffer account
+    l("🔨 Creating buffer creation transaction...");
 
-    // Step 1: Create buffer account
-    instructions.push(
+    const bufferCreationInstructions = [
       createSystemCreateAccountInstruction({
         fromAccount: deployerSigner.address,
         toAccount: bufferSigner.address,
@@ -284,42 +314,17 @@ async function deployProgram() {
         space: BigInt(bufferAccountSize),
         owner: BPF_LOADER_UPGRADEABLE_PROGRAM_ID,
       }),
-    );
-
-    // Step 2: Initialize buffer
-    instructions.push(
       createBpfLoaderUpgradeableInitializeBufferInstruction({
         bufferAccount: bufferSigner.address,
         authorityAccount: deployerSigner.address,
       }),
-    );
+    ];
 
-    // Step 3: Write program data to buffer (in chunks if necessary)
-    const maxChunkSize = 800; // Keep chunks small to avoid transaction size limits
-    for (
-      let offset = 0;
-      offset < programBuffer.length;
-      offset += maxChunkSize
-    ) {
-      const chunk = programBuffer.slice(offset, offset + maxChunkSize);
-      instructions.push(
-        createBpfLoaderUpgradeableWriteInstruction({
-          bufferAccount: bufferSigner.address,
-          authorityAccount: deployerSigner.address,
-          offset,
-          data: chunk,
-        }),
-      );
-    }
-
-    // Since we have many instructions, we'll need to send them in separate transactions
-    // Let's start with buffer creation and initialization
-    l("🔨 Creating buffer creation transaction...");
     const bufferCreationTransaction = createTransaction({
       version: "legacy",
       feePayer: deployerSigner.address,
       latestBlockhash,
-      instructions: instructions.slice(0, 2), // Create and initialize buffer
+      instructions: bufferCreationInstructions,
     });
 
     // Compile the transaction to get messageBytes and signatures
@@ -330,25 +335,36 @@ async function deployProgram() {
 
     // Manually sign with required signers
     l("✍️  Signing buffer creation transaction...");
-
-    // const bufferSignatures = await bufferSigner.signTransactions([
-    //   compiledBufferTransaction,
-    // ]);
-
     const signedTransaction = await signTransaction(
       [bufferSigner.keyPair, deployerSigner.keyPair],
       compiledBufferTransaction,
     );
+
+    await simulateTx(signedTransaction, simulateTransaction);
     const bufferResult = await sendAndConfirmTransaction(signedTransaction);
     l(`Buffer creation transaction: ${bufferResult}`);
 
-    // Now send write instructions in batches
+    // Step 2: Write program data to buffer in smaller chunks
     l("📝 Writing program data to buffer...");
-    const writeInstructions = instructions.slice(2, -1); // All write instructions
-    const batchSize = 3; // Process 3 write instructions per transaction
 
-    for (let i = 0; i < writeInstructions.length; i += batchSize) {
-      const batch = writeInstructions.slice(i, i + batchSize);
+    // Optimize chunk size - make it larger but still safe
+    const maxChunkSize = 800; // Increased from 400 but still conservative
+    const maxInstructionsPerTx = 1; // Keep at 1 instruction per transaction for safety
+
+    for (
+      let offset = 0;
+      offset < programBuffer.length;
+      offset += maxChunkSize
+    ) {
+      const chunk = programBuffer.slice(offset, offset + maxChunkSize);
+
+      // Create a single write instruction
+      const writeInstruction = createBpfLoaderUpgradeableWriteInstruction({
+        bufferAccount: bufferSigner.address,
+        authorityAccount: deployerSigner.address,
+        offset,
+        data: chunk,
+      });
 
       // Get fresh blockhash for each transaction
       const { value: freshBlockhash } = await rpc.getLatestBlockhash().send();
@@ -357,24 +373,29 @@ async function deployProgram() {
         version: "legacy",
         feePayer: deployerSigner.address,
         latestBlockhash: freshBlockhash,
-        instructions: batch,
+        instructions: [writeInstruction], // Only one instruction per transaction
       });
 
       const signedWrite = await signTransaction(
         [deployerSigner.keyPair],
         compileTransaction(writeTransaction),
       );
+
+      await simulateTx(signedWrite, simulateTransaction);
       const writeResult = await sendAndConfirmTransaction(signedWrite);
 
+      const chunkNumber = Math.floor(offset / maxChunkSize) + 1;
+      const totalChunks = Math.ceil(programBuffer.length / maxChunkSize);
       l(
-        `Write batch ${Math.floor(i / batchSize) + 1} transaction: ${writeResult}`,
+        `Write chunk ${chunkNumber}/${totalChunks} (offset: ${offset}, size: ${chunk.length}) transaction: ${writeResult}`,
       );
+
+      // Add a small delay to avoid overwhelming the RPC
+      await new Promise((resolve) => setTimeout(resolve, 500));
     }
 
-    // Finally, deploy the program
-    l("🚀 Deploying program...");
-
-    // Create program and program data accounts first
+    // Step 3: Create program and program data accounts
+    l("🏗️  Creating program accounts...");
     const { value: deployBlockhash } = await rpc.getLatestBlockhash().send();
 
     const accountCreationInstructions = [
@@ -411,11 +432,13 @@ async function deployProgram() {
       compileTransaction(accountCreationTransaction),
     );
 
+    await simulateTx(fullySignedAccounts, simulateTransaction);
     const accountCreationResult =
       await sendAndConfirmTransaction(fullySignedAccounts);
     l(`Account creation transaction: ${accountCreationResult}`);
 
-    // Now deploy
+    // Step 4: Deploy the program
+    l("🚀 Deploying program...");
     const { value: finalBlockhash } = await rpc.getLatestBlockhash().send();
 
     const deployInstruction = createBpfLoaderUpgradeableDeployInstruction({
@@ -442,6 +465,8 @@ async function deployProgram() {
       [deployerSigner.keyPair],
       compileTransaction(deployTransaction),
     );
+
+    await simulateTx(signedDeploy, simulateTransaction);
     const deployResult = await sendAndConfirmTransaction(signedDeploy);
 
     l("✅ Program deployed successfully!");
