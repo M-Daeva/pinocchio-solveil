@@ -1,10 +1,11 @@
-// import { connect } from "solana-kite";
-
 import { fetchConfig } from "../common/schema/codama/accounts/config";
 import {
   getInitInstruction,
+  getUpdateConfigInstruction,
   InitInput,
   InitInstructionDataArgs,
+  UpdateConfigInput,
+  UpdateConfigInstructionDataArgs,
 } from "../common/schema/codama/instructions";
 import { REGISTRY_CPI_PROGRAM_ADDRESS } from "../common/schema/codama/programs/registryCpi";
 import {
@@ -26,6 +27,12 @@ import {
   compileTransaction,
   signTransaction,
   LAMPORTS_PER_SOL,
+  Instruction,
+  AccountLookupMeta,
+  AccountMeta,
+  KeyPairSigner,
+  SendAndConfirmTransactionWithSignersFunction,
+  SimulateTransactionFunction,
 } from "gill";
 import { BitField, Uint32, Uint64 } from "../common/interfaces/primitives";
 import { loadKeypairSignerFromFile } from "gill/node";
@@ -68,9 +75,7 @@ async function getOptimalPriorityFee(
   try {
     // Get recent prioritization fees
     const { value: prioritizationFees } = await rpc
-      .getRecentPrioritizationFees({
-        lockedWritableAccounts: [payerAddress],
-      })
+      .getRecentPrioritizationFees([payerAddress])
       .send();
 
     let basePriorityFee = 0;
@@ -127,9 +132,13 @@ async function getOptimalComputeUnits(
       return null;
     }
 
+    // Convert BigInt to Number safely for calculation
+    const unitsConsumedNum =
+      typeof unitsConsumed === "bigint" ? Number(unitsConsumed) : unitsConsumed;
+
     // Apply multiplier and base adjustment for safety margin
     const { cuMultiplier = CU_MULTIPLIER, cuBase = CU_BASE } = config;
-    const finalUnits = Math.ceil(unitsConsumed * cuMultiplier + cuBase);
+    const finalUnits = Math.ceil(unitsConsumedNum * cuMultiplier + cuBase);
 
     return finalUnits;
   } catch (error) {
@@ -174,13 +183,96 @@ class RegistryPda {
   }
 }
 
+async function handleTx(
+  rpcUrl: string,
+  sendAndConfirmTransaction: SendAndConfirmTransactionWithSignersFunction,
+  simulateTransaction: SimulateTransactionFunction,
+  sender: KeyPairSigner,
+  signerList: CryptoKeyPair[],
+  instructions: Instruction<
+    string,
+    readonly (AccountLookupMeta<string, string> | AccountMeta<string>)[]
+  >[],
+  computeConfig: ComputeConfig = {},
+  isDisplayed: boolean = false,
+) {
+  const rpc = createSolanaRpc(rpcUrl);
+
+  // Get latest blockhash for transaction
+  const { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
+
+  // Create transaction for simulation
+  const simulationTx = createTransaction({
+    version: "legacy",
+    feePayer: sender.address,
+    latestBlockhash,
+    instructions,
+  });
+
+  // Get optimal priority fee and compute units in parallel
+  const [optimalPriorityFee, optimalComputeUnits] = await Promise.all([
+    getOptimalPriorityFee(rpc, sender.address, computeConfig),
+    getOptimalComputeUnits(simulateTransaction, simulationTx, computeConfig),
+  ]);
+
+  // Build final instructions array with compute budget instructions
+  let finalInstructions = [];
+
+  // Add compute unit price instruction (priority fee)
+  if (optimalPriorityFee > 0) {
+    finalInstructions.push(
+      getSetComputeUnitPriceInstruction({
+        microLamports: optimalPriorityFee,
+      }),
+    );
+  }
+
+  // Add compute unit limit instruction
+  if (optimalComputeUnits) {
+    finalInstructions.push(
+      getSetComputeUnitLimitInstruction({
+        units: optimalComputeUnits,
+      }),
+    );
+  }
+
+  // Add the main instruction
+  finalInstructions = [...finalInstructions, ...instructions];
+
+  // Create final transaction with all instructions
+  const finalTx = createTransaction({
+    version: simulationTx.version,
+    feePayer: simulationTx.feePayer.address,
+    latestBlockhash: simulationTx.lifetimeConstraint,
+    instructions: finalInstructions,
+  });
+
+  // Sign and send transaction
+  const signedTransaction = await signTransaction(
+    signerList,
+    compileTransaction(finalTx),
+  );
+
+  const signature = await sendAndConfirmTransaction(signedTransaction);
+
+  // Log compute configuration for debugging
+  if (isDisplayed) {
+    l("Transaction Configuration:");
+    l(`- Priority Fee: ${optimalPriorityFee} microlamports`);
+    l(`- Compute Units: ${optimalComputeUnits || "default"}`);
+    l(`- Signature: ${signature}`);
+  }
+
+  return logAndReturn(signature, isDisplayed);
+}
+
 async function init(
   args: IRegistry.InitArgs,
   revenueMint: Address,
   computeConfig: ComputeConfig = {},
   isDisplayed: boolean = false,
 ) {
-  const rpc = createSolanaRpc(NETWORK_CONFIG.DEVNET);
+  // const rpc = createSolanaRpc(NETWORK_CONFIG.DEVNET);
   const { sendAndConfirmTransaction, simulateTransaction } = createSolanaClient(
     {
       urlOrMoniker: "devnet",
@@ -265,77 +357,117 @@ async function init(
     },
   };
 
-  const mainIx = getInitInstruction({
+  const ix = getInitInstruction({
     ...ixAccs,
     ...ixArgs,
   });
 
-  // Get latest blockhash for transaction
-  const { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
-
-  // Create transaction for simulation
-  const simulationTx = createTransaction({
-    version: "legacy",
-    feePayer: sender.address,
-    latestBlockhash,
-    instructions: [mainIx],
-  });
-
-  // Get optimal priority fee and compute units in parallel
-  const [optimalPriorityFee, optimalComputeUnits] = await Promise.all([
-    getOptimalPriorityFee(rpc, sender.address, computeConfig),
-    getOptimalComputeUnits(simulateTransaction, simulationTx, computeConfig),
-  ]);
-
-  // Build final instructions array with compute budget instructions
-  const finalInstructions = [];
-
-  // Add compute unit price instruction (priority fee)
-  if (optimalPriorityFee > 0) {
-    finalInstructions.push(
-      getSetComputeUnitPriceInstruction({
-        microLamports: optimalPriorityFee,
-      }),
-    );
-  }
-
-  // Add compute unit limit instruction
-  if (optimalComputeUnits) {
-    finalInstructions.push(
-      getSetComputeUnitLimitInstruction({
-        units: optimalComputeUnits,
-      }),
-    );
-  }
-
-  // Add the main instruction
-  finalInstructions.push(mainIx);
-
-  // Create final transaction with all instructions
-  const finalTx = createTransaction({
-    version: simulationTx.version,
-    feePayer: simulationTx.feePayer.address,
-    latestBlockhash: simulationTx.lifetimeConstraint,
-    instructions: finalInstructions,
-  });
-
-  // Sign and send transaction
-  const signedTransaction = await signTransaction(
+  return handleTx(
+    NETWORK_CONFIG.DEVNET,
+    sendAndConfirmTransaction,
+    simulateTransaction,
+    sender,
     signerList,
-    compileTransaction(finalTx),
+    [ix],
+    computeConfig,
+    isDisplayed,
+  );
+}
+
+async function updateConfig(
+  args: IRegistry.UpdateConfigArgs,
+  computeConfig: ComputeConfig = {},
+  isDisplayed: boolean = false,
+) {
+  const { sendAndConfirmTransaction, simulateTransaction } = createSolanaClient(
+    {
+      urlOrMoniker: "devnet",
+    },
   );
 
-  const signature = await sendAndConfirmTransaction(signedTransaction);
+  const sender = await loadKeypairSignerFromFile(rootPath(PATH.OWNER_KEYPAIR));
 
-  // Log compute configuration for debugging
-  if (isDisplayed) {
-    l("Transaction Configuration:");
-    l(`- Priority Fee: ${optimalPriorityFee} microlamports`);
-    l(`- Compute Units: ${optimalComputeUnits || "default"}`);
-    l(`- Signature: ${signature}`);
+  const registryPda = new RegistryPda(REGISTRY_CPI_PROGRAM_ADDRESS);
+
+  const [[config], [adminRotationState]] = await Promise.all([
+    registryPda.config(),
+    registryPda.adminRotationState(),
+  ]);
+
+  const signerList: CryptoKeyPair[] = [sender.keyPair];
+
+  const ixAccs: XOR<UpdateConfigInput, UpdateConfigInstructionDataArgs> = {
+    sender,
+    config,
+    adminRotationState,
+  };
+
+  const ADMIN = 0;
+  const IS_PAUSED = 1;
+  const ROTATION_TIMEOUT = 2;
+  const REGISTRATION_FEE_AMOUNT = 3;
+  const DATA_SIZE_RANGE = 4;
+
+  let flags = new BitField();
+  let admin = sender.address; // placeholder
+  let isPaused = new BitField();
+  let rotationTimeout = new Uint32();
+  let registrationFeeAmount = new Uint64();
+  let dataSizeRange = { min: new Uint32(), max: new Uint32() };
+
+  if (args.admin) {
+    flags.setFlag(ADMIN, true);
+    admin = args.admin;
   }
 
-  return logAndReturn(signature, isDisplayed);
+  if (args.is_paused) {
+    flags.setFlag(IS_PAUSED, true);
+    isPaused.setBit(args.is_paused);
+  }
+
+  if (args.rotation_timeout) {
+    flags.setFlag(ROTATION_TIMEOUT, true);
+    rotationTimeout.set(args.rotation_timeout);
+  }
+
+  if (args.registration_fee_amount) {
+    flags.setFlag(REGISTRATION_FEE_AMOUNT, true);
+    registrationFeeAmount.set(BigInt(args.registration_fee_amount));
+  }
+
+  if (args.data_size_range) {
+    flags.setFlag(DATA_SIZE_RANGE, true);
+    dataSizeRange.min.set(args.data_size_range.min);
+    dataSizeRange.max.set(args.data_size_range.max);
+  }
+
+  const ixArgs: UpdateConfigInstructionDataArgs = {
+    flags: flags.getRaw(),
+    admin,
+    isPaused: isPaused.getRaw(),
+    rotationTimeout: rotationTimeout.toArray(),
+    registrationFeeAmount: registrationFeeAmount.toArray(),
+    dataSizeRange: {
+      min: dataSizeRange.min.toArray(),
+      max: dataSizeRange.max.toArray(),
+    },
+  };
+
+  const ix = getUpdateConfigInstruction({
+    ...ixAccs,
+    ...ixArgs,
+  });
+
+  return handleTx(
+    NETWORK_CONFIG.DEVNET,
+    sendAndConfirmTransaction,
+    simulateTransaction,
+    sender,
+    signerList,
+    [ix],
+    computeConfig,
+    isDisplayed,
+  );
 }
 
 async function queryConfig(isDisplayed: boolean = false) {
@@ -361,6 +493,8 @@ async function main() {
   //   true,
   // );
 
+  await queryConfig(true);
+  await updateConfig({ rotation_timeout: 24 * 3_600 });
   await queryConfig(true);
 }
 
