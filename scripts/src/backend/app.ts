@@ -41,6 +41,7 @@ import { NETWORK_CONFIG, PATH, REVENUE_MINT } from "../common/config";
 
 import * as IRegistry from "../common/interfaces/registry";
 import { l, li, logAndReturn } from "../common/utils";
+
 // const addr = getAddressEncoder();
 
 // to get account interface from input and instruction data args interfaces
@@ -357,10 +358,12 @@ async function init(
     },
   };
 
-  const ix = getInitInstruction({
-    ...ixAccs,
-    ...ixArgs,
-  });
+  const ixs = [
+    getInitInstruction({
+      ...ixAccs,
+      ...ixArgs,
+    }),
+  ];
 
   return handleTx(
     NETWORK_CONFIG.DEVNET,
@@ -368,7 +371,7 @@ async function init(
     simulateTransaction,
     sender,
     signerList,
-    [ix],
+    ixs,
     computeConfig,
     isDisplayed,
   );
@@ -408,6 +411,8 @@ async function updateConfig(
   const REGISTRATION_FEE_AMOUNT = 3;
   const DATA_SIZE_RANGE = 4;
 
+  // TODO: make it type safe
+  // TODO: write helper
   let flags = new BitField();
   let admin = sender.address; // placeholder
   let isPaused = new BitField();
@@ -453,10 +458,12 @@ async function updateConfig(
     },
   };
 
-  const ix = getUpdateConfigInstruction({
-    ...ixAccs,
-    ...ixArgs,
-  });
+  const ixs = [
+    getUpdateConfigInstruction({
+      ...ixAccs,
+      ...ixArgs,
+    }),
+  ];
 
   return handleTx(
     NETWORK_CONFIG.DEVNET,
@@ -464,7 +471,7 @@ async function updateConfig(
     simulateTransaction,
     sender,
     signerList,
-    [ix],
+    ixs,
     computeConfig,
     isDisplayed,
   );
@@ -478,9 +485,36 @@ async function queryConfig(isDisplayed: boolean = false) {
 
   const { data } = await fetchConfig(rpc, config);
 
-  // TODO: convert data to human readable form
+  interface Config {
+    admin: Address;
+    isPaused: boolean;
+    rotationTimeout: number;
+    registrationFee: {
+      amount: BigInt;
+      asset: Address;
+    };
+    dataSizeRange: { min: number; max: number };
+  }
 
-  return logAndReturn(data, isDisplayed);
+  // TODO: BigInt, BN, math.BigNumber
+
+  const res: Config = {
+    admin: data.admin,
+    isPaused: new BitField(data.isPaused).getBit(),
+    rotationTimeout: new Uint32(...data.rotationTimeout).get(),
+    registrationFee: {
+      amount: new Uint64(
+        data.registrationFee.amount as unknown as Uint8Array,
+      ).get(),
+      asset: data.registrationFee.asset,
+    },
+    dataSizeRange: {
+      min: new Uint32(...data.dataSizeRange.min).get(),
+      max: new Uint32(...data.dataSizeRange.max).get(),
+    },
+  };
+
+  return logAndReturn(res, isDisplayed);
 }
 
 async function main() {
@@ -494,8 +528,8 @@ async function main() {
   // );
 
   await queryConfig(true);
-  await updateConfig({ rotation_timeout: 24 * 3_600 });
-  await queryConfig(true);
+  // await updateConfig({ rotation_timeout: 24 * 3_600 });
+  // await queryConfig(true);
 }
 
 main();
