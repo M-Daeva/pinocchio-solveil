@@ -11,6 +11,8 @@ import {
   TOKEN_PROGRAM_ADDRESS,
   ASSOCIATED_TOKEN_PROGRAM_ADDRESS,
   getAssociatedTokenAccountAddress,
+  getSetComputeUnitLimitInstruction,
+  getSetComputeUnitPriceInstruction,
 } from "gill/programs";
 import {
   createTransaction,
@@ -77,7 +79,7 @@ class RegistryPda {
 async function init(
   args: IRegistry.InitArgs,
   revenueMint: Address,
-  // params: TxParams = {},
+  // params: TxParams = {}, // TODO: pass priority fee parameters
   isDisplayed: boolean = false,
 ) {
   const rpc = createSolanaRpc(NETWORK_CONFIG.DEVNET);
@@ -102,7 +104,7 @@ async function init(
   // TODO: get or create
   const revenueAppAta = await getAssociatedTokenAccountAddress(
     revenueMint,
-    sender,
+    config,
     TOKEN_PROGRAM_ADDRESS,
   );
 
@@ -170,24 +172,28 @@ async function init(
     ...ixArgs,
   });
 
+  // TODO: add proper logic
+  // const setCUPriceIx = getSetComputeUnitPriceInstruction({ microLamports: 42 });
+  // const setCULimitIx = getSetComputeUnitLimitInstruction({
+  //   units: 42,
+  // });
+
   const { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
   const txRaw = createTransaction({
     version: "legacy",
     feePayer: sender.address,
     latestBlockhash,
     instructions: [ix],
-    computeUnitLimit: 0,
   });
 
   const res = await simulateTransaction(txRaw);
-  li(res);
   const {
     value: { unitsConsumed },
   } = res;
 
   const tx = createTransaction({
     version: txRaw.version,
-    feePayer: txRaw.feePayer as any,
+    feePayer: txRaw.feePayer.address,
     latestBlockhash: txRaw.lifetimeConstraint,
     instructions: txRaw.instructions as any,
     computeUnitLimit: unitsConsumed,
@@ -197,8 +203,10 @@ async function init(
     signerList,
     compileTransaction(tx),
   );
+  li({ signedTransaction });
 
   const signature = await sendAndConfirmTransaction(signedTransaction);
+  li({ signature });
 
   // TODO: tx response instead of signature
   return logAndReturn(signature, isDisplayed);
@@ -207,7 +215,7 @@ async function init(
 async function main() {
   await init(
     {
-      rotationTimeout: 0,
+      rotationTimeout: 48 * 3_600,
     },
     REVENUE_MINT.DEVNET,
     true,
