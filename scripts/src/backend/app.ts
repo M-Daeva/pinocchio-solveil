@@ -1,5 +1,6 @@
 // import { connect } from "solana-kite";
 
+import { fetchConfig } from "../common/schema/codama/accounts/config";
 import {
   getInitInstruction,
   InitInput,
@@ -24,6 +25,7 @@ import {
   createSolanaRpc,
   compileTransaction,
   signTransaction,
+  LAMPORTS_PER_SOL,
 } from "gill";
 import { BitField, Uint32, Uint64 } from "../common/interfaces/primitives";
 import { loadKeypairSignerFromFile } from "gill/node";
@@ -39,6 +41,102 @@ type XOR<T, U> = Omit<T, keyof U> & Omit<U, keyof T>;
 
 type Seed = ReadonlyUint8Array | string;
 type PdaResp = readonly [Address<string>, ProgramDerivedAddressBump];
+
+// Configuration for compute units and priority fees
+interface ComputeConfig {
+  priorityFeeMultiplier?: number; // multiplier for base priority fee (default: 1.2)
+  priorityFeeBase?: number; // base fee in microlamports to add (default: 0)
+  cuMultiplier?: number; // multiplier for simulated CU usage (default: 1.2)
+  cuBase?: number; // base CU to add (default: 0)
+  maxPriorityFee?: number; // max priority fee cap in microlamports
+  minPriorityFee?: number; // min priority fee floor in microlamports
+}
+
+/**
+ * Get recent prioritization fees for calculating optimal priority fee
+ */
+async function getOptimalPriorityFee(
+  rpc: any,
+  payerAddress: Address,
+  config: ComputeConfig = {},
+): Promise<number> {
+  const PRIORITY_FEE_MULTIPLIER = 1.0;
+  const PRIORITY_FEE_BASE = 0;
+  const MAX_PRIORITY_FEE = 0.01 * LAMPORTS_PER_SOL; // 0.01 SOL cap
+  const MIN_PRIORITY_FEE = 0;
+
+  try {
+    // Get recent prioritization fees
+    const { value: prioritizationFees } = await rpc
+      .getRecentPrioritizationFees({
+        lockedWritableAccounts: [payerAddress],
+      })
+      .send();
+
+    let basePriorityFee = 0;
+    if (prioritizationFees && prioritizationFees.length > 0) {
+      // Calculate median or average (using average here for consistency with your legacy code)
+      basePriorityFee = Math.ceil(
+        prioritizationFees.reduce(
+          (acc: number, cur: any) => acc + cur.prioritizationFee,
+          0,
+        ) / prioritizationFees.length,
+      );
+    }
+
+    // Apply multiplier and base adjustment
+    const {
+      priorityFeeMultiplier = PRIORITY_FEE_MULTIPLIER,
+      priorityFeeBase = PRIORITY_FEE_BASE,
+      maxPriorityFee = MAX_PRIORITY_FEE,
+      minPriorityFee = MIN_PRIORITY_FEE,
+    } = config;
+
+    let finalPriorityFee = Math.ceil(
+      basePriorityFee * priorityFeeMultiplier + priorityFeeBase,
+    );
+
+    // Apply min/max bounds
+    finalPriorityFee = Math.max(minPriorityFee, finalPriorityFee);
+    finalPriorityFee = Math.min(maxPriorityFee, finalPriorityFee);
+
+    return finalPriorityFee;
+  } catch (error) {
+    console.warn("Failed to get recent prioritization fees:", error);
+    return config.priorityFeeBase || 0;
+  }
+}
+
+/**
+ * Simulate transaction to get compute units and calculate optimal CU limit
+ */
+async function getOptimalComputeUnits(
+  simulateTransaction: any,
+  transaction: any,
+  config: ComputeConfig = {},
+): Promise<number | null> {
+  const CU_MULTIPLIER = 1.1;
+  const CU_BASE = 0;
+
+  try {
+    const simulationResult = await simulateTransaction(transaction);
+    const unitsConsumed = simulationResult.value?.unitsConsumed;
+
+    if (!unitsConsumed) {
+      console.warn("No compute units consumed in simulation");
+      return null;
+    }
+
+    // Apply multiplier and base adjustment for safety margin
+    const { cuMultiplier = CU_MULTIPLIER, cuBase = CU_BASE } = config;
+    const finalUnits = Math.ceil(unitsConsumed * cuMultiplier + cuBase);
+
+    return finalUnits;
+  } catch (error) {
+    console.warn("Failed to simulate transaction for CU calculation:", error);
+    return null;
+  }
+}
 
 function getPdaFactory(
   programId: Address,
@@ -79,7 +177,7 @@ class RegistryPda {
 async function init(
   args: IRegistry.InitArgs,
   revenueMint: Address,
-  // params: TxParams = {}, // TODO: pass priority fee parameters
+  computeConfig: ComputeConfig = {},
   isDisplayed: boolean = false,
 ) {
   const rpc = createSolanaRpc(NETWORK_CONFIG.DEVNET);
@@ -167,59 +265,103 @@ async function init(
     },
   };
 
-  const ix = getInitInstruction({
+  const mainIx = getInitInstruction({
     ...ixAccs,
     ...ixArgs,
   });
 
-  // TODO: add proper logic
-  // const setCUPriceIx = getSetComputeUnitPriceInstruction({ microLamports: 42 });
-  // const setCULimitIx = getSetComputeUnitLimitInstruction({
-  //   units: 42,
-  // });
-
+  // Get latest blockhash for transaction
   const { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
-  const txRaw = createTransaction({
+
+  // Create transaction for simulation
+  const simulationTx = createTransaction({
     version: "legacy",
     feePayer: sender.address,
     latestBlockhash,
-    instructions: [ix],
+    instructions: [mainIx],
   });
 
-  const res = await simulateTransaction(txRaw);
-  const {
-    value: { unitsConsumed },
-  } = res;
+  // Get optimal priority fee and compute units in parallel
+  const [optimalPriorityFee, optimalComputeUnits] = await Promise.all([
+    getOptimalPriorityFee(rpc, sender.address, computeConfig),
+    getOptimalComputeUnits(simulateTransaction, simulationTx, computeConfig),
+  ]);
 
-  const tx = createTransaction({
-    version: txRaw.version,
-    feePayer: txRaw.feePayer.address,
-    latestBlockhash: txRaw.lifetimeConstraint,
-    instructions: txRaw.instructions as any,
-    computeUnitLimit: unitsConsumed,
+  // Build final instructions array with compute budget instructions
+  const finalInstructions = [];
+
+  // Add compute unit price instruction (priority fee)
+  if (optimalPriorityFee > 0) {
+    finalInstructions.push(
+      getSetComputeUnitPriceInstruction({
+        microLamports: optimalPriorityFee,
+      }),
+    );
+  }
+
+  // Add compute unit limit instruction
+  if (optimalComputeUnits) {
+    finalInstructions.push(
+      getSetComputeUnitLimitInstruction({
+        units: optimalComputeUnits,
+      }),
+    );
+  }
+
+  // Add the main instruction
+  finalInstructions.push(mainIx);
+
+  // Create final transaction with all instructions
+  const finalTx = createTransaction({
+    version: simulationTx.version,
+    feePayer: simulationTx.feePayer.address,
+    latestBlockhash: simulationTx.lifetimeConstraint,
+    instructions: finalInstructions,
   });
 
+  // Sign and send transaction
   const signedTransaction = await signTransaction(
     signerList,
-    compileTransaction(tx),
+    compileTransaction(finalTx),
   );
-  li({ signedTransaction });
 
   const signature = await sendAndConfirmTransaction(signedTransaction);
-  li({ signature });
 
-  // TODO: tx response instead of signature
+  // Log compute configuration for debugging
+  if (isDisplayed) {
+    l("Transaction Configuration:");
+    l(`- Priority Fee: ${optimalPriorityFee} microlamports`);
+    l(`- Compute Units: ${optimalComputeUnits || "default"}`);
+    l(`- Signature: ${signature}`);
+  }
+
   return logAndReturn(signature, isDisplayed);
 }
 
+async function queryConfig(isDisplayed: boolean = false) {
+  const rpc = createSolanaRpc(NETWORK_CONFIG.DEVNET);
+
+  const registryPda = new RegistryPda(REGISTRY_CPI_PROGRAM_ADDRESS);
+  const [config] = await registryPda.config();
+
+  const { data } = await fetchConfig(rpc, config);
+
+  // TODO: convert data to human readable form
+
+  return logAndReturn(data, isDisplayed);
+}
+
 async function main() {
-  await init(
-    {
-      rotationTimeout: 48 * 3_600,
-    },
-    REVENUE_MINT.DEVNET,
-    true,
-  );
+  // await init(
+  //   {
+  //     rotationTimeout: 48 * 3_600,
+  //   },
+  //   REVENUE_MINT.DEVNET,
+  //   {},
+  //   true,
+  // );
+
+  await queryConfig(true);
 }
 
 main();
