@@ -1,8 +1,15 @@
 import { AES, enc } from "crypto-js";
 import util from "util";
 import { all, create } from "mathjs";
-import * as spl from "@solana/spl-token";
-import { ComputeConfig, Network, PdaResp, Seed } from "../interfaces";
+import {
+  ClientAny,
+  ComputeConfig,
+  Network,
+  PdaResp,
+  RpcAny,
+  RpcMainOrDev,
+  Seed,
+} from "../interfaces";
 import { COMMITMENT, NETWORK_CONFIG } from "../config";
 import { BN } from "bn.js";
 import axios, {
@@ -20,24 +27,33 @@ import {
   VersionedTransaction,
 } from "@solana/web3.js";
 import {
+  getSetComputeUnitLimitInstruction,
+  getSetComputeUnitPriceInstruction,
+  SYSTEM_PROGRAM_ADDRESS,
+  TOKEN_2022_PROGRAM_ADDRESS,
+  TOKEN_PROGRAM_ADDRESS,
+} from "gill/programs";
+import {
   AccountLookupMeta,
   AccountMeta,
   Address,
   compileTransaction,
+  createSolanaClient,
   createSolanaRpc,
   createTransaction,
+  devnet,
+  DevnetUrl,
   getProgramDerivedAddress,
   Instruction,
   KeyPairSigner,
   LAMPORTS_PER_SOL,
-  SendAndConfirmTransactionWithSignersFunction,
+  localnet,
+  LocalnetUrl,
+  mainnet,
+  MainnetUrl,
   signTransaction,
-  SimulateTransactionFunction,
+  SolanaClient,
 } from "gill";
-import {
-  getSetComputeUnitLimitInstruction,
-  getSetComputeUnitPriceInstruction,
-} from "gill/programs";
 
 export const DECIMAL_PLACES = 18;
 
@@ -173,39 +189,43 @@ export function decimalFrom(value: math.BigNumber): string {
   return value.toPrecision(DECIMAL_PLACES);
 }
 
-// export function publicKeyFromString(publicKey: anchor.web3.PublicKey | string) {
-//   return typeof publicKey === "string" ? new PublicKey(publicKey) : publicKey;
-// }
+export function getRpc(network: Network): RpcAny {
+  const url = NETWORK_CONFIG[network];
 
-// export function getProgram<IDL extends anchor.Idl = anchor.Idl>(
-//   provider: anchor.AnchorProvider,
-//   idl: IDL,
-// ): anchor.Program<IDL> {
-//   return new anchor.Program<IDL>(idl, provider);
-// }
+  if (network === "MAINNET") {
+    return createSolanaRpc(mainnet(url));
+  } else if (network === "DEVNET") {
+    return createSolanaRpc(devnet(url));
+  } else {
+    return createSolanaRpc(localnet(url));
+  }
+}
 
-// export function getRpc(network: Network): string {
-//   return NETWORK_CONFIG[network];
-// }
+export function getClient(network: Network): ClientAny {
+  const url = { urlOrMoniker: NETWORK_CONFIG[network] };
 
-// export function getProvider(
-//   wallet: anchor.Wallet,
-//   rpc: string,
-//   commitment: anchor.web3.Commitment,
-// ): anchor.AnchorProvider {
-//   const connection = new Connection(rpc, commitment);
-//   const provider = new anchor.AnchorProvider(connection, wallet, {
-//     commitment,
-//   });
-//   anchor.setProvider(provider);
+  let client:
+    | SolanaClient<MainnetUrl>
+    | SolanaClient<DevnetUrl>
+    | SolanaClient<LocalnetUrl>;
 
-//   return provider;
-// }
+  if (network === "MAINNET") {
+    client = createSolanaClient<MainnetUrl>(url);
+  } else if (network === "DEVNET") {
+    client = createSolanaClient<DevnetUrl>(url);
+  } else {
+    client = createSolanaClient<LocalnetUrl>(url);
+  }
+
+  return {
+    sendAndConfirmTransaction: client.sendAndConfirmTransaction,
+    simulateTransaction: client.simulateTransaction,
+    rpc: client.rpc,
+  };
+}
 
 export async function handleTx(
-  rpcUrl: string,
-  sendAndConfirmTransaction: SendAndConfirmTransactionWithSignersFunction,
-  simulateTransaction: SimulateTransactionFunction,
+  client: ClientAny,
   sender: KeyPairSigner,
   signerList: CryptoKeyPair[],
   instructions: Instruction<
@@ -215,10 +235,10 @@ export async function handleTx(
   computeConfig: ComputeConfig = {},
   isDisplayed: boolean = false,
 ) {
-  const rpc = createSolanaRpc(rpcUrl);
-
   // Get latest blockhash for transaction
-  const { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
+  const { value: latestBlockhash } = await client.rpc
+    .getLatestBlockhash()
+    .send();
 
   // Create transaction for simulation
   const simulationTx = createTransaction({
@@ -230,8 +250,12 @@ export async function handleTx(
 
   // Get optimal priority fee and compute units in parallel
   const [optimalPriorityFee, optimalComputeUnits] = await Promise.all([
-    getOptimalPriorityFee(rpc, sender.address, computeConfig),
-    getOptimalComputeUnits(simulateTransaction, simulationTx, computeConfig),
+    getOptimalPriorityFee(client.rpc, sender.address, computeConfig),
+    getOptimalComputeUnits(
+      client.simulateTransaction,
+      simulationTx,
+      computeConfig,
+    ),
   ]);
 
   // Build final instructions array with compute budget instructions
@@ -272,10 +296,10 @@ export async function handleTx(
     compileTransaction(finalTx),
   );
 
-  const signature = await sendAndConfirmTransaction(signedTransaction, {
+  const signature = await client.sendAndConfirmTransaction(signedTransaction, {
     commitment: COMMITMENT,
   });
-  const txResponse = await rpc.getTransaction(signature).send();
+  const txResponse = await client.rpc.getTransaction(signature).send();
 
   return logAndReturn(txResponse, isDisplayed);
 }
@@ -284,7 +308,7 @@ export async function handleTx(
  * Get recent prioritization fees for calculating optimal priority fee
  */
 async function getOptimalPriorityFee(
-  rpc: any,
+  rpc: RpcAny,
   payerAddress: Address,
   config: ComputeConfig = {},
 ): Promise<number> {
@@ -295,19 +319,20 @@ async function getOptimalPriorityFee(
 
   try {
     // Get recent prioritization fees
-    const { value: prioritizationFees } = await rpc
+    const prioritizationFees = await rpc
       .getRecentPrioritizationFees([payerAddress])
       .send();
 
     let basePriorityFee = 0;
     if (prioritizationFees && prioritizationFees.length > 0) {
-      // Calculate median or average (using average here for consistency with your legacy code)
-      basePriorityFee = Math.ceil(
-        prioritizationFees.reduce(
-          (acc: number, cur: any) => acc + cur.prioritizationFee,
-          0,
-        ) / prioritizationFees.length,
+      // Calculate average
+      const feeSum = prioritizationFees.reduce(
+        (acc, cur) => acc + cur.prioritizationFee,
+        BigInt(0),
       );
+      const feeAvg = feeSum / BigInt(prioritizationFees.length);
+
+      basePriorityFee = Math.ceil(Number(feeAvg));
     }
 
     // Apply multiplier and base adjustment
@@ -430,32 +455,34 @@ export function getPdaFactory(
 //   }
 // }
 
-// export function getTokenProgramFactory(provider: anchor.AnchorProvider) {
-//   return async (mint: anchor.web3.PublicKey) => {
-//     // check if it's SOL (represented by PublicKey.default)
-//     if (mint.equals(PublicKey.default)) {
-//       throw new Error(`Mint ${mint.toString()} represents Sol`);
-//     }
+export function getTokenProgramFactory(rpc: RpcMainOrDev) {
+  return async (mint: Address): Promise<Address> => {
+    // check if it's SOL (represented by default address)
+    if (mint === SYSTEM_PROGRAM_ADDRESS) {
+      throw new Error(`Mint ${mint.toString()} represents Sol`);
+    }
 
-//     // it's a token, so get the mint account to determine which token program owns it
-//     const mintAccount = await provider.connection.getAccountInfo(mint);
-//     if (!mintAccount) {
-//       throw new Error(`Mint account ${mint.toString()} not found`);
-//     }
+    // it's a token, so get the mint account to determine which token program owns it
+    const mintAccount = await rpc.getAccountInfo(mint).send();
+    if (!mintAccount) {
+      throw new Error(`Mint account ${mint.toString()} not found`);
+    }
 
-//     // determine if it's Token Program or Token 2022
-//     let tokenProgram: PublicKey;
-//     if (mintAccount.owner.equals(spl.TOKEN_PROGRAM_ID)) {
-//       tokenProgram = spl.TOKEN_PROGRAM_ID;
-//     } else if (mintAccount.owner.equals(spl.TOKEN_2022_PROGRAM_ID)) {
-//       tokenProgram = spl.TOKEN_2022_PROGRAM_ID;
-//     } else {
-//       throw new Error(`Unknown token program: ${mintAccount.owner.toString()}`);
-//     }
+    // determine if it's Token Program or Token 2022
+    const mintAccountOwner = mintAccount.value?.owner;
+    let tokenProgram: Address;
 
-//     return tokenProgram;
-//   };
-// }
+    if (mintAccountOwner === TOKEN_PROGRAM_ADDRESS) {
+      tokenProgram = TOKEN_PROGRAM_ADDRESS;
+    } else if (mintAccountOwner === TOKEN_2022_PROGRAM_ADDRESS) {
+      tokenProgram = TOKEN_2022_PROGRAM_ADDRESS;
+    } else {
+      throw new Error(`Unknown token program: ${mintAccountOwner}`);
+    }
+
+    return tokenProgram;
+  };
+}
 
 type RustIntType = "u8" | "u16" | "u32" | "u64" | "u128";
 

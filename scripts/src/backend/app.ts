@@ -1,11 +1,18 @@
 import { fetchConfig } from "../common/schema/codama/accounts/config";
 import { REGISTRY_CPI_PROGRAM_ADDRESS } from "../common/schema/codama/programs/registryCpi";
-import { Address, createSolanaClient, createSolanaRpc } from "gill";
+import { Address } from "gill";
 import { BitField, Uint32, Uint64 } from "../common/interfaces/primitives";
-import { loadKeypairSignerFromFile } from "gill/node";
-import { rootPath } from "./utils";
+import { readKeypairSigner } from "./utils";
 import { NETWORK_CONFIG, PATH, REVENUE_MINT } from "../common/config";
-import { getPdaFactory, handleTx, l, li, logAndReturn } from "../common/utils";
+import {
+  getClient,
+  getPdaFactory,
+  getRpc,
+  handleTx,
+  l,
+  li,
+  logAndReturn,
+} from "../common/utils";
 import { ComputeConfig, PdaResp, Seed, XOR } from "../common/interfaces";
 import {
   SYSTEM_PROGRAM_ADDRESS,
@@ -28,26 +35,26 @@ import * as IRegistry from "../common/interfaces/registry";
 
 // TODO: add user pda
 class RegistryPda {
-  private factory: (seeds: Seed[]) => Promise<PdaResp>;
+  private pda: (seeds: Seed[]) => Promise<PdaResp>;
 
-  constructor(programId: Address) {
-    this.factory = getPdaFactory(programId);
+  constructor() {
+    this.pda = getPdaFactory(REGISTRY_CPI_PROGRAM_ADDRESS);
   }
 
   async bump(): Promise<PdaResp> {
-    return this.factory(["bump"]);
+    return this.pda(["bump"]);
   }
 
   async config(): Promise<PdaResp> {
-    return this.factory(["config"]);
+    return this.pda(["config"]);
   }
 
   async userCounter(): Promise<PdaResp> {
-    return this.factory(["user_counter"]);
+    return this.pda(["user_counter"]);
   }
 
   async adminRotationState(): Promise<PdaResp> {
-    return this.factory(["admin_rotation_state"]);
+    return this.pda(["admin_rotation_state"]);
   }
 }
 
@@ -57,16 +64,10 @@ async function init(
   computeConfig: ComputeConfig = {},
   isDisplayed: boolean = false,
 ) {
-  // const rpc = createSolanaRpc(NETWORK_CONFIG.DEVNET);
-  const { sendAndConfirmTransaction, simulateTransaction } = createSolanaClient(
-    {
-      urlOrMoniker: "devnet",
-    },
-  );
+  const client = getClient("DEVNET");
+  const sender = await readKeypairSigner(PATH.OWNER_KEYPAIR);
 
-  const sender = await loadKeypairSignerFromFile(rootPath(PATH.OWNER_KEYPAIR));
-
-  const registryPda = new RegistryPda(REGISTRY_CPI_PROGRAM_ADDRESS);
+  const registryPda = new RegistryPda();
 
   const [[bump], [config], [userCounter], [adminRotationState]] =
     await Promise.all([
@@ -149,16 +150,7 @@ async function init(
     }),
   ];
 
-  return handleTx(
-    NETWORK_CONFIG.DEVNET,
-    sendAndConfirmTransaction,
-    simulateTransaction,
-    sender,
-    signerList,
-    ixs,
-    computeConfig,
-    isDisplayed,
-  );
+  return handleTx(client, sender, signerList, ixs, computeConfig, isDisplayed);
 }
 
 async function updateConfig(
@@ -166,15 +158,10 @@ async function updateConfig(
   computeConfig: ComputeConfig = {},
   isDisplayed: boolean = false,
 ) {
-  const { sendAndConfirmTransaction, simulateTransaction } = createSolanaClient(
-    {
-      urlOrMoniker: "devnet",
-    },
-  );
+  const client = getClient("DEVNET");
+  const sender = await readKeypairSigner(PATH.OWNER_KEYPAIR);
 
-  const sender = await loadKeypairSignerFromFile(rootPath(PATH.OWNER_KEYPAIR));
-
-  const registryPda = new RegistryPda(REGISTRY_CPI_PROGRAM_ADDRESS);
+  const registryPda = new RegistryPda();
 
   const [[config], [adminRotationState]] = await Promise.all([
     registryPda.config(),
@@ -249,24 +236,13 @@ async function updateConfig(
     }),
   ];
 
-  return handleTx(
-    NETWORK_CONFIG.DEVNET,
-    sendAndConfirmTransaction,
-    simulateTransaction,
-    sender,
-    signerList,
-    ixs,
-    computeConfig,
-    isDisplayed,
-  );
+  return handleTx(client, sender, signerList, ixs, computeConfig, isDisplayed);
 }
 
 async function queryConfig(isDisplayed: boolean = false) {
-  const rpc = createSolanaRpc(NETWORK_CONFIG.DEVNET);
-
-  const registryPda = new RegistryPda(REGISTRY_CPI_PROGRAM_ADDRESS);
+  const rpc = getRpc("DEVNET");
+  const registryPda = new RegistryPda();
   const [config] = await registryPda.config();
-
   const { data } = await fetchConfig(rpc, config);
 
   interface Config {

@@ -4,6 +4,7 @@ import { readFile, writeFile } from "fs";
 import { networks, ProgramName, UTILS, PATH } from "../common/config";
 import { Network } from "../common/interfaces";
 import { loadKeypairSignerFromFile } from "gill/node";
+import { KeyPairSigner } from "gill";
 
 const { ENCODING, MS_PER_SECOND } = UTILS;
 
@@ -130,6 +131,10 @@ export async function specifyTimeout(
     promise,
     new Promise((_r, rej) => (timer = setTimeout(rej, timeout, exception))),
   ]).finally(() => clearTimeout(timer));
+}
+
+export async function readKeypairSigner(path: string): Promise<KeyPairSigner> {
+  return loadKeypairSignerFromFile(rootPath(path));
 }
 
 export async function readKeypair(keypairPath: string): Promise<CryptoKeyPair> {

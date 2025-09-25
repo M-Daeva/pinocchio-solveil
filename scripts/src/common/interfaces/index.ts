@@ -1,6 +1,18 @@
-import { AddressLookupTableAccount, Keypair, PublicKey } from "@solana/web3.js";
 import { networks, ProgramName } from "../config";
-import { Address, ProgramDerivedAddressBump, ReadonlyUint8Array } from "gill";
+import {
+  Address,
+  ProgramDerivedAddressBump,
+  ReadonlyUint8Array,
+  Rpc,
+  RpcDevnet,
+  RpcMainnet,
+  RpcTransport,
+  RpcTransportDevnet,
+  RpcTransportMainnet,
+  SendAndConfirmTransactionWithSignersFunction,
+  SimulateTransactionFunction,
+  SolanaRpcApiFromTransport,
+} from "gill";
 
 export type Network = (typeof networks)[number];
 
@@ -11,6 +23,21 @@ export type NetworkConfig = {
 export type ProgramAddress = {
   [k in ProgramName]: string;
 };
+
+export type RpcMain = RpcMainnet<
+  SolanaRpcApiFromTransport<RpcTransportMainnet>
+>;
+export type RpcDev = RpcDevnet<SolanaRpcApiFromTransport<RpcTransportDevnet>>;
+export type RpcLocal = Rpc<SolanaRpcApiFromTransport<RpcTransport>>;
+
+export type RpcAny = RpcMain | RpcDev | RpcLocal;
+export type RpcMainOrDev = RpcMain | RpcDev;
+
+export interface ClientAny {
+  sendAndConfirmTransaction: SendAndConfirmTransactionWithSignersFunction;
+  simulateTransaction: SimulateTransactionFunction;
+  rpc: RpcAny;
+}
 
 // to get account interface from input and instruction data args interfaces
 export type XOR<T, U> = Omit<T, keyof U> & Omit<U, keyof T>;
