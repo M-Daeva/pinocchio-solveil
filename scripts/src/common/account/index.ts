@@ -74,7 +74,7 @@ export class RegistryHelpers {
       })
       .instruction();
 
-    return await this.handleTx([ix], params, isDisplayed);
+    return this.handleTx([ix], params, isDisplayed);
   }
 
   async tryInitCodama(
@@ -103,7 +103,7 @@ export class RegistryHelpers {
       })
       .instruction();
 
-    return await this.handleTx([ix], params, isDisplayed);
+    return this.handleTx([ix], params, isDisplayed);
   }
 
   async tryUpdateConfig(
@@ -118,7 +118,7 @@ export class RegistryHelpers {
       })
       .instruction();
 
-    return await this.handleTx([ix], params, isDisplayed);
+    return this.handleTx([ix], params, isDisplayed);
   }
 
   async tryConfirmAdminRotation(
@@ -132,7 +132,7 @@ export class RegistryHelpers {
       })
       .instruction();
 
-    return await this.handleTx([ix], params, isDisplayed);
+    return this.handleTx([ix], params, isDisplayed);
   }
 
   async tryWithdrawRevenue(
@@ -152,7 +152,7 @@ export class RegistryHelpers {
       })
       .instruction();
 
-    return await this.handleTx([ix], params, isDisplayed);
+    return this.handleTx([ix], params, isDisplayed);
   }
 
   async tryCreateAccount(
@@ -174,7 +174,7 @@ export class RegistryHelpers {
       })
       .instruction();
 
-    return await this.handleTx([ix], params, isDisplayed);
+    return this.handleTx([ix], params, isDisplayed);
   }
 
   async tryCreateAndActivateAccount(
@@ -206,7 +206,7 @@ export class RegistryHelpers {
       })
       .instruction();
 
-    return await this.handleTx([createIx, activateIx], params, isDisplayed);
+    return this.handleTx([createIx, activateIx], params, isDisplayed);
   }
 
   // get estimated tx cost in SOL
@@ -261,7 +261,7 @@ export class RegistryHelpers {
       })
       .instruction();
 
-    return await this.handleTx([ix], params, isDisplayed);
+    return this.handleTx([ix], params, isDisplayed);
   }
 
   async tryReopenAccount(
@@ -276,7 +276,7 @@ export class RegistryHelpers {
       })
       .instruction();
 
-    return await this.handleTx([ix], params, isDisplayed);
+    return this.handleTx([ix], params, isDisplayed);
   }
 
   async tryActivateAccount(
@@ -294,7 +294,7 @@ export class RegistryHelpers {
       })
       .instruction();
 
-    return await this.handleTx([ix], params, isDisplayed);
+    return this.handleTx([ix], params, isDisplayed);
   }
 
   async tryWriteData(
@@ -314,7 +314,7 @@ export class RegistryHelpers {
       })
       .instruction();
 
-    return await this.handleTx([ix], params, isDisplayed);
+    return this.handleTx([ix], params, isDisplayed);
   }
 
   async tryRequestAccountRotation(
@@ -331,7 +331,7 @@ export class RegistryHelpers {
       })
       .instruction();
 
-    return await this.handleTx([ix], params, isDisplayed);
+    return this.handleTx([ix], params, isDisplayed);
   }
 
   async tryConfirmAccountRotation(
@@ -354,7 +354,7 @@ export class RegistryHelpers {
       })
       .instruction();
 
-    return await this.handleTx([ix], params, isDisplayed);
+    return this.handleTx([ix], params, isDisplayed);
   }
 
   async queryConfig(isDisplayed: boolean = false) {
@@ -393,7 +393,7 @@ export class RegistryHelpers {
 
   async queryUserAccountById(id: number) {
     const [pda] = this.getUserAccountPda(id);
-    return await this.program.account.userAccount.fetch(pda);
+    return this.program.account.userAccount.fetch(pda);
   }
 
   async queryUserAccount(user: PublicKey, isDisplayed: boolean = false) {
@@ -589,7 +589,7 @@ export class DexAdapterHelpers {
       })
       .instruction();
 
-    return await this.handleTx([ix], params, isDisplayed);
+    return this.handleTx([ix], params, isDisplayed);
   }
 
   async tryUpdateConfig(
@@ -604,7 +604,7 @@ export class DexAdapterHelpers {
       })
       .instruction();
 
-    return await this.handleTx([ix], params, isDisplayed);
+    return this.handleTx([ix], params, isDisplayed);
   }
 
   async tryConfirmAdminRotation(
@@ -618,7 +618,7 @@ export class DexAdapterHelpers {
       })
       .instruction();
 
-    return await this.handleTx([ix], params, isDisplayed);
+    return this.handleTx([ix], params, isDisplayed);
   }
 
   async trySaveRoute(
@@ -633,7 +633,7 @@ export class DexAdapterHelpers {
       })
       .instruction();
 
-    return await this.handleTx([ix], params, isDisplayed);
+    return this.handleTx([ix], params, isDisplayed);
   }
 
   async trySwap(
@@ -688,7 +688,7 @@ export class DexAdapterHelpers {
       .remainingAccounts(remainingAccounts)
       .instruction();
 
-    return await this.handleTx([ix], params, isDisplayed);
+    return this.handleTx([ix], params, isDisplayed);
   }
 
   async trySwapAndActivate(
@@ -755,7 +755,7 @@ export class DexAdapterHelpers {
       .remainingAccounts(remainingAccounts)
       .instruction();
 
-    return await this.handleTx([ix], params, isDisplayed);
+    return this.handleTx([ix], params, isDisplayed);
   }
 
   async trySwapAndUnwrapSol(
@@ -810,7 +810,7 @@ export class DexAdapterHelpers {
       .remainingAccounts(remainingAccounts)
       .instruction();
 
-    return await this.handleTx([ix], params, isDisplayed);
+    return this.handleTx([ix], params, isDisplayed);
   }
 
   private async buildRemainingAccountsForRoute(
@@ -1107,7 +1107,7 @@ export class ChainHelpers {
       signers: [...(params.signers || []), mintKeypair],
     };
 
-    return await this.handleTx(instructions, updatedParams, isDisplayed);
+    return this.handleTx(instructions, updatedParams, isDisplayed);
   }
 
   async getOrCreateAta(
@@ -1164,7 +1164,7 @@ export class ChainHelpers {
       ),
     ];
 
-    return await this.handleTx(instructions, params, isDisplayed);
+    return this.handleTx(instructions, params, isDisplayed);
   }
 
   async transferTokens(
@@ -1205,7 +1205,7 @@ export class ChainHelpers {
       ),
     ];
 
-    return await this.handleTx(instructions, params, isDisplayed);
+    return this.handleTx(instructions, params, isDisplayed);
   }
 
   async getBalance(
@@ -1336,7 +1336,7 @@ export class ChainHelpers {
       spl.createSyncNativeInstruction(wsolAta),
     ];
 
-    return await this.handleTx(instructions, params, isDisplayed);
+    return this.handleTx(instructions, params, isDisplayed);
   }
 
   async unwrapSol(
@@ -1390,6 +1390,6 @@ export class ChainHelpers {
       ),
     ];
 
-    return await this.handleTx(instructions, params, isDisplayed);
+    return this.handleTx(instructions, params, isDisplayed);
   }
 }

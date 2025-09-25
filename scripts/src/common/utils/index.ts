@@ -3,6 +3,7 @@ import util from "util";
 import { all, create } from "mathjs";
 import { COMMITMENT, NETWORK_CONFIG } from "../config";
 import { BN } from "bn.js";
+import { TxResponse } from "../interfaces/tx";
 import axios, {
   AxiosRequestConfig,
   AxiosInstance,
@@ -214,6 +215,31 @@ export function getClient(network: Network): ClientAny {
   };
 }
 
+export function handleTxFactory(
+  client: ClientAny,
+  sender: KeyPairSigner,
+): (
+  signerList: CryptoKeyPair[],
+  instructions: Ix[],
+  computeConfig?: ComputeConfig,
+  isDisplayed?: boolean,
+) => Promise<TxResponse> {
+  return async (
+    signerList: CryptoKeyPair[],
+    instructions: Ix[],
+    computeConfig: ComputeConfig = {},
+    isDisplayed: boolean = false,
+  ) =>
+    handleTx(
+      client,
+      sender,
+      signerList,
+      instructions,
+      computeConfig,
+      isDisplayed,
+    );
+}
+
 export async function handleTx(
   client: ClientAny,
   sender: KeyPairSigner,
@@ -221,7 +247,7 @@ export async function handleTx(
   instructions: Ix[],
   computeConfig: ComputeConfig = {},
   isDisplayed: boolean = false,
-) {
+): Promise<TxResponse> {
   // Get latest blockhash for transaction
   const { value: latestBlockhash } = await client.rpc
     .getLatestBlockhash()
@@ -288,7 +314,7 @@ export async function handleTx(
   });
   const txResponse = await client.rpc.getTransaction(signature).send();
 
-  return logAndReturn(txResponse, isDisplayed);
+  return logAndReturn(txResponse as TxResponse, isDisplayed);
 }
 
 /**
@@ -380,15 +406,14 @@ async function getOptimalComputeUnits(
   }
 }
 
-export function getPdaFactory(
+export function pdaFactory(
   programId: Address,
 ): (seeds: Seed[]) => Promise<PdaResp> {
-  return async (seeds: Seed[]) => {
-    return await getProgramDerivedAddress({
+  return async (seeds: Seed[]) =>
+    getProgramDerivedAddress({
       programAddress: programId,
       seeds,
     });
-  };
 }
 
 export async function getOrCreateAtaInstructions(
@@ -435,7 +460,7 @@ export async function getOrCreateAtaInstructions(
   }
 }
 
-export function getTokenProgramFactory(rpc: RpcAny) {
+export function tokenProgramFactory(rpc: RpcAny) {
   return async (mint: Address): Promise<Address> => {
     // check if it's SOL (represented by default address)
     if (mint === SYSTEM_PROGRAM_ADDRESS) {

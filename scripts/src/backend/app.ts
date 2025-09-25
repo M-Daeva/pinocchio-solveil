@@ -6,7 +6,7 @@ import { readKeypairSigner } from "./utils";
 import { NETWORK_CONFIG, PATH, REVENUE_MINT } from "../common/config";
 import {
   getClient,
-  getPdaFactory,
+  pdaFactory,
   getRpc,
   handleTx,
   l,
@@ -38,7 +38,7 @@ class RegistryPda {
   private pda: (seeds: Seed[]) => Promise<PdaResp>;
 
   constructor() {
-    this.pda = getPdaFactory(REGISTRY_CPI_PROGRAM_ADDRESS);
+    this.pda = pdaFactory(REGISTRY_CPI_PROGRAM_ADDRESS);
   }
 
   async bump(): Promise<PdaResp> {
