@@ -77,7 +77,6 @@ async function init(
       registryPda.adminRotationState(),
     ]);
 
-  // TODO: get or create
   const revenueAppAta = await getAssociatedTokenAccountAddress(
     revenueMint,
     config,

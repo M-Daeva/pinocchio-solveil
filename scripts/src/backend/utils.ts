@@ -1,9 +1,8 @@
 import path from "path";
 import { floor, getLast } from "../common/utils";
-import { readFile, writeFile } from "fs";
 import { networks, ProgramName, UTILS, PATH } from "../common/config";
 import { Network } from "../common/interfaces";
-import { loadKeypairSignerFromFile } from "gill/node";
+import { loadKeypairSignerFromFile, saveKeypairToFile } from "gill/node";
 import { KeyPairSigner } from "gill";
 
 const { ENCODING, MS_PER_SECOND } = UTILS;
@@ -137,22 +136,18 @@ export async function readKeypairSigner(path: string): Promise<KeyPairSigner> {
   return loadKeypairSignerFromFile(rootPath(path));
 }
 
-export async function readKeypair(keypairPath: string): Promise<CryptoKeyPair> {
-  return (await loadKeypairSignerFromFile(keypairPath)).keyPair;
+export async function writeKeypair(
+  keypair: CryptoKeyPair,
+  path: string,
+): Promise<void> {
+  await saveKeypairToFile(keypair, rootPath(path));
 }
 
-// export async function writeKeypair(
-//   keypairPath: string,
-//   keypair: CryptoKeyPair,
-// ): Promise<void> {
-//   await Bun.file(keypairPath).write(keypair);
-// }
-
-// export function getKeypairPath(program: ProgramName): string {
-//   return rootPath(
-//     `./target/deploy/${program.toLowerCase()}-data-account-keypair.json`,
-//   );
-// }
+export function getKeypairPath(program: ProgramName): string {
+  return rootPath(
+    `./target/deploy/${program.toLowerCase()}-data-account-keypair.json`,
+  );
+}
 
 // export function getWallet(ownerKeypair: CryptoKeyPair): anchor.Wallet {
 //   return new anchor.Wallet(ownerKeypair);

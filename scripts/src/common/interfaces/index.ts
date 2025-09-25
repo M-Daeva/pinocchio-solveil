@@ -1,6 +1,9 @@
 import { networks, ProgramName } from "../config";
 import {
+  AccountLookupMeta,
+  AccountMeta,
   Address,
+  Instruction,
   ProgramDerivedAddressBump,
   ReadonlyUint8Array,
   Rpc,
@@ -38,6 +41,11 @@ export interface ClientAny {
   simulateTransaction: SimulateTransactionFunction;
   rpc: RpcAny;
 }
+
+export type Ix = Instruction<
+  string,
+  readonly (AccountLookupMeta<string, string> | AccountMeta<string>)[]
+>;
 
 // to get account interface from input and instruction data args interfaces
 export type XOR<T, U> = Omit<T, keyof U> & Omit<U, keyof T>;

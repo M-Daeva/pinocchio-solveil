@@ -1,15 +1,6 @@
 import { AES, enc } from "crypto-js";
 import util from "util";
 import { all, create } from "mathjs";
-import {
-  ClientAny,
-  ComputeConfig,
-  Network,
-  PdaResp,
-  RpcAny,
-  RpcMainOrDev,
-  Seed,
-} from "../interfaces";
 import { COMMITMENT, NETWORK_CONFIG } from "../config";
 import { BN } from "bn.js";
 import axios, {
@@ -18,15 +9,17 @@ import axios, {
   CreateAxiosDefaults,
 } from "axios";
 import {
-  AddressLookupTableAccount,
-  ComputeBudgetProgram,
-  Connection,
-  PublicKey,
-  TransactionInstruction,
-  TransactionMessage,
-  VersionedTransaction,
-} from "@solana/web3.js";
+  ClientAny,
+  ComputeConfig,
+  Ix,
+  Network,
+  PdaResp,
+  RpcAny,
+  Seed,
+} from "../interfaces";
 import {
+  getAssociatedTokenAccountAddress,
+  getCreateAssociatedTokenInstruction,
   getSetComputeUnitLimitInstruction,
   getSetComputeUnitPriceInstruction,
   SYSTEM_PROGRAM_ADDRESS,
@@ -34,8 +27,6 @@ import {
   TOKEN_PROGRAM_ADDRESS,
 } from "gill/programs";
 import {
-  AccountLookupMeta,
-  AccountMeta,
   Address,
   compileTransaction,
   createSolanaClient,
@@ -44,7 +35,6 @@ import {
   devnet,
   DevnetUrl,
   getProgramDerivedAddress,
-  Instruction,
   KeyPairSigner,
   LAMPORTS_PER_SOL,
   localnet,
@@ -228,10 +218,7 @@ export async function handleTx(
   client: ClientAny,
   sender: KeyPairSigner,
   signerList: CryptoKeyPair[],
-  instructions: Instruction<
-    string,
-    readonly (AccountLookupMeta<string, string> | AccountMeta<string>)[]
-  >[],
+  instructions: Ix[],
   computeConfig: ComputeConfig = {},
   isDisplayed: boolean = false,
 ) {
@@ -404,58 +391,51 @@ export function getPdaFactory(
   };
 }
 
-// export async function getOrCreateAtaInstructions(
-//   connection: anchor.web3.Connection,
-//   payer: PublicKey,
-//   mintPubkey: PublicKey,
-//   ownerPubkey: PublicKey,
-//   allowOwnerOffCurve: boolean,
-// ): Promise<{
-//   ata: anchor.web3.PublicKey;
-//   ixs: anchor.web3.TransactionInstruction[];
-// }> {
-//   // calculate the ATA address
-//   const associatedToken = await spl.getAssociatedTokenAddress(
-//     mintPubkey,
-//     ownerPubkey,
-//     allowOwnerOffCurve,
-//     spl.TOKEN_PROGRAM_ID,
-//     spl.ASSOCIATED_TOKEN_PROGRAM_ID,
-//   );
+export async function getOrCreateAtaInstructions(
+  rpc: RpcAny,
+  payer: KeyPairSigner,
+  mintPubkey: Address,
+  ownerPubkey: Address,
+  tokenProgram: Address,
+): Promise<{
+  ata: Address;
+  ixs: Ix[];
+}> {
+  // calculate the ATA address
+  const ata = await getAssociatedTokenAccountAddress(
+    mintPubkey,
+    ownerPubkey,
+    tokenProgram,
+  );
 
-//   // check if the account exists and is properly initialized
-//   try {
-//     await spl.getAccount(
-//       connection,
-//       associatedToken,
-//       undefined,
-//       spl.TOKEN_PROGRAM_ID,
-//     );
+  // check if the account exists and is properly initialized
+  try {
+    await rpc.getAccountInfo(ata).send();
 
-//     // account exists and is properly initialized
-//     return {
-//       ata: associatedToken,
-//       ixs: [],
-//     };
-//   } catch (_) {
-//     // create the ATA creation instruction
-//     const instruction = spl.createAssociatedTokenAccountInstruction(
-//       payer,
-//       associatedToken,
-//       ownerPubkey,
-//       mintPubkey,
-//       spl.TOKEN_PROGRAM_ID,
-//       spl.ASSOCIATED_TOKEN_PROGRAM_ID,
-//     );
+    // account exists and is properly initialized
+    return {
+      ata,
+      ixs: [],
+    };
+  } catch (_) {
+    // create the ATA creation instruction
+    const ix = getCreateAssociatedTokenInstruction({
+      payer,
+      ata,
+      owner: ownerPubkey,
+      mint: mintPubkey,
+      tokenProgram,
+      systemProgram: SYSTEM_PROGRAM_ADDRESS,
+    });
 
-//     return {
-//       ata: associatedToken,
-//       ixs: [instruction],
-//     };
-//   }
-// }
+    return {
+      ata,
+      ixs: [ix],
+    };
+  }
+}
 
-export function getTokenProgramFactory(rpc: RpcMainOrDev) {
+export function getTokenProgramFactory(rpc: RpcAny) {
   return async (mint: Address): Promise<Address> => {
     // check if it's SOL (represented by default address)
     if (mint === SYSTEM_PROGRAM_ADDRESS) {
