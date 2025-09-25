@@ -1,4 +1,4 @@
-import { address } from "gill";
+import { address, Commitment } from "gill";
 import { NetworkConfig, ProgramAddress } from "../interfaces";
 
 export type ProgramName = "REGISTRY" | "DEX_ADAPTER";
@@ -10,7 +10,7 @@ export const NETWORK_CONFIG: NetworkConfig = {
   MAINNET: "https://api.mainnet-beta.solana.com",
 };
 
-// export const COMMITMENT: anchor.web3.Commitment = "confirmed";
+export const COMMITMENT: Commitment = "confirmed";
 
 export const PATH = {
   TO_CONFIG: "./scripts/common/config/index.ts",

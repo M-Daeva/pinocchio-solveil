@@ -37,7 +37,12 @@ import {
 import { BitField, Uint32, Uint64 } from "../common/interfaces/primitives";
 import { loadKeypairSignerFromFile } from "gill/node";
 import { rootPath } from "./utils";
-import { NETWORK_CONFIG, PATH, REVENUE_MINT } from "../common/config";
+import {
+  COMMITMENT,
+  NETWORK_CONFIG,
+  PATH,
+  REVENUE_MINT,
+} from "../common/config";
 
 import * as IRegistry from "../common/interfaces/registry";
 import { l, li, logAndReturn } from "../common/utils";
@@ -254,17 +259,12 @@ async function handleTx(
     compileTransaction(finalTx),
   );
 
-  const signature = await sendAndConfirmTransaction(signedTransaction);
+  const signature = await sendAndConfirmTransaction(signedTransaction, {
+    commitment: COMMITMENT,
+  });
+  const txResponse = await rpc.getTransaction(signature).send();
 
-  // Log compute configuration for debugging
-  if (isDisplayed) {
-    l("Transaction Configuration:");
-    l(`- Priority Fee: ${optimalPriorityFee} microlamports`);
-    l(`- Compute Units: ${optimalComputeUnits || "default"}`);
-    l(`- Signature: ${signature}`);
-  }
-
-  return logAndReturn(signature, isDisplayed);
+  return logAndReturn(txResponse, isDisplayed);
 }
 
 async function init(
@@ -528,7 +528,7 @@ async function main() {
   // );
 
   await queryConfig(true);
-  // await updateConfig({ rotation_timeout: 24 * 3_600 });
+  // await updateConfig({ rotation_timeout: 24 * 3_600 }, {}, true);
   // await queryConfig(true);
 }
 
