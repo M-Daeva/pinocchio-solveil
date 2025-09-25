@@ -1,5 +1,6 @@
 import { AddressLookupTableAccount, Keypair, PublicKey } from "@solana/web3.js";
 import { networks, ProgramName } from "../config";
+import { Address, ProgramDerivedAddressBump, ReadonlyUint8Array } from "gill";
 
 export type Network = (typeof networks)[number];
 
@@ -11,19 +12,20 @@ export type ProgramAddress = {
   [k in ProgramName]: string;
 };
 
-/**
- * y = k * x + b
- */
-export interface LinearParams {
-  k: number;
-  b: number;
-}
+// to get account interface from input and instruction data args interfaces
+export type XOR<T, U> = Omit<T, keyof U> & Omit<U, keyof T>;
 
-export interface TxParams {
-  lookupTables?: AddressLookupTableAccount[];
-  priorityFee?: LinearParams;
-  cpu?: LinearParams;
-  signers?: Keypair[];
+export type Seed = ReadonlyUint8Array | string;
+export type PdaResp = readonly [Address<string>, ProgramDerivedAddressBump];
+
+// Configuration for compute units and priority fees
+export interface ComputeConfig {
+  priorityFeeMultiplier?: number; // multiplier for base priority fee (default: 1.2)
+  priorityFeeBase?: number; // base fee in microlamports to add (default: 0)
+  cuMultiplier?: number; // multiplier for simulated CU usage (default: 1.2)
+  cuBase?: number; // base CU to add (default: 0)
+  maxPriorityFee?: number; // max priority fee cap in microlamports
+  minPriorityFee?: number; // min priority fee floor in microlamports
 }
 
 type D = 8 | 16 | 32 | 64;

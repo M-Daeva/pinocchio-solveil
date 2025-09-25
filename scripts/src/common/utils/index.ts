@@ -2,9 +2,8 @@ import { AES, enc } from "crypto-js";
 import util from "util";
 import { all, create } from "mathjs";
 import * as spl from "@solana/spl-token";
-import { Network, TxParams } from "../interfaces";
-// import { getSimulationComputeUnits } from "@solana-developers/helpers";
-import { NETWORK_CONFIG } from "../config";
+import { ComputeConfig, Network, PdaResp, Seed } from "../interfaces";
+import { COMMITMENT, NETWORK_CONFIG } from "../config";
 import { BN } from "bn.js";
 import axios, {
   AxiosRequestConfig,
@@ -20,6 +19,25 @@ import {
   TransactionMessage,
   VersionedTransaction,
 } from "@solana/web3.js";
+import {
+  AccountLookupMeta,
+  AccountMeta,
+  Address,
+  compileTransaction,
+  createSolanaRpc,
+  createTransaction,
+  getProgramDerivedAddress,
+  Instruction,
+  KeyPairSigner,
+  LAMPORTS_PER_SOL,
+  SendAndConfirmTransactionWithSignersFunction,
+  signTransaction,
+  SimulateTransactionFunction,
+} from "gill";
+import {
+  getSetComputeUnitLimitInstruction,
+  getSetComputeUnitPriceInstruction,
+} from "gill/programs";
 
 export const DECIMAL_PLACES = 18;
 
@@ -184,99 +202,182 @@ export function decimalFrom(value: math.BigNumber): string {
 //   return provider;
 // }
 
-// export async function handleTx(
-//   provider: anchor.AnchorProvider,
-//   instructions: TransactionInstruction[],
-//   params: TxParams,
-// ): Promise<anchor.web3.TransactionSignature> {
-//   const { connection, wallet } = provider;
+export async function handleTx(
+  rpcUrl: string,
+  sendAndConfirmTransaction: SendAndConfirmTransactionWithSignersFunction,
+  simulateTransaction: SimulateTransactionFunction,
+  sender: KeyPairSigner,
+  signerList: CryptoKeyPair[],
+  instructions: Instruction<
+    string,
+    readonly (AccountLookupMeta<string, string> | AccountMeta<string>)[]
+  >[],
+  computeConfig: ComputeConfig = {},
+  isDisplayed: boolean = false,
+) {
+  const rpc = createSolanaRpc(rpcUrl);
 
-//   let { lookupTables, priorityFee, cpu, signers } = params;
-//   lookupTables = lookupTables || [];
-//   priorityFee = { k: priorityFee?.k || 1, b: priorityFee?.b || 0 };
-//   cpu = { k: cpu?.k || 1, b: cpu?.b || 0 };
-//   signers = signers || []; // additional signers (like mint keypairs)
+  // Get latest blockhash for transaction
+  const { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
 
-//   // TODO: check this option: https://www.helius.dev/docs/priority-fee/estimating-fees-using-serialized-transaction
-//   // get priority fees
-//   // https://solana.com/developers/guides/advanced/how-to-use-priority-fees#how-do-i-estimate-priority-fees
-//   const prioritizationFees = await connection.getRecentPrioritizationFees({
-//     lockedWritableAccounts: [wallet.publicKey],
-//   });
+  // Create transaction for simulation
+  const simulationTx = createTransaction({
+    version: "legacy",
+    feePayer: sender.address,
+    latestBlockhash,
+    instructions,
+  });
 
-//   const defaultPriorityFee = prioritizationFees.length
-//     ? Math.ceil(
-//         prioritizationFees.reduce(
-//           (acc, cur) => acc + cur.prioritizationFee,
-//           0,
-//         ) / prioritizationFees.length,
-//       )
-//     : 0;
+  // Get optimal priority fee and compute units in parallel
+  const [optimalPriorityFee, optimalComputeUnits] = await Promise.all([
+    getOptimalPriorityFee(rpc, sender.address, computeConfig),
+    getOptimalComputeUnits(simulateTransaction, simulationTx, computeConfig),
+  ]);
 
-//   // https://solana.com/developers/guides/advanced/how-to-request-optimal-compute#how-to-request-compute-budget
-//   let [microLamports, units, { blockhash, lastValidBlockHeight }] =
-//     await Promise.all([
-//       priorityFee.k * defaultPriorityFee + priorityFee.b,
-//       getSimulationComputeUnits(
-//         connection,
-//         instructions,
-//         wallet.publicKey,
-//         lookupTables,
-//       ),
-//       connection.getLatestBlockhash(),
-//     ]);
+  // Build final instructions array with compute budget instructions
+  let finalInstructions = [];
 
-//   instructions.unshift(
-//     ComputeBudgetProgram.setComputeUnitPrice({ microLamports }),
-//   );
+  // Add compute unit price instruction (priority fee)
+  if (optimalPriorityFee > 0) {
+    finalInstructions.push(
+      getSetComputeUnitPriceInstruction({
+        microLamports: optimalPriorityFee,
+      }),
+    );
+  }
 
-//   units = cpu.k * (units || 0) + cpu.b;
-//   if (units) {
-//     // probably should add some margin of error to units
-//     instructions.unshift(ComputeBudgetProgram.setComputeUnitLimit({ units }));
-//   }
+  // Add compute unit limit instruction
+  if (optimalComputeUnits) {
+    finalInstructions.push(
+      getSetComputeUnitLimitInstruction({
+        units: optimalComputeUnits,
+      }),
+    );
+  }
 
-//   // TODO .compileToV0Message(lookupTables)
-//   // create transaction message
-//   const message = new TransactionMessage({
-//     instructions,
-//     recentBlockhash: blockhash,
-//     payerKey: wallet.publicKey,
-//   }).compileToLegacyMessage();
+  // Add the main instruction
+  finalInstructions = [...finalInstructions, ...instructions];
 
-//   // create versioned transaction
-//   const transaction = new VersionedTransaction(message);
+  // Create final transaction with all instructions
+  const finalTx = createTransaction({
+    version: simulationTx.version,
+    feePayer: simulationTx.feePayer.address,
+    latestBlockhash: simulationTx.lifetimeConstraint,
+    instructions: finalInstructions,
+  });
 
-//   // sign with additional signers first (like mint keypairs)
-//   if (signers.length > 0) {
-//     transaction.sign(signers);
-//   }
+  // Sign and send transaction
+  const signedTransaction = await signTransaction(
+    signerList,
+    compileTransaction(finalTx),
+  );
 
-//   // then sign with the wallet
-//   const signedTx = await wallet.signTransaction(transaction);
+  const signature = await sendAndConfirmTransaction(signedTransaction, {
+    commitment: COMMITMENT,
+  });
+  const txResponse = await rpc.getTransaction(signature).send();
 
-//   // send transaction
-//   const signature = await connection.sendTransaction(signedTx);
+  return logAndReturn(txResponse, isDisplayed);
+}
 
-//   await connection.confirmTransaction({
-//     blockhash,
-//     lastValidBlockHeight,
-//     signature,
-//   });
+/**
+ * Get recent prioritization fees for calculating optimal priority fee
+ */
+async function getOptimalPriorityFee(
+  rpc: any,
+  payerAddress: Address,
+  config: ComputeConfig = {},
+): Promise<number> {
+  const PRIORITY_FEE_MULTIPLIER = 1.0;
+  const PRIORITY_FEE_BASE = 0;
+  const MAX_PRIORITY_FEE = 0.01 * LAMPORTS_PER_SOL;
+  const MIN_PRIORITY_FEE = 0;
 
-//   return signature;
-// }
+  try {
+    // Get recent prioritization fees
+    const { value: prioritizationFees } = await rpc
+      .getRecentPrioritizationFees([payerAddress])
+      .send();
 
-// export function getHandleTx(provider: anchor.AnchorProvider) {
-//   return async (
-//     instructions: TransactionInstruction[],
-//     params: TxParams,
-//     isDisplayed: boolean,
-//   ): Promise<anchor.web3.TransactionSignature> => {
-//     const tx = await handleTx(provider, instructions, params);
-//     return logAndReturn(tx, isDisplayed);
-//   };
-// }
+    let basePriorityFee = 0;
+    if (prioritizationFees && prioritizationFees.length > 0) {
+      // Calculate median or average (using average here for consistency with your legacy code)
+      basePriorityFee = Math.ceil(
+        prioritizationFees.reduce(
+          (acc: number, cur: any) => acc + cur.prioritizationFee,
+          0,
+        ) / prioritizationFees.length,
+      );
+    }
+
+    // Apply multiplier and base adjustment
+    const {
+      priorityFeeMultiplier = PRIORITY_FEE_MULTIPLIER,
+      priorityFeeBase = PRIORITY_FEE_BASE,
+      maxPriorityFee = MAX_PRIORITY_FEE,
+      minPriorityFee = MIN_PRIORITY_FEE,
+    } = config;
+
+    let finalPriorityFee = Math.ceil(
+      basePriorityFee * priorityFeeMultiplier + priorityFeeBase,
+    );
+
+    // Apply min/max bounds
+    finalPriorityFee = Math.max(minPriorityFee, finalPriorityFee);
+    finalPriorityFee = Math.min(maxPriorityFee, finalPriorityFee);
+
+    return finalPriorityFee;
+  } catch (error) {
+    console.warn("Failed to get recent prioritization fees:", error);
+    return config.priorityFeeBase || 0;
+  }
+}
+
+/**
+ * Simulate transaction to get compute units and calculate optimal CU limit
+ */
+async function getOptimalComputeUnits(
+  simulateTransaction: any,
+  transaction: any,
+  config: ComputeConfig = {},
+): Promise<number | null> {
+  const CU_MULTIPLIER = 1.1;
+  const CU_BASE = 0;
+
+  try {
+    const simulationResult = await simulateTransaction(transaction);
+    const unitsConsumed = simulationResult.value?.unitsConsumed;
+
+    if (!unitsConsumed) {
+      console.warn("No compute units consumed in simulation");
+      return null;
+    }
+
+    // Convert BigInt to Number safely for calculation
+    const unitsConsumedNum =
+      typeof unitsConsumed === "bigint" ? Number(unitsConsumed) : unitsConsumed;
+
+    // Apply multiplier and base adjustment for safety margin
+    const { cuMultiplier = CU_MULTIPLIER, cuBase = CU_BASE } = config;
+    const finalUnits = Math.ceil(unitsConsumedNum * cuMultiplier + cuBase);
+
+    return finalUnits;
+  } catch (error) {
+    console.warn("Failed to simulate transaction for CU calculation:", error);
+    return null;
+  }
+}
+
+export function getPdaFactory(
+  programId: Address,
+): (seeds: Seed[]) => Promise<PdaResp> {
+  return async (seeds: Seed[]) => {
+    return await getProgramDerivedAddress({
+      programAddress: programId,
+      seeds,
+    });
+  };
+}
 
 // export async function getOrCreateAtaInstructions(
 //   connection: anchor.web3.Connection,
