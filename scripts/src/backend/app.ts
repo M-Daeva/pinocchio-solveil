@@ -2,6 +2,7 @@ import { fetchConfig } from "../common/schema/codama/accounts/config";
 import { REGISTRY_CPI_PROGRAM_ADDRESS } from "../common/schema/codama/programs/registryCpi";
 import { Address } from "gill";
 import { BitField, Uint32, Uint64 } from "../common/interfaces/primitives";
+import { IUint32 } from "../common/interfaces/primitives-new";
 import { readKeypairSigner } from "./utils";
 import { NETWORK_CONFIG, PATH, REVENUE_MINT } from "../common/config";
 import {
@@ -244,6 +245,8 @@ async function queryConfig(isDisplayed: boolean = false) {
   const [config] = await registryPda.config();
   const { data } = await fetchConfig(rpc, config);
 
+  li({ data });
+
   interface Config {
     admin: Address;
     isPaused: boolean;
@@ -260,7 +263,7 @@ async function queryConfig(isDisplayed: boolean = false) {
   const res: Config = {
     admin: data.admin,
     isPaused: new BitField(data.isPaused).getBit(),
-    rotationTimeout: new Uint32(...data.rotationTimeout).get(),
+    rotationTimeout: new IUint32(data.rotationTimeout).get(),
     registrationFee: {
       amount: new Uint64(
         data.registrationFee.amount as unknown as Uint8Array,
@@ -268,8 +271,8 @@ async function queryConfig(isDisplayed: boolean = false) {
       asset: data.registrationFee.asset,
     },
     dataSizeRange: {
-      min: new Uint32(...data.dataSizeRange.min).get(),
-      max: new Uint32(...data.dataSizeRange.max).get(),
+      min: new IUint32(data.dataSizeRange.min).get(),
+      max: new IUint32(data.dataSizeRange.max).get(),
     },
   };
 

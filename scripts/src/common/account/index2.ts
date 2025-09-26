@@ -6,6 +6,7 @@ import {
   RpcDev,
   Seed,
   PdaResp,
+  RpcAny,
 } from "../interfaces";
 import { decryptDeserialize, serializeEncrypt } from "./converters";
 import { generateEncryptionKey, MessageSigningWallet } from "./encryption";
@@ -32,7 +33,8 @@ import {
   LAMPORTS_PER_SOL,
 } from "gill";
 import { TxResponse } from "../interfaces/tx";
-import { REGISTRY_CPI_PROGRAM_ADDRESS } from "../schema/codama";
+import { fetchConfig, REGISTRY_CPI_PROGRAM_ADDRESS } from "../schema/codama";
+import { BitField, Uint32, Uint64 } from "../interfaces/primitives";
 
 // TODO: pda w/o parameters can be stored
 class RegistryPda {
@@ -72,6 +74,53 @@ class RegistryPda {
 }
 
 // TODO: class RegistryQuery
+// class RegistryState {
+//   pda: RegistryPda;
+
+//   private rpc: RpcAny;
+
+//   constructor(rpc: RpcAny) {
+//     this.pda = new RegistryPda();
+
+//     this.rpc = rpc;
+//   }
+
+//   async config(isDisplayed: boolean = false) {
+//     const [config] = await this.pda.config();
+//     const { data } = await fetchConfig(this.rpc, config);
+
+//     interface Config {
+//       admin: Address;
+//       isPaused: boolean;
+//       rotationTimeout: number;
+//       registrationFee: {
+//         amount: BigInt;
+//         asset: Address;
+//       };
+//       dataSizeRange: { min: number; max: number };
+//     }
+
+//     // TODO: BigInt, BN, math.BigNumber
+
+//     const res: Config = {
+//       admin: data.admin,
+//       isPaused: new BitField(data.isPaused).getBit(),
+//       rotationTimeout: new Uint32(...data.rotationTimeout).get(),
+//       registrationFee: {
+//         amount: new Uint64(
+//           data.registrationFee.amount as unknown as Uint8Array,
+//         ).get(),
+//         asset: data.registrationFee.asset,
+//       },
+//       dataSizeRange: {
+//         min: new Uint32(...data.dataSizeRange.min).get(),
+//         max: new Uint32(...data.dataSizeRange.max).get(),
+//       },
+//     };
+
+//     return logAndReturn(res, isDisplayed);
+//   }
+// }
 
 // TODO: check TxResponse
 export class RegistryHelpers {
