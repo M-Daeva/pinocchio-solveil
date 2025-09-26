@@ -51,6 +51,7 @@ pub struct Accounts<'a> {
 #[p_serde]
 pub struct InstructionData {
     pub flags: BitField,
+    // TODO: [optional(flags)]
     pub rotation_timeout: Uint32,
     pub account_registration_fee: AssetItem,
     pub account_data_size_range: Range,
