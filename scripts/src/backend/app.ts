@@ -1,8 +1,7 @@
 import { fetchConfig } from "../common/schema/codama/accounts/config";
 import { REGISTRY_CPI_PROGRAM_ADDRESS } from "../common/schema/codama/programs/registryCpi";
 import { Address } from "gill";
-import { BitField } from "../common/interfaces/primitives";
-import { IUint32, IUint64 } from "../common/interfaces/primitives-new";
+import { IBitField, IUint32, IUint64 } from "../common/interfaces/primitives";
 import { readKeypairSigner } from "./utils";
 import { NETWORK_CONFIG, PATH, REVENUE_MINT } from "../common/config";
 import {
@@ -102,7 +101,7 @@ async function init(
   const ACCOUNT_REGISTRATION_FEE = 1;
   const ACCOUNT_DATA_SIZE_RANGE = 2;
 
-  let flags = new BitField();
+  let flags = new IBitField();
   let rotationTimeout = new IUint32();
   let accountRegistrationFee = {
     amount: new IUint64(),
@@ -111,12 +110,12 @@ async function init(
   let accountDataSizeRange = { min: new IUint32(), max: new IUint32() };
 
   if (args.rotationTimeout) {
-    flags.setFlag(ROTATION_TIMEOUT, true);
+    flags.set(true, ROTATION_TIMEOUT);
     rotationTimeout.set(args.rotationTimeout);
   }
 
   if (args.accountRegistrationFee) {
-    flags.setFlag(ACCOUNT_REGISTRATION_FEE, true);
+    flags.set(true, ACCOUNT_REGISTRATION_FEE);
     accountRegistrationFee.amount.set(
       BigInt(args.accountRegistrationFee.amount),
     );
@@ -124,7 +123,7 @@ async function init(
   }
 
   if (args.accountDataSizeRange) {
-    flags.setFlag(ACCOUNT_DATA_SIZE_RANGE, true);
+    flags.set(true, ACCOUNT_DATA_SIZE_RANGE);
     accountDataSizeRange.min.set(args.accountDataSizeRange.min);
     accountDataSizeRange.max.set(args.accountDataSizeRange.max);
   }
@@ -183,35 +182,35 @@ async function updateConfig(
 
   // TODO: make it type safe
   // TODO: write helper
-  let flags = new BitField();
+  let flags = new IBitField();
   let admin = sender.address; // placeholder
-  let isPaused = new BitField();
+  let isPaused = new IBitField();
   let rotationTimeout = new IUint32();
   let registrationFeeAmount = new IUint64();
   let dataSizeRange = { min: new IUint32(), max: new IUint32() };
 
   if (args.admin) {
-    flags.setFlag(ADMIN, true);
+    flags.set(true, ADMIN);
     admin = args.admin;
   }
 
   if (args.is_paused) {
-    flags.setFlag(IS_PAUSED, true);
-    isPaused.setBit(args.is_paused);
+    flags.set(true, IS_PAUSED);
+    isPaused.set(args.is_paused);
   }
 
   if (args.rotation_timeout) {
-    flags.setFlag(ROTATION_TIMEOUT, true);
+    flags.set(true, ROTATION_TIMEOUT);
     rotationTimeout.set(args.rotation_timeout);
   }
 
   if (args.registration_fee_amount) {
-    flags.setFlag(REGISTRATION_FEE_AMOUNT, true);
+    flags.set(true, REGISTRATION_FEE_AMOUNT);
     registrationFeeAmount.set(BigInt(args.registration_fee_amount));
   }
 
   if (args.data_size_range) {
-    flags.setFlag(DATA_SIZE_RANGE, true);
+    flags.set(true, DATA_SIZE_RANGE);
     dataSizeRange.min.set(args.data_size_range.min);
     dataSizeRange.max.set(args.data_size_range.max);
   }
@@ -259,7 +258,7 @@ async function queryConfig(isDisplayed: boolean = false) {
 
   const res: Config = {
     admin: data.admin,
-    isPaused: new BitField(data.isPaused).getBit(),
+    isPaused: new IBitField({ value: data.isPaused }).get(),
     rotationTimeout: new IUint32(data.rotationTimeout).get(),
     registrationFee: {
       amount: new IUint64(data.registrationFee.amount).get(),

@@ -50,6 +50,11 @@ export type Ix = Instruction<
 // to get account interface from input and instruction data args interfaces
 export type XOR<T, U> = Omit<T, keyof U> & Omit<U, keyof T>;
 
+// to have exactly T fields or U fields
+export type OR<T, U> =
+  | (T & { [K in Exclude<keyof U, keyof T>]?: never })
+  | (U & { [K in Exclude<keyof T, keyof U>]?: never });
+
 export type Seed = ReadonlyUint8Array | string;
 export type PdaResp = readonly [Address<string>, ProgramDerivedAddressBump];
 
