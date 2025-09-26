@@ -1,8 +1,8 @@
 import { fetchConfig } from "../common/schema/codama/accounts/config";
 import { REGISTRY_CPI_PROGRAM_ADDRESS } from "../common/schema/codama/programs/registryCpi";
 import { Address } from "gill";
-import { BitField, Uint32, Uint64 } from "../common/interfaces/primitives";
-import { IUint32 } from "../common/interfaces/primitives-new";
+import { BitField } from "../common/interfaces/primitives";
+import { IUint32, IUint64 } from "../common/interfaces/primitives-new";
 import { readKeypairSigner } from "./utils";
 import { NETWORK_CONFIG, PATH, REVENUE_MINT } from "../common/config";
 import {
@@ -34,7 +34,6 @@ import * as IRegistry from "../common/interfaces/registry";
 
 // const addr = getAddressEncoder();
 
-// TODO: add user pda
 class RegistryPda {
   private pda: (seeds: Seed[]) => Promise<PdaResp>;
 
@@ -104,12 +103,12 @@ async function init(
   const ACCOUNT_DATA_SIZE_RANGE = 2;
 
   let flags = new BitField();
-  let rotationTimeout = new Uint32();
+  let rotationTimeout = new IUint32();
   let accountRegistrationFee = {
-    amount: new Uint64(),
+    amount: new IUint64(),
     asset: sender.address, // placeholder
   };
-  let accountDataSizeRange = { min: new Uint32(), max: new Uint32() };
+  let accountDataSizeRange = { min: new IUint32(), max: new IUint32() };
 
   if (args.rotationTimeout) {
     flags.setFlag(ROTATION_TIMEOUT, true);
@@ -132,14 +131,14 @@ async function init(
 
   const ixArgs: InitInstructionDataArgs = {
     flags: flags.getRaw(),
-    rotationTimeout: rotationTimeout.toArray(),
+    rotationTimeout: rotationTimeout.getRaw(),
     accountRegistrationFee: {
-      amount: accountRegistrationFee.amount.toArray(),
+      amount: accountRegistrationFee.amount.getRaw(),
       asset: accountRegistrationFee.asset,
     },
     accountDataSizeRange: {
-      min: accountDataSizeRange.min.toArray(),
-      max: accountDataSizeRange.max.toArray(),
+      min: accountDataSizeRange.min.getRaw(),
+      max: accountDataSizeRange.max.getRaw(),
     },
   };
 
@@ -187,9 +186,9 @@ async function updateConfig(
   let flags = new BitField();
   let admin = sender.address; // placeholder
   let isPaused = new BitField();
-  let rotationTimeout = new Uint32();
-  let registrationFeeAmount = new Uint64();
-  let dataSizeRange = { min: new Uint32(), max: new Uint32() };
+  let rotationTimeout = new IUint32();
+  let registrationFeeAmount = new IUint64();
+  let dataSizeRange = { min: new IUint32(), max: new IUint32() };
 
   if (args.admin) {
     flags.setFlag(ADMIN, true);
@@ -221,11 +220,11 @@ async function updateConfig(
     flags: flags.getRaw(),
     admin,
     isPaused: isPaused.getRaw(),
-    rotationTimeout: rotationTimeout.toArray(),
-    registrationFeeAmount: registrationFeeAmount.toArray(),
+    rotationTimeout: rotationTimeout.getRaw(),
+    registrationFeeAmount: registrationFeeAmount.getRaw(),
     dataSizeRange: {
-      min: dataSizeRange.min.toArray(),
-      max: dataSizeRange.max.toArray(),
+      min: dataSizeRange.min.getRaw(),
+      max: dataSizeRange.max.getRaw(),
     },
   };
 
@@ -258,16 +257,12 @@ async function queryConfig(isDisplayed: boolean = false) {
     dataSizeRange: { min: number; max: number };
   }
 
-  // TODO: BigInt, BN, math.BigNumber
-
   const res: Config = {
     admin: data.admin,
     isPaused: new BitField(data.isPaused).getBit(),
     rotationTimeout: new IUint32(data.rotationTimeout).get(),
     registrationFee: {
-      amount: new Uint64(
-        data.registrationFee.amount as unknown as Uint8Array,
-      ).get(),
+      amount: new IUint64(data.registrationFee.amount).get(),
       asset: data.registrationFee.asset,
     },
     dataSizeRange: {
