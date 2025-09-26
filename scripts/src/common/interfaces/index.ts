@@ -44,14 +44,14 @@ export interface ClientAny {
 
 export type Ix = Instruction<
   string,
-  readonly (AccountLookupMeta<string, string> | AccountMeta<string>)[]
+  (AccountLookupMeta<string, string> | AccountMeta<string>)[]
 >;
 
 // to get account interface from input and instruction data args interfaces
 export type XOR<T, U> = Omit<T, keyof U> & Omit<U, keyof T>;
 
 export type Seed = ReadonlyUint8Array | string;
-export type PdaResp = readonly [Address<string>, ProgramDerivedAddressBump];
+export type PdaResp = [Address<string>, ProgramDerivedAddressBump];
 
 // Configuration for compute units and priority fees
 export interface ComputeConfig {

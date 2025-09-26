@@ -21,16 +21,21 @@ import {
 } from "../utils";
 
 import * as IRegistry from "../interfaces/registry";
-import * as IDexAdapter from "../interfaces/dex-adapter";
 
 import { getInitInstruction } from "../schema/codama/instructions/init";
 import BN from "bn.js";
-import { address, Address, KeyPairSigner, lamports } from "gill";
+import {
+  address,
+  Address,
+  KeyPairSigner,
+  lamports,
+  LAMPORTS_PER_SOL,
+} from "gill";
 import { TxResponse } from "../interfaces/tx";
 import { REGISTRY_CPI_PROGRAM_ADDRESS } from "../schema/codama";
 
-// TODO: add user pda
-export class RegistryPda {
+// TODO: pda w/o parameters can be stored
+class RegistryPda {
   private pda: (seeds: Seed[]) => Promise<PdaResp>;
 
   constructor() {
@@ -52,12 +57,28 @@ export class RegistryPda {
   async adminRotationState(): Promise<PdaResp> {
     return this.pda(["admin_rotation_state"]);
   }
+
+  async userId(user: Address): Promise<PdaResp> {
+    return this.pda(["user_id", user]);
+  }
+
+  async userAccount(userId: number): Promise<PdaResp> {
+    return this.pda(["user_account", numberToRustBuffer(userId, "u32")]);
+  }
+
+  async userRotationState(userId: number): Promise<PdaResp> {
+    return this.pda(["user_rotation_state", numberToRustBuffer(userId, "u32")]);
+  }
 }
 
+// TODO: class RegistryQuery
+
+// TODO: check TxResponse
 export class RegistryHelpers {
+  pda: RegistryPda;
+
   private client: ClientAny;
   private sender: KeyPairSigner;
-  pda: RegistryPda;
 
   private handleTx: (
     signerList: CryptoKeyPair[],
@@ -69,9 +90,10 @@ export class RegistryHelpers {
   private tokenProgram: (mint: Address) => Promise<Address>;
 
   constructor(client: ClientAny, sender: KeyPairSigner) {
+    this.pda = new RegistryPda();
+
     this.client = client;
     this.sender = sender;
-    this.pda = new RegistryPda();
     this.handleTx = handleTxFactory(client, sender);
     this.tokenProgram = tokenProgramFactory(client.rpc);
   }
@@ -503,27 +525,6 @@ export class RegistryHelpers {
 
   //   return logAndReturn(res, isDisplayed);
   // }
-
-  getUserIdPda(user: PublicKey) {
-    return PublicKey.findProgramAddressSync(
-      [Buffer.from("user_id"), user.toBuffer()],
-      this.program.programId,
-    );
-  }
-
-  getUserAccountPda(id: number) {
-    return PublicKey.findProgramAddressSync(
-      [Buffer.from("user_account"), numberToRustBuffer(id, "u32")],
-      this.program.programId,
-    );
-  }
-
-  getUserRotationStatePda(id: number) {
-    return PublicKey.findProgramAddressSync(
-      [Buffer.from("user_rotation_state"), numberToRustBuffer(id, "u32")],
-      this.program.programId,
-    );
-  }
 }
 
 export class ChainHelpers {
