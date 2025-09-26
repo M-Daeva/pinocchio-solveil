@@ -3,14 +3,13 @@ import { BitField, Uint16, Uint32, Uint64, Uint128 } from "../schema/codama";
 
 type IBitFieldArgSet = { flag: boolean; bit?: number };
 type IBitFieldArgSetRaw = { value: BitField };
-type IBitFieldArgs = OR<IBitFieldArgSet, IBitFieldArgSetRaw>;
 
-export class IBitField {
+export class TBitField {
   private readonly bitMaxValue: number = 7;
   private readonly byteMaxValue: number = 255;
   private value: number = 0;
 
-  constructor(x?: IBitFieldArgs) {
+  constructor(x?: OR<IBitFieldArgSet, IBitFieldArgSetRaw>) {
     if (!x) {
       this.setRaw(0);
     } else if ("flag" in x) {
@@ -71,7 +70,7 @@ export class IBitField {
   }
 }
 
-export class IUint16 {
+export class TUint16 {
   private readonly name: string = "Uint16";
   private readonly byteLength: number = 2;
   private readonly maxValue: number = 0xffff;
@@ -124,7 +123,7 @@ export class IUint16 {
   }
 }
 
-export class IUint32 {
+export class TUint32 {
   private readonly name: string = "Uint32";
   private readonly byteLength: number = 4;
   private readonly maxValue: number = 0xffffffff;
@@ -177,7 +176,7 @@ export class IUint32 {
   }
 }
 
-export class IUint64 {
+export class TUint64 {
   private readonly name: string = "Uint64";
   private readonly byteLength: number = 8;
   private readonly maxValue: bigint = 0xffffffffffffffffn;
@@ -245,7 +244,7 @@ export class IUint64 {
   }
 }
 
-export class IUint128 {
+export class TUint128 {
   private readonly name: string = "Uint128";
   private readonly byteLength: number = 16;
   private readonly maxValue: bigint = 0xffffffffffffffffffffffffffffffffn;

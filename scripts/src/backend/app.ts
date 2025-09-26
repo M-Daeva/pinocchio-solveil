@@ -1,7 +1,7 @@
 import { fetchConfig } from "../common/schema/codama/accounts/config";
 import { REGISTRY_CPI_PROGRAM_ADDRESS } from "../common/schema/codama/programs/registryCpi";
 import { Address } from "gill";
-import { IBitField, IUint32, IUint64 } from "../common/interfaces/primitives";
+import { TBitField, TUint32, TUint64 } from "../common/interfaces/primitives";
 import { readKeypairSigner } from "./utils";
 import { NETWORK_CONFIG, PATH, REVENUE_MINT } from "../common/config";
 import {
@@ -30,6 +30,7 @@ import {
 } from "../common/schema/codama/instructions";
 
 import * as IRegistry from "../common/interfaces/registry";
+import { decConfig, IConfig } from "../common/interfaces/codecs";
 
 // const addr = getAddressEncoder();
 
@@ -101,13 +102,13 @@ async function init(
   const ACCOUNT_REGISTRATION_FEE = 1;
   const ACCOUNT_DATA_SIZE_RANGE = 2;
 
-  let flags = new IBitField();
-  let rotationTimeout = new IUint32();
+  let flags = new TBitField();
+  let rotationTimeout = new TUint32();
   let accountRegistrationFee = {
-    amount: new IUint64(),
+    amount: new TUint64(),
     asset: sender.address, // placeholder
   };
-  let accountDataSizeRange = { min: new IUint32(), max: new IUint32() };
+  let accountDataSizeRange = { min: new TUint32(), max: new TUint32() };
 
   if (args.rotationTimeout) {
     flags.set(true, ROTATION_TIMEOUT);
@@ -182,12 +183,12 @@ async function updateConfig(
 
   // TODO: make it type safe
   // TODO: write helper
-  let flags = new IBitField();
+  let flags = new TBitField();
   let admin = sender.address; // placeholder
-  let isPaused = new IBitField();
-  let rotationTimeout = new IUint32();
-  let registrationFeeAmount = new IUint64();
-  let dataSizeRange = { min: new IUint32(), max: new IUint32() };
+  let isPaused = new TBitField();
+  let rotationTimeout = new TUint32();
+  let registrationFeeAmount = new TUint64();
+  let dataSizeRange = { min: new TUint32(), max: new TUint32() };
 
   if (args.admin) {
     flags.set(true, ADMIN);
@@ -237,7 +238,7 @@ async function updateConfig(
   return handleTx(client, sender, signerList, ixs, computeConfig, isDisplayed);
 }
 
-async function queryConfig(isDisplayed: boolean = false) {
+async function queryConfig(isDisplayed: boolean = false): Promise<IConfig> {
   const rpc = getRpc("DEVNET");
   const registryPda = new RegistryPda();
   const [config] = await registryPda.config();
@@ -245,32 +246,7 @@ async function queryConfig(isDisplayed: boolean = false) {
 
   li({ data });
 
-  interface Config {
-    admin: Address;
-    isPaused: boolean;
-    rotationTimeout: number;
-    registrationFee: {
-      amount: BigInt;
-      asset: Address;
-    };
-    dataSizeRange: { min: number; max: number };
-  }
-
-  const res: Config = {
-    admin: data.admin,
-    isPaused: new IBitField({ value: data.isPaused }).get(),
-    rotationTimeout: new IUint32(data.rotationTimeout).get(),
-    registrationFee: {
-      amount: new IUint64(data.registrationFee.amount).get(),
-      asset: data.registrationFee.asset,
-    },
-    dataSizeRange: {
-      min: new IUint32(data.dataSizeRange.min).get(),
-      max: new IUint32(data.dataSizeRange.max).get(),
-    },
-  };
-
-  return logAndReturn(res, isDisplayed);
+  return logAndReturn(decConfig(data), isDisplayed);
 }
 
 async function main() {
