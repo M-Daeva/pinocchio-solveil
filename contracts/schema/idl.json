@@ -270,12 +270,967 @@
           }
         }
       ],
-      "errors": [],
-      "instructions": [],
+      "errors": [
+        {
+          "code": 0,
+          "kind": "errorNode",
+          "message": "Parameters are not provided!",
+          "name": "noParameters"
+        },
+        {
+          "code": 1,
+          "kind": "errorNode",
+          "message": "Wrong asset type!",
+          "name": "wrongAssetType"
+        },
+        {
+          "code": 2,
+          "kind": "errorNode",
+          "message": "Zero amount to send!",
+          "name": "zeroAmount"
+        },
+        {
+          "code": 3,
+          "kind": "errorNode",
+          "message": "Exceeded available asset amount!",
+          "name": "exceededAvailableAssetAmount"
+        },
+        {
+          "code": 4,
+          "kind": "errorNode",
+          "message": "The contract is temporary paused!",
+          "name": "contractIsPaused"
+        },
+        {
+          "code": 5,
+          "kind": "errorNode",
+          "message": "Max data size is out of range!",
+          "name": "maxDataSizeIsOutOfRange"
+        },
+        {
+          "code": 6,
+          "kind": "errorNode",
+          "message": "Max data size is exceeded!",
+          "name": "maxDataSizeIsExceeded"
+        },
+        {
+          "code": 7,
+          "kind": "errorNode",
+          "message": "Wrong user ID!",
+          "name": "wrongUserId"
+        },
+        {
+          "code": 8,
+          "kind": "errorNode",
+          "message": "Account can't be activated twice!",
+          "name": "activateAccountTwice"
+        },
+        {
+          "code": 9,
+          "kind": "errorNode",
+          "message": "Account isn't activated!",
+          "name": "accountIsNotActivated"
+        },
+        {
+          "code": 10,
+          "kind": "errorNode",
+          "message": "Account can't be opened twice!",
+          "name": "openAccountTwice"
+        },
+        {
+          "code": 11,
+          "kind": "errorNode",
+          "message": "Account isn't opened!",
+          "name": "accountIsNotOpened"
+        },
+        {
+          "code": 12,
+          "kind": "errorNode",
+          "message": "Nonce must be unique!",
+          "name": "badNonce"
+        }
+      ],
+      "instructions": [
+        {
+          "accounts": [
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "kind": "instructionAccountNode",
+              "name": "systemProgram"
+            },
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "kind": "instructionAccountNode",
+              "name": "tokenProgram"
+            },
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "kind": "instructionAccountNode",
+              "name": "associatedTokenProgram"
+            },
+            {
+              "isSigner": true,
+              "isWritable": true,
+              "kind": "instructionAccountNode",
+              "name": "sender"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "kind": "instructionAccountNode",
+              "name": "bump"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "kind": "instructionAccountNode",
+              "name": "config"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "kind": "instructionAccountNode",
+              "name": "userCounter"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "kind": "instructionAccountNode",
+              "name": "adminRotationState"
+            },
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "kind": "instructionAccountNode",
+              "name": "revenueMint"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "kind": "instructionAccountNode",
+              "name": "revenueAppAta"
+            }
+          ],
+          "arguments": [
+            {
+              "defaultValue": {
+                "kind": "numberValueNode",
+                "number": 0
+              },
+              "defaultValueStrategy": "omitted",
+              "kind": "instructionArgumentNode",
+              "name": "discriminator",
+              "type": {
+                "endian": "le",
+                "format": "u8",
+                "kind": "numberTypeNode"
+              }
+            },
+            {
+              "kind": "instructionArgumentNode",
+              "name": "flags",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "bitField"
+              }
+            },
+            {
+              "kind": "instructionArgumentNode",
+              "name": "rotationTimeout",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "uint32"
+              }
+            },
+            {
+              "kind": "instructionArgumentNode",
+              "name": "accountRegistrationFee",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "assetItem"
+              }
+            },
+            {
+              "kind": "instructionArgumentNode",
+              "name": "accountDataSizeRange",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "range"
+              }
+            }
+          ],
+          "discriminators": [
+            {
+              "kind": "fieldDiscriminatorNode",
+              "name": "discriminator",
+              "offset": 0
+            }
+          ],
+          "kind": "instructionNode",
+          "name": "init"
+        },
+        {
+          "accounts": [
+            {
+              "isSigner": true,
+              "isWritable": true,
+              "kind": "instructionAccountNode",
+              "name": "sender"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "kind": "instructionAccountNode",
+              "name": "config"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "kind": "instructionAccountNode",
+              "name": "adminRotationState"
+            }
+          ],
+          "arguments": [
+            {
+              "defaultValue": {
+                "kind": "numberValueNode",
+                "number": 1
+              },
+              "defaultValueStrategy": "omitted",
+              "kind": "instructionArgumentNode",
+              "name": "discriminator",
+              "type": {
+                "endian": "le",
+                "format": "u8",
+                "kind": "numberTypeNode"
+              }
+            },
+            {
+              "kind": "instructionArgumentNode",
+              "name": "flags",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "bitField"
+              }
+            },
+            {
+              "kind": "instructionArgumentNode",
+              "name": "admin",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            },
+            {
+              "kind": "instructionArgumentNode",
+              "name": "isPaused",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "bitField"
+              }
+            },
+            {
+              "kind": "instructionArgumentNode",
+              "name": "rotationTimeout",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "uint32"
+              }
+            },
+            {
+              "kind": "instructionArgumentNode",
+              "name": "registrationFeeAmount",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "uint64"
+              }
+            },
+            {
+              "kind": "instructionArgumentNode",
+              "name": "dataSizeRange",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "range"
+              }
+            }
+          ],
+          "discriminators": [
+            {
+              "kind": "fieldDiscriminatorNode",
+              "name": "discriminator",
+              "offset": 0
+            }
+          ],
+          "kind": "instructionNode",
+          "name": "updateConfig"
+        },
+        {
+          "accounts": [
+            {
+              "isSigner": true,
+              "isWritable": true,
+              "kind": "instructionAccountNode",
+              "name": "sender"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "kind": "instructionAccountNode",
+              "name": "config"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "kind": "instructionAccountNode",
+              "name": "adminRotationState"
+            }
+          ],
+          "arguments": [
+            {
+              "defaultValue": {
+                "kind": "numberValueNode",
+                "number": 2
+              },
+              "defaultValueStrategy": "omitted",
+              "kind": "instructionArgumentNode",
+              "name": "discriminator",
+              "type": {
+                "endian": "le",
+                "format": "u8",
+                "kind": "numberTypeNode"
+              }
+            }
+          ],
+          "discriminators": [
+            {
+              "kind": "fieldDiscriminatorNode",
+              "name": "discriminator",
+              "offset": 0
+            }
+          ],
+          "kind": "instructionNode",
+          "name": "confirmAdminRotation"
+        },
+        {
+          "accounts": [
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "kind": "instructionAccountNode",
+              "name": "systemProgram"
+            },
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "kind": "instructionAccountNode",
+              "name": "tokenProgram"
+            },
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "kind": "instructionAccountNode",
+              "name": "associatedTokenProgram"
+            },
+            {
+              "isSigner": true,
+              "isWritable": true,
+              "kind": "instructionAccountNode",
+              "name": "sender"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "kind": "instructionAccountNode",
+              "name": "recipient"
+            },
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "kind": "instructionAccountNode",
+              "name": "bump"
+            },
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "kind": "instructionAccountNode",
+              "name": "config"
+            },
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "kind": "instructionAccountNode",
+              "name": "revenueMint"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "kind": "instructionAccountNode",
+              "name": "revenueRecipientAta"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "kind": "instructionAccountNode",
+              "name": "revenueAppAta"
+            }
+          ],
+          "arguments": [
+            {
+              "defaultValue": {
+                "kind": "numberValueNode",
+                "number": 3
+              },
+              "defaultValueStrategy": "omitted",
+              "kind": "instructionArgumentNode",
+              "name": "discriminator",
+              "type": {
+                "endian": "le",
+                "format": "u8",
+                "kind": "numberTypeNode"
+              }
+            },
+            {
+              "kind": "instructionArgumentNode",
+              "name": "flags",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "bitField"
+              }
+            },
+            {
+              "kind": "instructionArgumentNode",
+              "name": "amount",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "uint64"
+              }
+            }
+          ],
+          "discriminators": [
+            {
+              "kind": "fieldDiscriminatorNode",
+              "name": "discriminator",
+              "offset": 0
+            }
+          ],
+          "kind": "instructionNode",
+          "name": "withdrawRevenue"
+        },
+        {
+          "accounts": [
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "kind": "instructionAccountNode",
+              "name": "systemProgram"
+            },
+            {
+              "isSigner": true,
+              "isWritable": true,
+              "kind": "instructionAccountNode",
+              "name": "sender"
+            },
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "kind": "instructionAccountNode",
+              "name": "bump"
+            },
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "kind": "instructionAccountNode",
+              "name": "config"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "kind": "instructionAccountNode",
+              "name": "userCounter"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "kind": "instructionAccountNode",
+              "name": "userId"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "kind": "instructionAccountNode",
+              "name": "userAccount"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "kind": "instructionAccountNode",
+              "name": "userRotationState"
+            }
+          ],
+          "arguments": [
+            {
+              "defaultValue": {
+                "kind": "numberValueNode",
+                "number": 4
+              },
+              "defaultValueStrategy": "omitted",
+              "kind": "instructionArgumentNode",
+              "name": "discriminator",
+              "type": {
+                "endian": "le",
+                "format": "u8",
+                "kind": "numberTypeNode"
+              }
+            },
+            {
+              "kind": "instructionArgumentNode",
+              "name": "maxDataSize",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "uint32"
+              }
+            }
+          ],
+          "discriminators": [
+            {
+              "kind": "fieldDiscriminatorNode",
+              "name": "discriminator",
+              "offset": 0
+            }
+          ],
+          "kind": "instructionNode",
+          "name": "createAccount"
+        },
+        {
+          "accounts": [
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "kind": "instructionAccountNode",
+              "name": "systemProgram"
+            },
+            {
+              "isSigner": true,
+              "isWritable": true,
+              "kind": "instructionAccountNode",
+              "name": "sender"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "kind": "instructionAccountNode",
+              "name": "userId"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "kind": "instructionAccountNode",
+              "name": "userAccount"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "kind": "instructionAccountNode",
+              "name": "userRotationState"
+            }
+          ],
+          "arguments": [
+            {
+              "defaultValue": {
+                "kind": "numberValueNode",
+                "number": 5
+              },
+              "defaultValueStrategy": "omitted",
+              "kind": "instructionArgumentNode",
+              "name": "discriminator",
+              "type": {
+                "endian": "le",
+                "format": "u8",
+                "kind": "numberTypeNode"
+              }
+            }
+          ],
+          "discriminators": [
+            {
+              "kind": "fieldDiscriminatorNode",
+              "name": "discriminator",
+              "offset": 0
+            }
+          ],
+          "kind": "instructionNode",
+          "name": "closeAccount"
+        },
+        {
+          "accounts": [
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "kind": "instructionAccountNode",
+              "name": "systemProgram"
+            },
+            {
+              "isSigner": true,
+              "isWritable": true,
+              "kind": "instructionAccountNode",
+              "name": "sender"
+            },
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "kind": "instructionAccountNode",
+              "name": "bump"
+            },
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "kind": "instructionAccountNode",
+              "name": "config"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "kind": "instructionAccountNode",
+              "name": "userId"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "kind": "instructionAccountNode",
+              "name": "userAccount"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "kind": "instructionAccountNode",
+              "name": "userRotationState"
+            }
+          ],
+          "arguments": [
+            {
+              "defaultValue": {
+                "kind": "numberValueNode",
+                "number": 6
+              },
+              "defaultValueStrategy": "omitted",
+              "kind": "instructionArgumentNode",
+              "name": "discriminator",
+              "type": {
+                "endian": "le",
+                "format": "u8",
+                "kind": "numberTypeNode"
+              }
+            },
+            {
+              "kind": "instructionArgumentNode",
+              "name": "maxDataSize",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "uint32"
+              }
+            }
+          ],
+          "discriminators": [
+            {
+              "kind": "fieldDiscriminatorNode",
+              "name": "discriminator",
+              "offset": 0
+            }
+          ],
+          "kind": "instructionNode",
+          "name": "reopenAccount"
+        },
+        {
+          "accounts": [
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "kind": "instructionAccountNode",
+              "name": "systemProgram"
+            },
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "kind": "instructionAccountNode",
+              "name": "tokenProgram"
+            },
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "kind": "instructionAccountNode",
+              "name": "associatedTokenProgram"
+            },
+            {
+              "isSigner": true,
+              "isWritable": true,
+              "kind": "instructionAccountNode",
+              "name": "sender"
+            },
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "kind": "instructionAccountNode",
+              "name": "bump"
+            },
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "kind": "instructionAccountNode",
+              "name": "config"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "kind": "instructionAccountNode",
+              "name": "userId"
+            },
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "kind": "instructionAccountNode",
+              "name": "revenueMint"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "kind": "instructionAccountNode",
+              "name": "revenueSenderAta"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "kind": "instructionAccountNode",
+              "name": "revenueAppAta"
+            }
+          ],
+          "arguments": [
+            {
+              "defaultValue": {
+                "kind": "numberValueNode",
+                "number": 7
+              },
+              "defaultValueStrategy": "omitted",
+              "kind": "instructionArgumentNode",
+              "name": "discriminator",
+              "type": {
+                "endian": "le",
+                "format": "u8",
+                "kind": "numberTypeNode"
+              }
+            }
+          ],
+          "discriminators": [
+            {
+              "kind": "fieldDiscriminatorNode",
+              "name": "discriminator",
+              "offset": 0
+            }
+          ],
+          "kind": "instructionNode",
+          "name": "activateAccount"
+        },
+        {
+          "accounts": [
+            {
+              "isSigner": true,
+              "isWritable": true,
+              "kind": "instructionAccountNode",
+              "name": "sender"
+            },
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "kind": "instructionAccountNode",
+              "name": "userId"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "kind": "instructionAccountNode",
+              "name": "userAccount"
+            }
+          ],
+          "arguments": [
+            {
+              "defaultValue": {
+                "kind": "numberValueNode",
+                "number": 8
+              },
+              "defaultValueStrategy": "omitted",
+              "kind": "instructionArgumentNode",
+              "name": "discriminator",
+              "type": {
+                "endian": "le",
+                "format": "u8",
+                "kind": "numberTypeNode"
+              }
+            },
+            {
+              "kind": "instructionArgumentNode",
+              "name": "data",
+              "type": {
+                "count": {
+                  "kind": "fixedCountNode",
+                  "value": 4096
+                },
+                "item": {
+                  "endian": "le",
+                  "format": "u8",
+                  "kind": "numberTypeNode"
+                },
+                "kind": "arrayTypeNode"
+              }
+            },
+            {
+              "kind": "instructionArgumentNode",
+              "name": "nonce",
+              "type": {
+                "kind": "definedTypeLinkNode",
+                "name": "uint64"
+              }
+            }
+          ],
+          "discriminators": [
+            {
+              "kind": "fieldDiscriminatorNode",
+              "name": "discriminator",
+              "offset": 0
+            }
+          ],
+          "kind": "instructionNode",
+          "name": "writeData"
+        },
+        {
+          "accounts": [
+            {
+              "isSigner": true,
+              "isWritable": true,
+              "kind": "instructionAccountNode",
+              "name": "sender"
+            },
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "kind": "instructionAccountNode",
+              "name": "bump"
+            },
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "kind": "instructionAccountNode",
+              "name": "config"
+            },
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "kind": "instructionAccountNode",
+              "name": "userId"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "kind": "instructionAccountNode",
+              "name": "userRotationState"
+            }
+          ],
+          "arguments": [
+            {
+              "defaultValue": {
+                "kind": "numberValueNode",
+                "number": 9
+              },
+              "defaultValueStrategy": "omitted",
+              "kind": "instructionArgumentNode",
+              "name": "discriminator",
+              "type": {
+                "endian": "le",
+                "format": "u8",
+                "kind": "numberTypeNode"
+              }
+            },
+            {
+              "kind": "instructionArgumentNode",
+              "name": "newOwner",
+              "type": {
+                "kind": "publicKeyTypeNode"
+              }
+            }
+          ],
+          "discriminators": [
+            {
+              "kind": "fieldDiscriminatorNode",
+              "name": "discriminator",
+              "offset": 0
+            }
+          ],
+          "kind": "instructionNode",
+          "name": "requestAccountRotation"
+        },
+        {
+          "accounts": [
+            {
+              "isSigner": false,
+              "isWritable": false,
+              "kind": "instructionAccountNode",
+              "name": "systemProgram"
+            },
+            {
+              "isSigner": true,
+              "isWritable": true,
+              "kind": "instructionAccountNode",
+              "name": "sender"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "kind": "instructionAccountNode",
+              "name": "userIdPre"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "kind": "instructionAccountNode",
+              "name": "userId"
+            },
+            {
+              "isSigner": false,
+              "isWritable": true,
+              "kind": "instructionAccountNode",
+              "name": "userRotationState"
+            }
+          ],
+          "arguments": [
+            {
+              "defaultValue": {
+                "kind": "numberValueNode",
+                "number": 10
+              },
+              "defaultValueStrategy": "omitted",
+              "kind": "instructionArgumentNode",
+              "name": "discriminator",
+              "type": {
+                "endian": "le",
+                "format": "u8",
+                "kind": "numberTypeNode"
+              }
+            }
+          ],
+          "discriminators": [
+            {
+              "kind": "fieldDiscriminatorNode",
+              "name": "discriminator",
+              "offset": 0
+            }
+          ],
+          "kind": "instructionNode",
+          "name": "confirmAccountRotation"
+        }
+      ],
       "kind": "programNode",
       "name": "registryCpi",
       "pdas": [],
-      "publicKey": "89KoDhPxWcegVeGrr8sAg3sn7H7EaH6edtDg9qx8Jh19",
+      "publicKey": "DLYBwwHjtnYh8BNYFGkTgCZ8cn4cyR5xSJREJ6xU31PA",
       "version": "1.0.0"
     }
   ],
@@ -357,10 +1312,35 @@
         }
       }
     ],
-    "errors": [],
+    "errors": [
+      {
+        "code": 0,
+        "kind": "errorNode",
+        "message": "Sender doesn't have access permissions!",
+        "name": "unauthorized"
+      },
+      {
+        "code": 1,
+        "kind": "errorNode",
+        "message": "New owner wasn't specified!",
+        "name": "noNewOwner"
+      },
+      {
+        "code": 2,
+        "kind": "errorNode",
+        "message": "Sender can't be the new owner!",
+        "name": "uselessRotation"
+      },
+      {
+        "code": 3,
+        "kind": "errorNode",
+        "message": "It's too late to accept owner role!",
+        "name": "transferOwnerDeadline"
+      }
+    ],
     "instructions": [],
     "kind": "programNode",
-    "name": "registry",
+    "name": "base",
     "pdas": [],
     "publicKey": "",
     "version": "1.0.0"

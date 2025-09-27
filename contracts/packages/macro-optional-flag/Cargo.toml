@@ -1,0 +1,20 @@
+[package]
+name = "macro-optional-flag"
+version = "1.0.0"
+description = "Macro to generate getters and setters for structs with optional flags"
+repository = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[lib]
+proc-macro = true
+
+[features]
+default = []
+std = []
+
+[dependencies]
+proc-macro2 = { workspace = true }
+quote = { workspace = true }
+syn = { workspace = true, features = ["full"] }

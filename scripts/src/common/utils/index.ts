@@ -1,25 +1,50 @@
 import { AES, enc } from "crypto-js";
 import util from "util";
 import { all, create } from "mathjs";
-import * as anchor from "@coral-xyz/anchor";
-import * as spl from "@solana/spl-token";
-import { Network, TxParams } from "../interfaces";
-import { getSimulationComputeUnits } from "@solana-developers/helpers";
-import { NETWORK_CONFIG } from "../config";
+import { COMMITMENT, NETWORK_CONFIG } from "../config";
+import { BN } from "bn.js";
+import { TxResponse } from "../interfaces/tx";
 import axios, {
   AxiosRequestConfig,
   AxiosInstance,
   CreateAxiosDefaults,
 } from "axios";
 import {
-  AddressLookupTableAccount,
-  ComputeBudgetProgram,
-  Connection,
-  PublicKey,
-  TransactionInstruction,
-  TransactionMessage,
-  VersionedTransaction,
-} from "@solana/web3.js";
+  ClientAny,
+  ComputeConfig,
+  Ix,
+  Network,
+  PdaResp,
+  RpcAny,
+  Seed,
+} from "../interfaces";
+import {
+  getAssociatedTokenAccountAddress,
+  getCreateAssociatedTokenInstruction,
+  getSetComputeUnitLimitInstruction,
+  getSetComputeUnitPriceInstruction,
+  SYSTEM_PROGRAM_ADDRESS,
+  TOKEN_2022_PROGRAM_ADDRESS,
+  TOKEN_PROGRAM_ADDRESS,
+} from "gill/programs";
+import {
+  Address,
+  compileTransaction,
+  createSolanaClient,
+  createSolanaRpc,
+  createTransaction,
+  devnet,
+  DevnetUrl,
+  getProgramDerivedAddress,
+  KeyPairSigner,
+  LAMPORTS_PER_SOL,
+  localnet,
+  LocalnetUrl,
+  mainnet,
+  MainnetUrl,
+  signTransaction,
+  SolanaClient,
+} from "gill";
 
 export const DECIMAL_PLACES = 18;
 
@@ -31,7 +56,7 @@ export function li(object: any) {
       showHidden: false,
       depth: null,
       colors: true,
-    })
+    }),
   );
 }
 
@@ -103,7 +128,7 @@ export function encrypt(data: string, key: string): string {
 
 export function decrypt(
   encryptedData: string,
-  key: string
+  key: string,
 ): string | undefined {
   // "Malformed UTF-8 data" workaround
   try {
@@ -116,12 +141,12 @@ export function decrypt(
 
 export function getPaginationAmount(
   maxPaginationAmount: number,
-  maxCount: number
+  maxCount: number,
 ): number {
   // limit maxPaginationAmount
   maxPaginationAmount = Math.min(
     maxPaginationAmount,
-    maxCount || maxPaginationAmount
+    maxCount || maxPaginationAmount,
   );
 
   // update maxPaginationAmount to balance the load
@@ -140,7 +165,7 @@ const math = create(all, {
 });
 
 export function numberFrom(
-  value: number | string | bigint | undefined | null
+  value: number | string | bigint | undefined | null,
 ): math.BigNumber {
   if (typeof value === "undefined" || value === "") {
     return math.bignumber(0);
@@ -155,201 +180,309 @@ export function decimalFrom(value: math.BigNumber): string {
   return value.toPrecision(DECIMAL_PLACES);
 }
 
-export function publicKeyFromString(publicKey: anchor.web3.PublicKey | string) {
-  return typeof publicKey === "string" ? new PublicKey(publicKey) : publicKey;
+export function getRpc(network: Network): RpcAny {
+  const url = NETWORK_CONFIG[network];
+
+  if (network === "MAINNET") {
+    return createSolanaRpc(mainnet(url));
+  } else if (network === "DEVNET") {
+    return createSolanaRpc(devnet(url));
+  } else {
+    return createSolanaRpc(localnet(url));
+  }
 }
 
-export function getProgram<IDL extends anchor.Idl = anchor.Idl>(
-  provider: anchor.AnchorProvider,
-  idl: IDL
-): anchor.Program<IDL> {
-  return new anchor.Program<IDL>(idl, provider);
-}
+export function getClient(network: Network): ClientAny {
+  const url = { urlOrMoniker: NETWORK_CONFIG[network] };
 
-export function getRpc(network: Network): string {
-  return NETWORK_CONFIG[network];
-}
+  let client:
+    | SolanaClient<MainnetUrl>
+    | SolanaClient<DevnetUrl>
+    | SolanaClient<LocalnetUrl>;
 
-export function getProvider(
-  wallet: anchor.Wallet,
-  rpc: string,
-  commitment: anchor.web3.Commitment
-): anchor.AnchorProvider {
-  const connection = new Connection(rpc, commitment);
-  const provider = new anchor.AnchorProvider(connection, wallet, {
-    commitment,
-  });
-  anchor.setProvider(provider);
-
-  return provider;
-}
-
-export async function handleTx(
-  provider: anchor.AnchorProvider,
-  instructions: TransactionInstruction[],
-  params: TxParams
-): Promise<anchor.web3.TransactionSignature> {
-  const { connection, wallet } = provider;
-
-  let { lookupTables, priorityFee, cpu, signers } = params;
-  lookupTables = lookupTables || [];
-  priorityFee = { k: priorityFee?.k || 1, b: priorityFee?.b || 0 };
-  cpu = { k: cpu?.k || 1, b: cpu?.b || 0 };
-  signers = signers || []; // additional signers (like mint keypairs)
-
-  // TODO: check this option: https://www.helius.dev/docs/priority-fee/estimating-fees-using-serialized-transaction
-  // get priority fees
-  // https://solana.com/developers/guides/advanced/how-to-use-priority-fees#how-do-i-estimate-priority-fees
-  const prioritizationFees = await connection.getRecentPrioritizationFees({
-    lockedWritableAccounts: [wallet.publicKey],
-  });
-
-  const defaultPriorityFee = prioritizationFees.length
-    ? Math.ceil(
-        prioritizationFees.reduce(
-          (acc, cur) => acc + cur.prioritizationFee,
-          0
-        ) / prioritizationFees.length
-      )
-    : 0;
-
-  // https://solana.com/developers/guides/advanced/how-to-request-optimal-compute#how-to-request-compute-budget
-  let [microLamports, units, { blockhash, lastValidBlockHeight }] =
-    await Promise.all([
-      priorityFee.k * defaultPriorityFee + priorityFee.b,
-      getSimulationComputeUnits(
-        connection,
-        instructions,
-        wallet.publicKey,
-        lookupTables
-      ),
-      connection.getLatestBlockhash(),
-    ]);
-
-  instructions.unshift(
-    ComputeBudgetProgram.setComputeUnitPrice({ microLamports })
-  );
-
-  units = cpu.k * (units || 0) + cpu.b;
-  if (units) {
-    // probably should add some margin of error to units
-    instructions.unshift(ComputeBudgetProgram.setComputeUnitLimit({ units }));
+  if (network === "MAINNET") {
+    client = createSolanaClient<MainnetUrl>(url);
+  } else if (network === "DEVNET") {
+    client = createSolanaClient<DevnetUrl>(url);
+  } else {
+    client = createSolanaClient<LocalnetUrl>(url);
   }
 
-  // TODO .compileToV0Message(lookupTables)
-  // create transaction message
-  const message = new TransactionMessage({
-    instructions,
-    recentBlockhash: blockhash,
-    payerKey: wallet.publicKey,
-  }).compileToLegacyMessage();
-
-  // create versioned transaction
-  const transaction = new VersionedTransaction(message);
-
-  // sign with additional signers first (like mint keypairs)
-  if (signers.length > 0) {
-    transaction.sign(signers);
-  }
-
-  // then sign with the wallet
-  const signedTx = await wallet.signTransaction(transaction);
-
-  // send transaction
-  const signature = await connection.sendTransaction(signedTx);
-
-  await connection.confirmTransaction({
-    blockhash,
-    lastValidBlockHeight,
-    signature,
-  });
-
-  return signature;
-}
-
-export function getHandleTx(provider: anchor.AnchorProvider) {
-  return async (
-    instructions: TransactionInstruction[],
-    params: TxParams,
-    isDisplayed: boolean
-  ): Promise<anchor.web3.TransactionSignature> => {
-    const tx = await handleTx(provider, instructions, params);
-    return logAndReturn(tx, isDisplayed);
+  return {
+    sendAndConfirmTransaction: client.sendAndConfirmTransaction,
+    simulateTransaction: client.simulateTransaction,
+    rpc: client.rpc,
   };
 }
 
+export function handleTxFactory(
+  client: ClientAny,
+  sender: KeyPairSigner,
+): (
+  signerList: CryptoKeyPair[],
+  instructions: Ix[],
+  computeConfig?: ComputeConfig,
+  isDisplayed?: boolean,
+) => Promise<TxResponse> {
+  return async (
+    signerList: CryptoKeyPair[],
+    instructions: Ix[],
+    computeConfig: ComputeConfig = {},
+    isDisplayed: boolean = false,
+  ) =>
+    handleTx(
+      client,
+      sender,
+      signerList,
+      instructions,
+      computeConfig,
+      isDisplayed,
+    );
+}
+
+export async function handleTx(
+  client: ClientAny,
+  sender: KeyPairSigner,
+  signerList: CryptoKeyPair[],
+  instructions: Ix[],
+  computeConfig: ComputeConfig = {},
+  isDisplayed: boolean = false,
+): Promise<TxResponse> {
+  // Get latest blockhash for transaction
+  const { value: latestBlockhash } = await client.rpc
+    .getLatestBlockhash()
+    .send();
+
+  // Create transaction for simulation
+  const simulationTx = createTransaction({
+    version: "legacy",
+    feePayer: sender.address,
+    latestBlockhash,
+    instructions,
+  });
+
+  // Get optimal priority fee and compute units in parallel
+  const [optimalPriorityFee, optimalComputeUnits] = await Promise.all([
+    getOptimalPriorityFee(client.rpc, sender.address, computeConfig),
+    getOptimalComputeUnits(
+      client.simulateTransaction,
+      simulationTx,
+      computeConfig,
+    ),
+  ]);
+
+  // Build final instructions array with compute budget instructions
+  let finalInstructions = [];
+
+  // Add compute unit price instruction (priority fee)
+  if (optimalPriorityFee > 0) {
+    finalInstructions.push(
+      getSetComputeUnitPriceInstruction({
+        microLamports: optimalPriorityFee,
+      }),
+    );
+  }
+
+  // Add compute unit limit instruction
+  if (optimalComputeUnits) {
+    finalInstructions.push(
+      getSetComputeUnitLimitInstruction({
+        units: optimalComputeUnits,
+      }),
+    );
+  }
+
+  // Add the main instruction
+  finalInstructions = [...finalInstructions, ...instructions];
+
+  // Create final transaction with all instructions
+  const finalTx = createTransaction({
+    version: simulationTx.version,
+    feePayer: simulationTx.feePayer.address,
+    latestBlockhash: simulationTx.lifetimeConstraint,
+    instructions: finalInstructions,
+  });
+
+  // Sign and send transaction
+  const signedTransaction = await signTransaction(
+    signerList,
+    compileTransaction(finalTx),
+  );
+
+  const signature = await client.sendAndConfirmTransaction(signedTransaction, {
+    commitment: COMMITMENT,
+  });
+  const txResponse = await client.rpc.getTransaction(signature).send();
+
+  return logAndReturn(txResponse as TxResponse, isDisplayed);
+}
+
+/**
+ * Get recent prioritization fees for calculating optimal priority fee
+ */
+async function getOptimalPriorityFee(
+  rpc: RpcAny,
+  payerAddress: Address,
+  config: ComputeConfig = {},
+): Promise<number> {
+  const PRIORITY_FEE_MULTIPLIER = 1.0;
+  const PRIORITY_FEE_BASE = 0;
+  const MAX_PRIORITY_FEE = 0.01 * LAMPORTS_PER_SOL;
+  const MIN_PRIORITY_FEE = 0;
+
+  try {
+    // Get recent prioritization fees
+    const prioritizationFees = await rpc
+      .getRecentPrioritizationFees([payerAddress])
+      .send();
+
+    let basePriorityFee = 0;
+    if (prioritizationFees && prioritizationFees.length > 0) {
+      // Calculate average
+      const feeSum = prioritizationFees.reduce(
+        (acc, cur) => acc + cur.prioritizationFee,
+        BigInt(0),
+      );
+      const feeAvg = feeSum / BigInt(prioritizationFees.length);
+
+      basePriorityFee = Math.ceil(Number(feeAvg));
+    }
+
+    // Apply multiplier and base adjustment
+    const {
+      priorityFeeMultiplier = PRIORITY_FEE_MULTIPLIER,
+      priorityFeeBase = PRIORITY_FEE_BASE,
+      maxPriorityFee = MAX_PRIORITY_FEE,
+      minPriorityFee = MIN_PRIORITY_FEE,
+    } = config;
+
+    let finalPriorityFee = Math.ceil(
+      basePriorityFee * priorityFeeMultiplier + priorityFeeBase,
+    );
+
+    // Apply min/max bounds
+    finalPriorityFee = Math.max(minPriorityFee, finalPriorityFee);
+    finalPriorityFee = Math.min(maxPriorityFee, finalPriorityFee);
+
+    return finalPriorityFee;
+  } catch (error) {
+    console.warn("Failed to get recent prioritization fees:", error);
+    return config.priorityFeeBase || 0;
+  }
+}
+
+/**
+ * Simulate transaction to get compute units and calculate optimal CU limit
+ */
+async function getOptimalComputeUnits(
+  simulateTransaction: any,
+  transaction: any,
+  config: ComputeConfig = {},
+): Promise<number | null> {
+  const CU_MULTIPLIER = 1.1;
+  const CU_BASE = 0;
+
+  try {
+    const simulationResult = await simulateTransaction(transaction);
+    const unitsConsumed = simulationResult.value?.unitsConsumed;
+
+    if (!unitsConsumed) {
+      console.warn("No compute units consumed in simulation");
+      return null;
+    }
+
+    // Convert BigInt to Number safely for calculation
+    const unitsConsumedNum =
+      typeof unitsConsumed === "bigint" ? Number(unitsConsumed) : unitsConsumed;
+
+    // Apply multiplier and base adjustment for safety margin
+    const { cuMultiplier = CU_MULTIPLIER, cuBase = CU_BASE } = config;
+    const finalUnits = Math.ceil(unitsConsumedNum * cuMultiplier + cuBase);
+
+    return finalUnits;
+  } catch (error) {
+    console.warn("Failed to simulate transaction for CU calculation:", error);
+    return null;
+  }
+}
+
+export function pdaFactory(
+  programId: Address,
+): (seeds: Seed[]) => Promise<PdaResp> {
+  return async (seeds: Seed[]) =>
+    getProgramDerivedAddress({
+      programAddress: programId,
+      seeds,
+    });
+}
+
 export async function getOrCreateAtaInstructions(
-  connection: anchor.web3.Connection,
-  payer: PublicKey,
-  mintPubkey: PublicKey,
-  ownerPubkey: PublicKey,
-  allowOwnerOffCurve: boolean
+  rpc: RpcAny,
+  payer: KeyPairSigner,
+  mintPubkey: Address,
+  ownerPubkey: Address,
+  tokenProgram: Address,
 ): Promise<{
-  ata: anchor.web3.PublicKey;
-  ixs: anchor.web3.TransactionInstruction[];
+  ata: Address;
+  ixs: Ix[];
 }> {
   // calculate the ATA address
-  const associatedToken = await spl.getAssociatedTokenAddress(
+  const ata = await getAssociatedTokenAccountAddress(
     mintPubkey,
     ownerPubkey,
-    allowOwnerOffCurve,
-    spl.TOKEN_PROGRAM_ID,
-    spl.ASSOCIATED_TOKEN_PROGRAM_ID
+    tokenProgram,
   );
 
   // check if the account exists and is properly initialized
   try {
-    await spl.getAccount(
-      connection,
-      associatedToken,
-      undefined,
-      spl.TOKEN_PROGRAM_ID
-    );
+    await rpc.getAccountInfo(ata).send();
 
     // account exists and is properly initialized
     return {
-      ata: associatedToken,
+      ata,
       ixs: [],
     };
   } catch (_) {
     // create the ATA creation instruction
-    const instruction = spl.createAssociatedTokenAccountInstruction(
+    const ix = getCreateAssociatedTokenInstruction({
       payer,
-      associatedToken,
-      ownerPubkey,
-      mintPubkey,
-      spl.TOKEN_PROGRAM_ID,
-      spl.ASSOCIATED_TOKEN_PROGRAM_ID
-    );
+      ata,
+      owner: ownerPubkey,
+      mint: mintPubkey,
+      tokenProgram,
+      systemProgram: SYSTEM_PROGRAM_ADDRESS,
+    });
 
     return {
-      ata: associatedToken,
-      ixs: [instruction],
+      ata,
+      ixs: [ix],
     };
   }
 }
 
-export function getTokenProgramFactory(provider: anchor.AnchorProvider) {
-  return async (mint: anchor.web3.PublicKey) => {
-    // check if it's SOL (represented by PublicKey.default)
-    if (mint.equals(PublicKey.default)) {
+export function tokenProgramFactory(rpc: RpcAny) {
+  return async (mint: Address): Promise<Address> => {
+    // check if it's SOL (represented by default address)
+    if (mint === SYSTEM_PROGRAM_ADDRESS) {
       throw new Error(`Mint ${mint.toString()} represents Sol`);
     }
 
     // it's a token, so get the mint account to determine which token program owns it
-    const mintAccount = await provider.connection.getAccountInfo(mint);
+    const mintAccount = await rpc.getAccountInfo(mint).send();
     if (!mintAccount) {
       throw new Error(`Mint account ${mint.toString()} not found`);
     }
 
     // determine if it's Token Program or Token 2022
-    let tokenProgram: PublicKey;
-    if (mintAccount.owner.equals(spl.TOKEN_PROGRAM_ID)) {
-      tokenProgram = spl.TOKEN_PROGRAM_ID;
-    } else if (mintAccount.owner.equals(spl.TOKEN_2022_PROGRAM_ID)) {
-      tokenProgram = spl.TOKEN_2022_PROGRAM_ID;
+    const mintAccountOwner = mintAccount.value?.owner;
+    let tokenProgram: Address;
+
+    if (mintAccountOwner === TOKEN_PROGRAM_ADDRESS) {
+      tokenProgram = TOKEN_PROGRAM_ADDRESS;
+    } else if (mintAccountOwner === TOKEN_2022_PROGRAM_ADDRESS) {
+      tokenProgram = TOKEN_2022_PROGRAM_ADDRESS;
     } else {
-      throw new Error(`Unknown token program: ${mintAccount.owner.toString()}`);
+      throw new Error(`Unknown token program: ${mintAccountOwner}`);
     }
 
     return tokenProgram;
@@ -367,7 +500,7 @@ type RustIntType = "u8" | "u16" | "u32" | "u64" | "u128";
  */
 export function numberToRustBuffer(
   value: number,
-  rustType: RustIntType
+  rustType: RustIntType,
 ): Buffer {
   // Validate input bounds for each type
   const maxValues = {
@@ -391,7 +524,7 @@ export function numberToRustBuffer(
   if (rustType === "u8") {
     if (value < 0 || value > maxValues.u8 || !Number.isInteger(value)) {
       throw new Error(
-        `Value ${value} is out of range for u8 (0-${maxValues.u8})`
+        `Value ${value} is out of range for u8 (0-${maxValues.u8})`,
       );
     }
     return Buffer.from([value]);
@@ -402,11 +535,11 @@ export function numberToRustBuffer(
     const maxValue = maxValues[rustType] as number;
     if (value < 0 || value > maxValue || !Number.isInteger(value)) {
       throw new Error(
-        `Value ${value} is out of range for ${rustType} (0-${maxValue})`
+        `Value ${value} is out of range for ${rustType} (0-${maxValue})`,
       );
     }
 
-    return new anchor.BN(value).toArrayLike(Buffer, "le", byteSizes[rustType]);
+    return new BN(value).toArrayLike(Buffer, "le", byteSizes[rustType]);
   }
 
   // Handle u64 and u128 - these require bigint for full range support
@@ -419,7 +552,7 @@ export function numberToRustBuffer(
     } else {
       if (!Number.isInteger(value) || value < 0) {
         throw new Error(
-          `Value ${value} must be a non-negative integer for ${rustType}`
+          `Value ${value} must be a non-negative integer for ${rustType}`,
         );
       }
       bigintValue = BigInt(value);
@@ -428,15 +561,15 @@ export function numberToRustBuffer(
     const maxValue = maxValues[rustType] as bigint;
     if (bigintValue < BigInt(0) || bigintValue > maxValue) {
       throw new Error(
-        `Value ${bigintValue} is out of range for ${rustType} (0-${maxValue})`
+        `Value ${bigintValue} is out of range for ${rustType} (0-${maxValue})`,
       );
     }
 
     // For very large numbers, we need to handle them as bigint
-    return new anchor.BN(bigintValue.toString()).toArrayLike(
+    return new BN(bigintValue.toString()).toArrayLike(
       Buffer,
       "le",
-      byteSizes[rustType]
+      byteSizes[rustType],
     );
   }
 

@@ -46,11 +46,11 @@ fn profiling_registry() -> TestResult<()> {
     const PROGRAM_NAME: &str = PROGRAM_NAME_REGISTRY;
     const PREVIOUS_RESULT: &str = "
 ==================== previous result ====================
-registry program size: 49240 B
-registry init instruction: 45700 CU
-registry create_account instruction: 26614 CU
-registry activate_account instruction: 24722 CU
-registry write_data instruction: 3285 CU
+registry program size: 49392 B
+registry init instruction: 39704 CU
+registry create_account instruction: 22114 CU
+registry activate_account instruction: 15722 CU
+registry write_data instruction: 1785 CU
 ==================== current result =====================";
 
     println!("{}", PREVIOUS_RESULT);

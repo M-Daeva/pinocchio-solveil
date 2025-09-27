@@ -1,4 +1,4 @@
-import { PublicKey } from "@solana/web3.js";
+import { Address } from "gill";
 import { N } from ".";
 
 export interface InitArgs {
@@ -9,7 +9,7 @@ export interface InitArgs {
 
 export interface AssetItem {
   amount: N<64>;
-  asset: PublicKey;
+  asset: Address;
 }
 
 export interface Range {
@@ -18,7 +18,7 @@ export interface Range {
 }
 
 export interface UpdateConfigArgs {
-  admin?: PublicKey;
+  admin?: Address;
   is_paused?: boolean;
   rotation_timeout?: N<32>;
   registration_fee_amount?: N<64>;
@@ -34,9 +34,9 @@ export interface ReopenAccountArgs {
 }
 
 export interface ActivateAccountArgs {
-  user?: PublicKey;
+  user?: Address;
 }
 
 export interface RequestAccountRotationArgs {
-  newOwner: PublicKey;
+  newOwner: Address;
 }

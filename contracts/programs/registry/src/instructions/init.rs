@@ -70,29 +70,21 @@ pub fn init(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult 
         &crate::ID,
     )?;
     StorageW::update(config, |x| {
-        let registration_fee = if ix.get_account_registration_fee_flag() {
-            ix.account_registration_fee
-        } else {
+        *x = Config::default();
+        x.admin = *sender.key();
+        x.rotation_timeout.set(ROTATION_TIMEOUT);
+        x.registration_fee = ix.get_account_registration_fee().unwrap_or({
             let mut x = AssetItem::default();
             x.amount.set(ACCOUNT_REGISTRATION_FEE_AMOUNT);
             x.asset = ACCOUNT_REGISTRATION_FEE_ASSET;
             x
-        };
-
-        let data_size_range = if ix.get_account_data_size_range_flag() {
-            ix.account_data_size_range
-        } else {
+        });
+        x.data_size_range = ix.get_account_data_size_range().unwrap_or({
             let mut x = Range::default();
             x.min.set(ACCOUNT_DATA_SIZE_MIN);
             x.max.set(ACCOUNT_DATA_SIZE_MAX);
             x
-        };
-
-        *x = Config::default();
-        x.admin = *sender.key();
-        x.rotation_timeout.set(ROTATION_TIMEOUT);
-        x.registration_fee = registration_fee;
-        x.data_size_range = data_size_range;
+        });
         Ok(())
     })?;
 

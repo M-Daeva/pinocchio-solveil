@@ -6,6 +6,7 @@ use {
     },
     bytemuck::{Pod, Zeroable},
     codama::CodamaAccount,
+    macro_optional_flag::OptionFlag,
     macro_p_serde::p_serde,
     pinocchio::pubkey::Pubkey,
     pinocchio_pubkey::pubkey,
@@ -91,38 +92,14 @@ pub struct RotationState {
 }
 
 /// get by user: Pubkey
-#[derive(CodamaAccount)]
+#[derive(CodamaAccount, OptionFlag)]
 #[p_serde]
 pub struct UserId {
+    #[optional(is_open, is_activated)]
     pub flags: BitField,
     pub id: Uint32,
     pub account_bump: u8,
     pub rotation_state_bump: u8,
-}
-
-impl UserId {
-    const IS_OPEN: u8 = 0;
-    const IS_ACTIVATED: u8 = 1;
-
-    #[inline]
-    pub fn get_is_open_flag(&self) -> bool {
-        self.flags.get_flag(Self::IS_OPEN)
-    }
-
-    #[inline]
-    pub fn set_is_open_flag(&mut self, x: bool) {
-        self.flags.set_flag(Self::IS_OPEN, x);
-    }
-
-    #[inline]
-    pub fn get_is_activated_flag(&self) -> bool {
-        self.flags.get_flag(Self::IS_ACTIVATED)
-    }
-
-    #[inline]
-    pub fn set_is_activated_flag(&mut self, x: bool) {
-        self.flags.set_flag(Self::IS_ACTIVATED, x);
-    }
 }
 
 /// get by user_id: u32
