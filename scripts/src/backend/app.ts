@@ -30,7 +30,12 @@ import {
 } from "../common/schema/codama/instructions";
 
 import * as IRegistry from "../common/interfaces/registry";
-import { decConfig, IConfig } from "../common/interfaces/codecs";
+import {
+  decConfig,
+  encUpdateConfigInstructionDataArgs,
+  IConfig,
+  IUpdateConfigInstructionDataArgs,
+} from "../common/interfaces/codecs";
 
 // const addr = getAddressEncoder();
 
@@ -153,7 +158,7 @@ async function init(
 }
 
 async function updateConfig(
-  args: IRegistry.UpdateConfigArgs,
+  args: IUpdateConfigInstructionDataArgs,
   computeConfig: ComputeConfig = {},
   isDisplayed: boolean = false,
 ) {
@@ -175,67 +180,19 @@ async function updateConfig(
     adminRotationState,
   };
 
-  const ADMIN = 0;
-  const IS_PAUSED = 1;
-  const ROTATION_TIMEOUT = 2;
-  const REGISTRATION_FEE_AMOUNT = 3;
-  const DATA_SIZE_RANGE = 4;
+  const ixArgs = encUpdateConfigInstructionDataArgs(args);
 
-  // TODO: make it type safe
-  // TODO: write helper
-  let flags = new TBitField();
-  let admin = sender.address; // placeholder
-  let isPaused = new TBitField();
-  let rotationTimeout = new TUint32();
-  let registrationFeeAmount = new TUint64();
-  let dataSizeRange = { min: new TUint32(), max: new TUint32() };
+  li({ ixArgs });
+  return;
 
-  if (args.admin) {
-    flags.set(true, ADMIN);
-    admin = args.admin;
-  }
+  // const ixs = [
+  //   getUpdateConfigInstruction({
+  //     ...ixAccs,
+  //     ...ixArgs,
+  //   }),
+  // ];
 
-  if (args.is_paused) {
-    flags.set(true, IS_PAUSED);
-    isPaused.set(args.is_paused);
-  }
-
-  if (args.rotation_timeout) {
-    flags.set(true, ROTATION_TIMEOUT);
-    rotationTimeout.set(args.rotation_timeout);
-  }
-
-  if (args.registration_fee_amount) {
-    flags.set(true, REGISTRATION_FEE_AMOUNT);
-    registrationFeeAmount.set(BigInt(args.registration_fee_amount));
-  }
-
-  if (args.data_size_range) {
-    flags.set(true, DATA_SIZE_RANGE);
-    dataSizeRange.min.set(args.data_size_range.min);
-    dataSizeRange.max.set(args.data_size_range.max);
-  }
-
-  const ixArgs: UpdateConfigInstructionDataArgs = {
-    flags: flags.getRaw(),
-    admin,
-    isPaused: isPaused.getRaw(),
-    rotationTimeout: rotationTimeout.getRaw(),
-    registrationFeeAmount: registrationFeeAmount.getRaw(),
-    dataSizeRange: {
-      min: dataSizeRange.min.getRaw(),
-      max: dataSizeRange.max.getRaw(),
-    },
-  };
-
-  const ixs = [
-    getUpdateConfigInstruction({
-      ...ixAccs,
-      ...ixArgs,
-    }),
-  ];
-
-  return handleTx(client, sender, signerList, ixs, computeConfig, isDisplayed);
+  // return handleTx(client, sender, signerList, ixs, computeConfig, isDisplayed);
 }
 
 async function queryConfig(isDisplayed: boolean = false): Promise<IConfig> {
@@ -260,7 +217,11 @@ async function main() {
   // );
 
   await queryConfig(true);
-  // await updateConfig({ rotation_timeout: 24 * 3_600 }, {}, true);
+  await updateConfig(
+    { rotation_timeout: 24 * 3_600, is_paused: true },
+    {},
+    true,
+  );
   // await queryConfig(true);
 }
 
