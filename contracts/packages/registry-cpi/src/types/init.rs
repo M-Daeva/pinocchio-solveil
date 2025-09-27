@@ -52,12 +52,10 @@ pub struct Accounts<'a> {
 #[derive(OptionFlag)]
 #[p_serde]
 pub struct InstructionData {
+    #[optional(rotation_timeout, account_registration_fee, account_data_size_range)]
     pub flags: BitField,
-    #[optional(flags)]
     pub rotation_timeout: Uint32,
-    #[optional(flags)]
     pub account_registration_fee: AssetItem,
-    #[optional(flags)]
     pub account_data_size_range: Range,
 }
 
