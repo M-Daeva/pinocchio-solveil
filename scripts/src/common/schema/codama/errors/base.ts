@@ -11,7 +11,7 @@ import {
   type Address,
   type SOLANA_ERROR__INSTRUCTION_ERROR__CUSTOM,
   type SolanaError,
-} from '@solana/kit';
+} from 'gill';
 import { BASE_PROGRAM_ADDRESS } from '../programs';
 
 export const BASE_ERROR__UNAUTHORIZED = 0x0; // 0

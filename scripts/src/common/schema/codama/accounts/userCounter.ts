@@ -25,7 +25,7 @@ import {
   type FetchAccountsConfig,
   type MaybeAccount,
   type MaybeEncodedAccount,
-} from '@solana/kit';
+} from 'gill';
 import {
   getUint32Decoder,
   getUint32Encoder,

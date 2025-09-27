@@ -11,7 +11,7 @@ import {
   type Address,
   type SOLANA_ERROR__INSTRUCTION_ERROR__CUSTOM,
   type SolanaError,
-} from '@solana/kit';
+} from 'gill';
 import { REGISTRY_CPI_PROGRAM_ADDRESS } from '../programs';
 
 export const REGISTRY_CPI_ERROR__NO_PARAMETERS = 0x0; // 0

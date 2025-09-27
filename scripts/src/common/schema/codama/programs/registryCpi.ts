@@ -11,7 +11,7 @@ import {
   getU8Encoder,
   type Address,
   type ReadonlyUint8Array,
-} from '@solana/kit';
+} from 'gill';
 import {
   type ParsedActivateAccountInstruction,
   type ParsedCloseAccountInstruction,
@@ -27,7 +27,7 @@ import {
 } from '../instructions';
 
 export const REGISTRY_CPI_PROGRAM_ADDRESS =
-  '89KoDhPxWcegVeGrr8sAg3sn7H7EaH6edtDg9qx8Jh19' as Address<'89KoDhPxWcegVeGrr8sAg3sn7H7EaH6edtDg9qx8Jh19'>;
+  'DLYBwwHjtnYh8BNYFGkTgCZ8cn4cyR5xSJREJ6xU31PA' as Address<'DLYBwwHjtnYh8BNYFGkTgCZ8cn4cyR5xSJREJ6xU31PA'>;
 
 export enum RegistryCpiAccount {
   Bump,
@@ -95,7 +95,7 @@ export function identifyRegistryCpiInstruction(
 }
 
 export type ParsedRegistryCpiInstruction<
-  TProgram extends string = '89KoDhPxWcegVeGrr8sAg3sn7H7EaH6edtDg9qx8Jh19',
+  TProgram extends string = 'DLYBwwHjtnYh8BNYFGkTgCZ8cn4cyR5xSJREJ6xU31PA',
 > =
   | ({
       instructionType: RegistryCpiInstruction.Init;

@@ -6,6 +6,6 @@
  * @see https://github.com/codama-idl/codama
  */
 
-import { type Address } from '@solana/kit';
+import { type Address } from 'gill';
 
 export const BASE_PROGRAM_ADDRESS = '' as Address<''>;

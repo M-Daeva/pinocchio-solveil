@@ -13,7 +13,7 @@ import {
   type Codec,
   type Decoder,
   type Encoder,
-} from '@solana/kit';
+} from 'gill';
 import {
   getUint32Decoder,
   getUint32Encoder,

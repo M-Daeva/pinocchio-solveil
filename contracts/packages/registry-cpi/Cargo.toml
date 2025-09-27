@@ -33,4 +33,5 @@ macro-p-serde = { workspace = true }
 macro-test-ser = { workspace = true }
 macro-try-from = { workspace = true }
 macro-error = { workspace = true }
+macro-optional-flag = { workspace = true }
 base = { workspace = true }

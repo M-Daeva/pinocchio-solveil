@@ -15,7 +15,7 @@ import {
   type FixedSizeCodec,
   type FixedSizeDecoder,
   type FixedSizeEncoder,
-} from '@solana/kit';
+} from 'gill';
 
 export type Uint16 = Array<number>;
 

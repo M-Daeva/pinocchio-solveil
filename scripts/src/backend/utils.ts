@@ -1,10 +1,9 @@
 import path from "path";
 import { floor, getLast } from "../common/utils";
-import * as anchor from "@coral-xyz/anchor";
-import { Keypair } from "@solana/web3.js";
-import { readFile, writeFile } from "fs/promises";
 import { networks, ProgramName, UTILS, PATH } from "../common/config";
 import { Network } from "../common/interfaces";
+import { loadKeypairSignerFromFile, saveKeypairToFile } from "gill/node";
+import { KeyPairSigner } from "gill";
 
 const { ENCODING, MS_PER_SECOND } = UTILS;
 
@@ -24,7 +23,7 @@ export function parseNetwork(): Network {
 
 export function getSnapshotPath(network: Network, fileName: string) {
   return rootPath(
-    `./scripts/backend/snapshots/${network.toLocaleLowerCase()}/${fileName}`
+    `./scripts/backend/snapshots/${network.toLocaleLowerCase()}/${fileName}`,
   );
 }
 
@@ -60,7 +59,7 @@ export function dateStringToEpoch(dateString: string): number {
     parseInt(day),
     parseInt(hours),
     parseInt(minutes),
-    parseInt(seconds)
+    parseInt(seconds),
   );
 
   return Math.floor(timestamp.getTime() / 1000);
@@ -99,8 +98,8 @@ export function dateStringToEpochUTC(dateString: string): number {
       parseInt(day),
       parseInt(hours),
       parseInt(minutes),
-      parseInt(seconds)
-    )
+      parseInt(seconds),
+    ),
   );
 
   return Math.floor(timestamp.getTime() / 1000);
@@ -123,7 +122,7 @@ export async function specifyTimeout(
   timeout: number = 5_000,
   exception: Function = () => {
     throw new Error("Timeout!");
-  }
+  },
 ) {
   let timer: NodeJS.Timeout;
 
@@ -133,47 +132,41 @@ export async function specifyTimeout(
   ]).finally(() => clearTimeout(timer));
 }
 
-export async function readKeypair(keypairPath: string): Promise<Keypair> {
-  const secretKey = await readFile(keypairPath, {
-    encoding: ENCODING as BufferEncoding,
-  }).then(JSON.parse);
-
-  return Keypair.fromSecretKey(new Uint8Array(secretKey));
+export async function readKeypairSigner(path: string): Promise<KeyPairSigner> {
+  return loadKeypairSignerFromFile(rootPath(path));
 }
 
 export async function writeKeypair(
-  keypairPath: string,
-  keypair: anchor.web3.Keypair
+  keypair: CryptoKeyPair,
+  path: string,
 ): Promise<void> {
-  await writeFile(keypairPath, JSON.stringify(Array.from(keypair.secretKey)), {
-    encoding: ENCODING as BufferEncoding,
-  });
+  await saveKeypairToFile(keypair, rootPath(path));
 }
 
 export function getKeypairPath(program: ProgramName): string {
   return rootPath(
-    `./target/deploy/${program.toLowerCase()}-data-account-keypair.json`
+    `./target/deploy/${program.toLowerCase()}-data-account-keypair.json`,
   );
 }
 
-export function getWallet(ownerKeypair: anchor.web3.Keypair): anchor.Wallet {
-  return new anchor.Wallet(ownerKeypair);
-}
+// export function getWallet(ownerKeypair: CryptoKeyPair): anchor.Wallet {
+//   return new anchor.Wallet(ownerKeypair);
+// }
 
-export async function updateAddresses(
-  keypairList: [ProgramName, anchor.web3.Keypair][]
-): Promise<void> {
-  const filePath = rootPath(PATH.TO_CONFIG);
+// export async function updateAddresses(
+//   keypairList: [ProgramName, CryptoKeyPair][],
+// ): Promise<void> {
+//   const filePath = rootPath(PATH.TO_CONFIG);
 
-  // Read the file content
-  let content = await readFile(filePath, ENCODING as BufferEncoding);
+//   // Read the file content
+//   let content = await readFile(filePath, ENCODING as BufferEncoding);
 
-  // For each key-value pair, update the corresponding PROGRAM_ADDRESS field
-  for (const [key, newValue] of keypairList) {
-    const regex = new RegExp(`(\\b${key}\\b\\s*:\\s*")[^"]*(")`, "g");
-    content = content.replace(regex, `$1${newValue.publicKey.toString()}$2`);
-  }
+//   // For each key-value pair, update the corresponding PROGRAM_ADDRESS field
+//   for (const [key, newValue] of keypairList) {
+//     const regex = new RegExp(`(\\b${key}\\b\\s*:\\s*")[^"]*(")`, "g");
+//     content = content.replace(regex, `$1${newValue.publicKey.toString()}$2`);
+//   }
 
-  // Write the updated content back to the file
-  await writeFile(filePath, content, ENCODING as BufferEncoding);
-}
+//   // Write the updated content back to the file
+//   await writeFile(filePath, content, ENCODING as BufferEncoding);
+// }

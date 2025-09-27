@@ -29,7 +29,7 @@ import {
   type TransactionSigner,
   type WritableAccount,
   type WritableSignerAccount,
-} from '@solana/kit';
+} from 'gill';
 import { REGISTRY_CPI_PROGRAM_ADDRESS } from '../programs';
 import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
 import {

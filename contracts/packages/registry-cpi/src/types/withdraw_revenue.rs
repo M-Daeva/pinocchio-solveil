@@ -5,6 +5,7 @@ use {
         types::{BitField, Result, Uint64},
     },
     bytemuck::{Pod, Zeroable},
+    macro_optional_flag::OptionFlag,
     macro_p_serde::p_serde,
     macro_test_ser::test_ser,
     macro_try_from::AccountTryFrom,
@@ -39,8 +40,10 @@ pub struct Accounts<'a> {
 }
 
 #[test_ser(Discriminator::WithdrawRevenue)]
+#[derive(OptionFlag)]
 #[p_serde]
 pub struct InstructionData {
+    #[optional(amount)]
     pub flags: BitField,
     pub amount: Uint64,
 }
