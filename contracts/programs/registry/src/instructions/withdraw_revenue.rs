@@ -50,7 +50,7 @@ pub fn withdraw_revenue(accounts: &[AccountInfo], instruction_data: &[u8]) -> Pr
 
     let config_acc = config;
     let app_balance = get_ata_balance(revenue_app_ata)?;
-    let amount = if ix.flags.get_bit() {
+    let amount = if ix.get_amount_flag() {
         ix.amount.get()
     } else {
         app_balance
