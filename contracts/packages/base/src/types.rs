@@ -5,16 +5,17 @@ use {
         traits::DataLen,
     },
     bytemuck::{Pod, Zeroable},
+    codama::CodamaType,
+    core::marker::PhantomData,
     macro_p_serde::p_serde,
     pinocchio::{
         account_info::{AccountInfo, Ref, RefMut},
         program_error::ProgramError,
         ProgramResult,
     },
-    std::marker::PhantomData,
 };
 
-pub type Result<T> = std::result::Result<T, ProgramError>;
+pub type Result<T> = core::result::Result<T, ProgramError>;
 
 // Account data wrapper for immutable operations
 pub struct StorageR<'a, T> {
@@ -99,6 +100,7 @@ where
     }
 }
 
+#[derive(CodamaType)]
 #[p_serde]
 pub struct BitField(u8);
 
@@ -145,6 +147,7 @@ impl BitField {
     }
 }
 
+#[derive(CodamaType)]
 #[p_serde]
 pub struct Uint16([u8; 2]);
 
@@ -177,6 +180,7 @@ impl Uint16 {
     }
 }
 
+#[derive(CodamaType)]
 #[p_serde]
 pub struct Uint32([u8; 4]);
 
@@ -209,6 +213,7 @@ impl Uint32 {
     }
 }
 
+#[derive(CodamaType)]
 #[p_serde]
 pub struct Uint64([u8; 8]);
 
@@ -241,6 +246,7 @@ impl Uint64 {
     }
 }
 
+#[derive(CodamaType)]
 #[p_serde]
 pub struct Uint128([u8; 16]);
 

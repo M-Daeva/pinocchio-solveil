@@ -5,7 +5,7 @@ authors = ["M. Daeva <embedmad@gmail.com>"]
 license = "BSL-1.1"
 
 [workspace]
-members = ["programs/*", "packages/*", "tests"]
+members = ["schema", "programs/*", "packages/*", "tests"]
 exclude = []
 resolver = "2"
 
@@ -29,10 +29,13 @@ pinocchio-system = "0.3.0"
 pinocchio-token = "0.4.0"
 
 # testing
+toml = "0.9.6"
+codama = "0.5.3"
 proc-macro2 = "1.0.101"
 quote = "1.0.40"
 syn = "2.0.106"
 serde_json = "1.0.141"
+thiserror = "2.0.16"
 strum = "0.24.1"
 strum_macros = "0.24.3"
 pretty_assertions = "1.4.1"
@@ -57,6 +60,7 @@ macro-p-serde = { path = "./packages/macro-p-serde" }
 macro-test-ser = { path = "./packages/macro-test-ser" }
 macro-try-from = { path = "./packages/macro-try-from" }
 macro-error = { path = "./packages/macro-error" }
+macro-optional-flag = { path = "./packages/macro-optional-flag" }
 base = { path = "./packages/base" }
 registry-cpi = { path = "./packages/registry-cpi" }
 

@@ -168,32 +168,14 @@ impl RegistryExtension for App {
         }
         .to_account_metas();
 
-        let mut instruction_data = types::init::InstructionData::default();
-        if let Some(x) = rotation_timeout {
-            instruction_data.set_rotation_timeout_flag(true);
-            instruction_data.rotation_timeout.set(x);
-        }
-        if let Some(x) = account_registration_fee {
-            instruction_data.set_account_registration_fee_flag(true);
-            instruction_data.account_registration_fee = x;
-        }
-        if let Some(x) = account_data_size_range {
-            instruction_data.set_account_data_size_range_flag(true);
-            instruction_data.account_data_size_range = x;
-        }
+        let mut ix_data = types::init::InstructionData::default();
+        ix_data.set_rotation_timeout(rotation_timeout.map(|x| x.into()));
+        ix_data.set_account_registration_fee(account_registration_fee);
+        ix_data.set_account_data_size_range(account_data_size_range);
 
-        let instruction_data = &instruction_data
-            .serialize()
-            .map_err(TestError::from_raw_error)?;
+        let ix_data = &ix_data.serialize().map_err(TestError::from_raw_error)?;
 
-        send_tx_with_ix(
-            self,
-            &program_id,
-            &accounts,
-            &instruction_data,
-            signers,
-            &[],
-        )
+        send_tx_with_ix(self, &program_id, &accounts, &ix_data, signers, &[])
     }
 
     fn registry_try_update_config(
@@ -226,40 +208,16 @@ impl RegistryExtension for App {
         }
         .to_account_metas();
 
-        let mut instruction_data = types::update_config::InstructionData::default();
-        if let Some(x) = admin {
-            instruction_data.set_admin_flag(true);
-            instruction_data.admin = sol_to_pin_pubkey(&x.pubkey());
-        }
-        if let Some(x) = is_paused {
-            instruction_data.set_is_paused_flag(true);
-            instruction_data.is_paused.set_bit(x);
-        }
-        if let Some(x) = rotation_timeout {
-            instruction_data.set_rotation_timeout_flag(true);
-            instruction_data.rotation_timeout.set(x);
-        }
-        if let Some(x) = registration_fee_amount {
-            instruction_data.set_registration_fee_amount_flag(true);
-            instruction_data.registration_fee_amount.set(x);
-        }
-        if let Some(x) = data_size_range {
-            instruction_data.set_data_size_range_flag(true);
-            instruction_data.data_size_range = x;
-        }
+        let mut ix_data = types::update_config::InstructionData::default();
+        ix_data.set_admin(admin.map(|x| sol_to_pin_pubkey(&x.pubkey())));
+        ix_data.set_is_paused(is_paused.map(|x| x.into()));
+        ix_data.set_rotation_timeout(rotation_timeout.map(|x| x.into()));
+        ix_data.set_registration_fee_amount(registration_fee_amount.map(|x| x.into()));
+        ix_data.set_data_size_range(data_size_range);
 
-        let instruction_data = &instruction_data
-            .serialize()
-            .map_err(TestError::from_raw_error)?;
+        let ix_data = &ix_data.serialize().map_err(TestError::from_raw_error)?;
 
-        send_tx_with_ix(
-            self,
-            &program_id,
-            &accounts,
-            &instruction_data,
-            signers,
-            &[],
-        )
+        send_tx_with_ix(self, &program_id, &accounts, &ix_data, signers, &[])
     }
 
     fn registry_try_confirm_admin_rotation(
@@ -288,18 +246,11 @@ impl RegistryExtension for App {
         }
         .to_account_metas();
 
-        let instruction_data = &types::confirm_admin_rotation::InstructionData {}
+        let ix_data = &types::confirm_admin_rotation::InstructionData {}
             .serialize()
             .map_err(TestError::from_raw_error)?;
 
-        send_tx_with_ix(
-            self,
-            &program_id,
-            &accounts,
-            &instruction_data,
-            signers,
-            &[],
-        )
+        send_tx_with_ix(self, &program_id, &accounts, &ix_data, signers, &[])
     }
 
     fn registry_try_withdraw_revenue(
@@ -352,24 +303,15 @@ impl RegistryExtension for App {
         }
         .to_account_metas();
 
-        let mut instruction_data = types::withdraw_revenue::InstructionData::default();
+        let mut ix_data = types::withdraw_revenue::InstructionData::default();
         if let Some(x) = amount {
-            instruction_data.flags.set_bit(true);
-            instruction_data.amount.set(x);
+            ix_data.flags.set_bit(true);
+            ix_data.amount.set(x);
         }
 
-        let instruction_data = &instruction_data
-            .serialize()
-            .map_err(TestError::from_raw_error)?;
+        let ix_data = &ix_data.serialize().map_err(TestError::from_raw_error)?;
 
-        send_tx_with_ix(
-            self,
-            &program_id,
-            &accounts,
-            &instruction_data,
-            signers,
-            &[],
-        )
+        send_tx_with_ix(self, &program_id, &accounts, &ix_data, signers, &[])
     }
 
     fn registry_try_create_account(
@@ -412,20 +354,13 @@ impl RegistryExtension for App {
         }
         .to_account_metas();
 
-        let instruction_data = &types::create_account::InstructionData {
+        let ix_data = &types::create_account::InstructionData {
             max_data_size: Uint32::from(max_data_size),
         }
         .serialize()
         .map_err(TestError::from_raw_error)?;
 
-        send_tx_with_ix(
-            self,
-            &program_id,
-            &accounts,
-            &instruction_data,
-            signers,
-            &[],
-        )
+        send_tx_with_ix(self, &program_id, &accounts, &ix_data, signers, &[])
     }
 
     fn registry_try_close_account(
@@ -461,18 +396,11 @@ impl RegistryExtension for App {
         }
         .to_account_metas();
 
-        let instruction_data = &types::close_account::InstructionData {}
+        let ix_data = &types::close_account::InstructionData {}
             .serialize()
             .map_err(TestError::from_raw_error)?;
 
-        send_tx_with_ix(
-            self,
-            &program_id,
-            &accounts,
-            &instruction_data,
-            signers,
-            &[],
-        )
+        send_tx_with_ix(self, &program_id, &accounts, &ix_data, signers, &[])
     }
 
     fn registry_try_reopen_account(
@@ -511,20 +439,13 @@ impl RegistryExtension for App {
         }
         .to_account_metas();
 
-        let instruction_data = &types::reopen_account::InstructionData {
+        let ix_data = &types::reopen_account::InstructionData {
             max_data_size: Uint32::from(max_data_size),
         }
         .serialize()
         .map_err(TestError::from_raw_error)?;
 
-        send_tx_with_ix(
-            self,
-            &program_id,
-            &accounts,
-            &instruction_data,
-            signers,
-            &[],
-        )
+        send_tx_with_ix(self, &program_id, &accounts, &ix_data, signers, &[])
     }
 
     fn registry_try_activate_account(
@@ -577,18 +498,11 @@ impl RegistryExtension for App {
         }
         .to_account_metas();
 
-        let instruction_data = &types::activate_account::InstructionData {}
+        let ix_data = &types::activate_account::InstructionData {}
             .serialize()
             .map_err(TestError::from_raw_error)?;
 
-        send_tx_with_ix(
-            self,
-            &program_id,
-            &accounts,
-            &instruction_data,
-            signers,
-            &[],
-        )
+        send_tx_with_ix(self, &program_id, &accounts, &ix_data, signers, &[])
     }
 
     fn registry_try_write_data(
@@ -619,21 +533,14 @@ impl RegistryExtension for App {
         }
         .to_account_metas();
 
-        let instruction_data = &types::write_data::InstructionData {
+        let ix_data = &types::write_data::InstructionData {
             data: get_data_buffer(data),
             nonce: Uint64::from(nonce),
         }
         .serialize()
         .map_err(TestError::from_raw_error)?;
 
-        send_tx_with_ix(
-            self,
-            &program_id,
-            &accounts,
-            &instruction_data,
-            signers,
-            &[],
-        )
+        send_tx_with_ix(self, &program_id, &accounts, &ix_data, signers, &[])
     }
 
     fn registry_try_request_account_rotation(
@@ -668,20 +575,13 @@ impl RegistryExtension for App {
         }
         .to_account_metas();
 
-        let instruction_data = &types::request_account_rotation::InstructionData {
+        let ix_data = &types::request_account_rotation::InstructionData {
             new_owner: sol_to_pin_pubkey(&new_owner.pubkey()),
         }
         .serialize()
         .map_err(TestError::from_raw_error)?;
 
-        send_tx_with_ix(
-            self,
-            &program_id,
-            &accounts,
-            &instruction_data,
-            signers,
-            &[],
-        )
+        send_tx_with_ix(self, &program_id, &accounts, &ix_data, signers, &[])
     }
 
     fn registry_try_confirm_account_rotation(
@@ -717,18 +617,11 @@ impl RegistryExtension for App {
         }
         .to_account_metas();
 
-        let instruction_data = &types::confirm_account_rotation::InstructionData {}
+        let ix_data = &types::confirm_account_rotation::InstructionData {}
             .serialize()
             .map_err(TestError::from_raw_error)?;
 
-        send_tx_with_ix(
-            self,
-            &program_id,
-            &accounts,
-            &instruction_data,
-            signers,
-            &[],
-        )
+        send_tx_with_ix(self, &program_id, &accounts, &ix_data, signers, &[])
     }
 
     fn registry_query_config(&self) -> TestResult<Config> {
