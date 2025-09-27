@@ -1837,6 +1837,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "macro-optional-flag"
+version = "1.0.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.106",
+]
+
+[[package]]
 name = "macro-p-serde"
 version = "1.0.0"
 dependencies = [
@@ -2474,6 +2483,7 @@ dependencies = [
  "codama",
  "macro-account",
  "macro-error",
+ "macro-optional-flag",
  "macro-p-serde",
  "macro-test-ser",
  "macro-try-from",
