@@ -10,12 +10,15 @@ use {
 /// in the `#[optional(...)]` attribute on the `flags` field. The struct must have a
 /// `flags` field of type `BitField`.
 ///
+/// For flags that correspond to existing struct fields, it also generates Option-based
+/// getter and setter methods that manage both the flag and the field value.
+///
 /// # Example
 ///
 /// ```rust
 /// #[derive(OptionFlag)]
 /// pub struct UserId {
-///     #[optional(is_open, is_activated, account_bump)]
+///     #[optional(is_open, account_bump)]
 ///     pub flags: BitField,
 ///     pub id: Uint32,
 ///     pub account_bump: u8,
@@ -24,9 +27,9 @@ use {
 /// ```
 ///
 /// This generates:
-/// - Constants: `IS_OPEN`, `IS_ACTIVATED`, `ACCOUNT_BUMP`
-/// - Getters: `get_is_open_flag()`, `get_is_activated_flag()`, `get_account_bump_flag()`
-/// - Setters: `set_is_open_flag()`, `set_is_activated_flag()`, `set_account_bump_flag()`
+/// - Constants: `IS_OPEN`, `ACCOUNT_BUMP`
+/// - Flag getters/setters: `get_is_open_flag()`, `set_is_open_flag()`, etc.
+/// - Field getters/setters (for existing fields): `get_account_bump()`, `set_account_bump()`
 ///
 /// # Panics
 ///
@@ -55,6 +58,17 @@ pub fn derive_option_flag(input: TokenStream) -> TokenStream {
     // Extract flag names from the #[optional(...)] attribute
     let flag_names = extract_flag_names(flags_field);
 
+    // Create a map of field names to their types for lookup
+    let field_map: std::collections::HashMap<String, &syn::Type> = fields
+        .iter()
+        .filter_map(|field| {
+            field
+                .ident
+                .as_ref()
+                .map(|ident| (ident.to_string(), &field.ty))
+        })
+        .collect();
+
     // Generate constants and methods
     let mut constants = Vec::new();
     let mut methods = Vec::new();
@@ -73,25 +87,86 @@ pub fn derive_option_flag(input: TokenStream) -> TokenStream {
             const #const_ident: u8 = #index_u8;
         });
 
-        // Generate getter method with documentation
+        // Check if this flag corresponds to an existing field
+        let flag_name_str = flag_name.to_string();
+        let has_corresponding_field = field_map.contains_key(&flag_name_str);
+
+        // Generate flag getter method with appropriate visibility
         let getter_doc = format!("Returns whether the `{}` flag is set.", flag_name);
+        let getter_visibility = if has_corresponding_field {
+            quote! { fn } // private
+        } else {
+            quote! { pub fn } // public
+        };
+
         methods.push(quote! {
             #[doc = #getter_doc]
             #[inline]
-            pub fn #getter_name(&self) -> bool {
+            #getter_visibility #getter_name(&self) -> bool {
                 self.flags.get_flag(Self::#const_ident)
             }
         });
 
-        // Generate setter method with documentation
+        // Generate flag setter method with appropriate visibility
         let setter_doc = format!("Sets the `{}` flag to the specified value.", flag_name);
+        let setter_visibility = if has_corresponding_field {
+            quote! { fn } // private
+        } else {
+            quote! { pub fn } // public
+        };
+
         methods.push(quote! {
             #[doc = #setter_doc]
             #[inline]
-            pub fn #setter_name(&mut self, x: bool) {
+            #setter_visibility #setter_name(&mut self, x: bool) {
                 self.flags.set_flag(Self::#const_ident, x);
             }
         });
+
+        // If there's a corresponding field, generate Option-based getter and setter
+        if let Some(field_type) = field_map.get(&flag_name_str) {
+            let field_ident = Ident::new(&flag_name_str, flag_name.span());
+            let option_getter_name = Ident::new(&format!("get_{}", flag_name), flag_name.span());
+            let option_setter_name = Ident::new(&format!("set_{}", flag_name), flag_name.span());
+
+            // Generate Option-based getter
+            let option_getter_doc = format!(
+                "Returns the value of `{}` if the flag is set, otherwise None.",
+                flag_name
+            );
+            methods.push(quote! {
+                #[doc = #option_getter_doc]
+                #[inline]
+                pub fn #option_getter_name(&self) -> Option<#field_type> {
+                    if self.#getter_name() {
+                        Some(self.#field_ident)
+                    } else {
+                        None
+                    }
+                }
+            });
+
+            // Generate Option-based setter
+            let option_setter_doc = format!(
+                "Sets the value of `{}` and updates the corresponding flag.",
+                flag_name
+            );
+            methods.push(quote! {
+                #[doc = #option_setter_doc]
+                #[inline]
+                pub fn #option_setter_name(&mut self, x: Option<#field_type>) {
+                    match x {
+                        Some(x) => {
+                            self.#setter_name(true);
+                            self.#field_ident = x;
+                        },
+                        None => {
+                            self.#setter_name(false);
+                        }
+                    }
+                }
+            });
+        }
     }
 
     // Generate the impl block
