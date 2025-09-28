@@ -1,6 +1,6 @@
 use {
     crate::helpers::{
-        extensions::registry::{get_data_buffer, RegistryExtension},
+        extensions::registry::RegistryExtension,
         suite::{
             core::{assert_error, App},
             types::{pin_to_sol_pubkey, AppToken, AppUser, PinPubkey, TestResult},
@@ -8,7 +8,7 @@ use {
     },
     base::{
         error::AuthError,
-        types::{BitField, Uint32, Uint64},
+        types::{BitField, String4096, Uint32, Uint64},
     },
     pretty_assertions::assert_eq,
     registry_cpi::{
@@ -499,7 +499,7 @@ fn write_data_default() -> TestResult<()> {
         assert_eq!(
             app.registry_query_user_account(AppUser::Alice)?,
             UserAccount {
-                data: get_data_buffer(data),
+                data: String4096::from(data),
                 nonce: Uint64::from(nonce),
                 max_size: ACCOUNT_DATA_SIZE_MAX.into()
             }
@@ -529,7 +529,7 @@ fn write_data_multiple_users() -> TestResult<()> {
     assert_eq!(
         app.registry_query_user_account(AppUser::Alice)?,
         UserAccount {
-            data: get_data_buffer(DATA_0),
+            data: String4096::from(DATA_0),
             nonce: NONCE_0.into(),
             max_size: ACCOUNT_DATA_SIZE_MAX.into()
         }
@@ -537,7 +537,7 @@ fn write_data_multiple_users() -> TestResult<()> {
     assert_eq!(
         app.registry_query_user_account(AppUser::Bob)?,
         UserAccount {
-            data: get_data_buffer(DATA_1),
+            data: String4096::from(DATA_1),
             nonce: NONCE_1.into(),
             max_size: ACCOUNT_DATA_SIZE_MAX.into()
         }
@@ -590,7 +590,7 @@ fn rotate_account() -> TestResult<()> {
     assert_eq!(
         app.registry_query_user_account(AppUser::Bob)?,
         UserAccount {
-            data: get_data_buffer(DATA_0),
+            data: String4096::from(DATA_0),
             nonce: NONCE_0.into(),
             max_size: ACCOUNT_DATA_SIZE_MAX.into()
         }

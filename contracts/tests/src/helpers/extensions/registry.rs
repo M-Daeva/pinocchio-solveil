@@ -11,7 +11,7 @@ use {
     },
     base::{
         traits::InstructionSerialize,
-        types::{Uint32, Uint64},
+        types::{String4096, Uint32, Uint64},
     },
     litesvm::types::TransactionMetadata,
     registry_cpi::{
@@ -534,7 +534,7 @@ impl RegistryExtension for App {
         .to_account_metas();
 
         let ix_data = &types::write_data::InstructionData {
-            data: get_data_buffer(data),
+            data: String4096::from(data),
             nonce: Uint64::from(nonce),
         }
         .serialize()

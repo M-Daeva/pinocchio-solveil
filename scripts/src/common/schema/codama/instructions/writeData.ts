@@ -8,8 +8,6 @@
 
 import {
   combineCodec,
-  getArrayDecoder,
-  getArrayEncoder,
   getStructDecoder,
   getStructEncoder,
   getU8Decoder,
@@ -33,8 +31,12 @@ import {
 import { REGISTRY_CPI_PROGRAM_ADDRESS } from '../programs';
 import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
 import {
+  getString4096Decoder,
+  getString4096Encoder,
   getUint64Decoder,
   getUint64Encoder,
+  type String4096,
+  type String4096Args,
   type Uint64,
   type Uint64Args,
 } from '../types';
@@ -71,12 +73,12 @@ export type WriteDataInstruction<
 
 export type WriteDataInstructionData = {
   discriminator: number;
-  data: Array<number>;
+  data: String4096;
   nonce: Uint64;
 };
 
 export type WriteDataInstructionDataArgs = {
-  data: Array<number>;
+  data: String4096Args;
   nonce: Uint64Args;
 };
 
@@ -84,7 +86,7 @@ export function getWriteDataInstructionDataEncoder(): Encoder<WriteDataInstructi
   return transformEncoder(
     getStructEncoder([
       ['discriminator', getU8Encoder()],
-      ['data', getArrayEncoder(getU8Encoder(), { size: 4096 })],
+      ['data', getString4096Encoder()],
       ['nonce', getUint64Encoder()],
     ]),
     (value) => ({ ...value, discriminator: WRITE_DATA_DISCRIMINATOR })
@@ -94,7 +96,7 @@ export function getWriteDataInstructionDataEncoder(): Encoder<WriteDataInstructi
 export function getWriteDataInstructionDataDecoder(): Decoder<WriteDataInstructionData> {
   return getStructDecoder([
     ['discriminator', getU8Decoder()],
-    ['data', getArrayDecoder(getU8Decoder(), { size: 4096 })],
+    ['data', getString4096Decoder()],
     ['nonce', getUint64Decoder()],
   ]);
 }

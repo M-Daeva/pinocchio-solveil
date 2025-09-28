@@ -2,7 +2,7 @@ use {
     crate::types::common::{AssetItem, Range},
     base::{
         traits::DataLen,
-        types::{BitField, Uint32, Uint64},
+        types::{BitField, String4096, Uint32, Uint64},
     },
     bytemuck::{Pod, Zeroable},
     codama::CodamaAccount,
@@ -103,28 +103,13 @@ pub struct UserId {
 }
 
 /// get by user_id: u32
-#[derive(CodamaAccount, Debug, PartialEq, Eq, Pod, Zeroable, Clone, Copy)]
-#[repr(C)]
+#[derive(CodamaAccount)]
+#[p_serde]
 pub struct UserAccount {
     /// encrypted user data
-    pub data: [u8; 4_096], // TODO: codama can't recognize `pub data: [u8; ACCOUNT_DATA_SIZE_MAX as usize]`
+    pub data: String4096, // TODO: codama can't recognize `pub data: [u8; ACCOUNT_DATA_SIZE_MAX as usize]`
     /// encryption nonce
     pub nonce: Uint64,
     /// allocated storage capacity
     pub max_size: Uint32,
-}
-
-impl Default for UserAccount {
-    #[inline]
-    fn default() -> Self {
-        Self {
-            data: [0; ACCOUNT_DATA_SIZE_MAX as usize],
-            nonce: Uint64::default(),
-            max_size: Uint32::default(),
-        }
-    }
-}
-
-impl DataLen for UserAccount {
-    const LEN: usize = core::mem::size_of::<Self>();
 }

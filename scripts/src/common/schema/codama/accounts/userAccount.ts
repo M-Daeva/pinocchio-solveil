@@ -13,12 +13,8 @@ import {
   decodeAccount,
   fetchEncodedAccount,
   fetchEncodedAccounts,
-  getArrayDecoder,
-  getArrayEncoder,
   getStructDecoder,
   getStructEncoder,
-  getU8Decoder,
-  getU8Encoder,
   type Account,
   type Address,
   type Codec,
@@ -31,31 +27,31 @@ import {
   type MaybeEncodedAccount,
 } from 'gill';
 import {
+  getString4096Decoder,
+  getString4096Encoder,
   getUint32Decoder,
   getUint32Encoder,
   getUint64Decoder,
   getUint64Encoder,
+  type String4096,
+  type String4096Args,
   type Uint32,
   type Uint32Args,
   type Uint64,
   type Uint64Args,
 } from '../types';
 
-export type UserAccount = {
-  data: Array<number>;
-  nonce: Uint64;
-  maxSize: Uint32;
-};
+export type UserAccount = { data: String4096; nonce: Uint64; maxSize: Uint32 };
 
 export type UserAccountArgs = {
-  data: Array<number>;
+  data: String4096Args;
   nonce: Uint64Args;
   maxSize: Uint32Args;
 };
 
 export function getUserAccountEncoder(): Encoder<UserAccountArgs> {
   return getStructEncoder([
-    ['data', getArrayEncoder(getU8Encoder(), { size: 4096 })],
+    ['data', getString4096Encoder()],
     ['nonce', getUint64Encoder()],
     ['maxSize', getUint32Encoder()],
   ]);
@@ -63,7 +59,7 @@ export function getUserAccountEncoder(): Encoder<UserAccountArgs> {
 
 export function getUserAccountDecoder(): Decoder<UserAccount> {
   return getStructDecoder([
-    ['data', getArrayDecoder(getU8Decoder(), { size: 4096 })],
+    ['data', getString4096Decoder()],
     ['nonce', getUint64Decoder()],
     ['maxSize', getUint32Decoder()],
   ]);

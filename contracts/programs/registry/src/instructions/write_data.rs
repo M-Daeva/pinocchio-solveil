@@ -36,7 +36,7 @@ pub fn write_data(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramR
             Err(AnyError::Custom(CustomError::AccountIsNotActivated))?;
         }
 
-        if data.len() > user_account.max_size.get() as usize {
+        if data.get_raw().len() > user_account.max_size.get() as usize {
             Err(AnyError::Custom(CustomError::MaxDataSizeIsExceeded))?;
         }
 

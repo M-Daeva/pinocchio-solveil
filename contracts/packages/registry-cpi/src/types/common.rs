@@ -1,7 +1,7 @@
 use {
     base::{
         traits::DataLen,
-        types::{BitField, Uint32, Uint64},
+        types::{BitField, String4096, Uint32, Uint64},
     },
     bytemuck::{Pod, Zeroable},
     codama::{CodamaInstructions, CodamaType},
@@ -119,7 +119,7 @@ pub enum InstructionData {
     #[codama(account(name = "sender", signer, writable))]
     #[codama(account(name = "user_id"))]
     #[codama(account(name = "user_account", writable))]
-    WriteData { data: [u8; 4096], nonce: Uint64 },
+    WriteData { data: String4096, nonce: Uint64 },
 
     #[codama(account(name = "sender", signer, writable))]
     #[codama(account(name = "bump"))]

@@ -1,7 +1,11 @@
 use {
-    crate::state::{Discriminator, ACCOUNT_DATA_SIZE_MAX},
-    base::types::{Result, Uint64},
+    crate::state::Discriminator,
+    base::{
+        traits::DataLen,
+        types::{Result, String4096, Uint64},
+    },
     bytemuck::{Pod, Zeroable},
+    macro_p_serde::p_serde,
     macro_test_ser::test_ser,
     macro_try_from::AccountTryFrom,
     pinocchio::{account_info::AccountInfo, program_error::ProgramError},
@@ -20,18 +24,8 @@ pub struct Accounts<'a> {
 }
 
 #[test_ser(Discriminator::WriteData)]
-#[derive(Debug, PartialEq, Eq, Pod, Zeroable, Clone, Copy)]
-#[repr(C)]
+#[p_serde]
 pub struct InstructionData {
-    pub data: [u8; ACCOUNT_DATA_SIZE_MAX as usize],
+    pub data: String4096,
     pub nonce: Uint64,
-}
-
-impl Default for InstructionData {
-    fn default() -> Self {
-        Self {
-            data: [0; ACCOUNT_DATA_SIZE_MAX as usize],
-            nonce: Uint64::default(),
-        }
-    }
 }

@@ -184,16 +184,8 @@
                 "kind": "structFieldTypeNode",
                 "name": "data",
                 "type": {
-                  "count": {
-                    "kind": "fixedCountNode",
-                    "value": 4096
-                  },
-                  "item": {
-                    "endian": "le",
-                    "format": "u8",
-                    "kind": "numberTypeNode"
-                  },
-                  "kind": "arrayTypeNode"
+                  "kind": "definedTypeLinkNode",
+                  "name": "string4096"
                 }
               },
               {
@@ -1070,16 +1062,8 @@
               "kind": "instructionArgumentNode",
               "name": "data",
               "type": {
-                "count": {
-                  "kind": "fixedCountNode",
-                  "value": 4096
-                },
-                "item": {
-                  "endian": "le",
-                  "format": "u8",
-                  "kind": "numberTypeNode"
-                },
-                "kind": "arrayTypeNode"
+                "kind": "definedTypeLinkNode",
+                "name": "string4096"
               }
             },
             {
@@ -1302,6 +1286,70 @@
           "count": {
             "kind": "fixedCountNode",
             "value": 16
+          },
+          "item": {
+            "endian": "le",
+            "format": "u8",
+            "kind": "numberTypeNode"
+          },
+          "kind": "arrayTypeNode"
+        }
+      },
+      {
+        "kind": "definedTypeNode",
+        "name": "string16",
+        "type": {
+          "count": {
+            "kind": "fixedCountNode",
+            "value": 16
+          },
+          "item": {
+            "endian": "le",
+            "format": "u8",
+            "kind": "numberTypeNode"
+          },
+          "kind": "arrayTypeNode"
+        }
+      },
+      {
+        "kind": "definedTypeNode",
+        "name": "string32",
+        "type": {
+          "count": {
+            "kind": "fixedCountNode",
+            "value": 32
+          },
+          "item": {
+            "endian": "le",
+            "format": "u8",
+            "kind": "numberTypeNode"
+          },
+          "kind": "arrayTypeNode"
+        }
+      },
+      {
+        "kind": "definedTypeNode",
+        "name": "string64",
+        "type": {
+          "count": {
+            "kind": "fixedCountNode",
+            "value": 64
+          },
+          "item": {
+            "endian": "le",
+            "format": "u8",
+            "kind": "numberTypeNode"
+          },
+          "kind": "arrayTypeNode"
+        }
+      },
+      {
+        "kind": "definedTypeNode",
+        "name": "string4096",
+        "type": {
+          "count": {
+            "kind": "fixedCountNode",
+            "value": 4096
           },
           "item": {
             "endian": "le",

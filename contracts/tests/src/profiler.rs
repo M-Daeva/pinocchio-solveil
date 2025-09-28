@@ -42,7 +42,7 @@ fn profiling_registry() -> TestResult<()> {
         .registry_try_write_data(AppUser::Alice, DATA_0, NONCE_0)?
         .compute_units_consumed;
 
-    // branch: codama, commit: 365174d600f5daf229c48c115d736ebd3ac6ebd2
+    // branch: dev, commit: ae3f4fb6ab8040da1f8d2af3d1ab761c50212bfc
     const PROGRAM_NAME: &str = PROGRAM_NAME_REGISTRY;
     const PREVIOUS_RESULT: &str = "
 ==================== previous result ====================
