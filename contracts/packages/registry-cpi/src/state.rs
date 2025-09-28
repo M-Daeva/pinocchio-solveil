@@ -10,6 +10,7 @@ use {
     macro_p_serde::p_serde,
     pinocchio::pubkey::Pubkey,
     pinocchio_pubkey::pubkey,
+    pinocchio_ts_generator::GenerateTS,
 };
 
 #[repr(u8)]
@@ -55,7 +56,7 @@ pub const ACCOUNT_DATA_SIZE_MIN: u32 = 100;
 pub const ACCOUNT_DATA_SIZE_MAX: u32 = 4096;
 
 /// to store bumps for all app accounts
-#[derive(CodamaAccount)]
+#[derive(CodamaAccount, GenerateTS)]
 #[p_serde]
 pub struct Bump {
     pub config: u8,
@@ -63,7 +64,7 @@ pub struct Bump {
     pub rotation_state: u8,
 }
 
-#[derive(CodamaAccount)]
+#[derive(CodamaAccount, GenerateTS)]
 #[p_serde]
 pub struct Config {
     /// can update the config and execute priveledged instructions
@@ -75,7 +76,7 @@ pub struct Config {
 }
 
 /// for indexing
-#[derive(CodamaAccount)]
+#[derive(CodamaAccount, GenerateTS)]
 #[p_serde]
 pub struct UserCounter {
     pub last_user_id: Uint32,
@@ -83,7 +84,7 @@ pub struct UserCounter {
 
 /// to transfer ownership from one address to another in 2 steps (for security reasons) \
 /// used both for app admin and user accounts
-#[derive(CodamaAccount)]
+#[derive(CodamaAccount, GenerateTS)]
 #[p_serde]
 pub struct RotationState {
     pub owner: Pubkey,
@@ -92,7 +93,7 @@ pub struct RotationState {
 }
 
 /// get by user: Pubkey
-#[derive(CodamaAccount, OptionFlag)]
+#[derive(CodamaAccount, GenerateTS, OptionFlag)]
 #[p_serde]
 pub struct UserId {
     #[optional(is_open, is_activated)]
@@ -103,7 +104,7 @@ pub struct UserId {
 }
 
 /// get by user_id: u32
-#[derive(CodamaAccount)]
+#[derive(CodamaAccount, GenerateTS)]
 #[p_serde]
 pub struct UserAccount {
     /// encrypted user data

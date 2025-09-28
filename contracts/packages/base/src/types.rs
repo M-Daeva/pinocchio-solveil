@@ -13,6 +13,7 @@ use {
         program_error::ProgramError,
         ProgramResult,
     },
+    pinocchio_ts_generator::GenerateTS,
 };
 
 pub type Result<T> = core::result::Result<T, ProgramError>;
@@ -100,7 +101,7 @@ where
     }
 }
 
-#[derive(CodamaType)]
+#[derive(CodamaType, GenerateTS)]
 #[p_serde]
 pub struct BitField(u8);
 
@@ -147,7 +148,7 @@ impl BitField {
     }
 }
 
-#[derive(CodamaType)]
+#[derive(CodamaType, GenerateTS)]
 #[p_serde]
 pub struct Uint16([u8; 2]);
 
@@ -180,7 +181,7 @@ impl Uint16 {
     }
 }
 
-#[derive(CodamaType)]
+#[derive(CodamaType, GenerateTS)]
 #[p_serde]
 pub struct Uint32([u8; 4]);
 
@@ -213,7 +214,7 @@ impl Uint32 {
     }
 }
 
-#[derive(CodamaType)]
+#[derive(CodamaType, GenerateTS)]
 #[p_serde]
 pub struct Uint64([u8; 8]);
 
@@ -246,7 +247,7 @@ impl Uint64 {
     }
 }
 
-#[derive(CodamaType)]
+#[derive(CodamaType, GenerateTS)]
 #[p_serde]
 pub struct Uint128([u8; 16]);
 
@@ -279,7 +280,7 @@ impl Uint128 {
     }
 }
 
-#[derive(CodamaType)]
+#[derive(CodamaType, GenerateTS)]
 #[p_serde]
 pub struct String16([u8; 16]);
 
@@ -323,7 +324,7 @@ impl String16 {
     }
 }
 
-#[derive(CodamaType)]
+#[derive(CodamaType, GenerateTS)]
 #[p_serde]
 pub struct String32([u8; 32]);
 
@@ -367,7 +368,7 @@ impl String32 {
     }
 }
 
-#[derive(CodamaType, Debug, PartialEq, Eq, Pod, Zeroable, Clone, Copy)]
+#[derive(CodamaType, GenerateTS, Debug, PartialEq, Eq, Pod, Zeroable, Clone, Copy)]
 #[repr(C)]
 pub struct String64([u8; 64]);
 
@@ -422,7 +423,7 @@ impl String64 {
     }
 }
 
-#[derive(CodamaType, Debug, PartialEq, Eq, Pod, Zeroable, Clone, Copy)]
+#[derive(CodamaType, GenerateTS, Debug, PartialEq, Eq, Pod, Zeroable, Clone, Copy)]
 #[repr(C)]
 pub struct String4096([u8; 4096]);
 

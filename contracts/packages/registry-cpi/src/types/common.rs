@@ -8,16 +8,17 @@ use {
     macro_enum_wrapper::EnumWrapper,
     macro_p_serde::p_serde,
     pinocchio::pubkey::Pubkey,
+    pinocchio_ts_generator::GenerateTS,
 };
 
-#[derive(CodamaType)]
+#[derive(CodamaType, GenerateTS)]
 #[p_serde]
 pub struct AssetItem {
     pub amount: Uint64,
     pub asset: Pubkey,
 }
 
-#[derive(CodamaType)]
+#[derive(CodamaType, GenerateTS)]
 #[p_serde]
 pub struct Range {
     pub min: Uint32,
@@ -138,11 +139,11 @@ pub enum InstructionData {
     ConfirmAccountRotation {},
 }
 
-#[derive(CodamaType, EnumWrapper)]
+#[derive(CodamaType, GenerateTS, EnumWrapper)]
 #[p_serde]
 pub struct TargetEnum(#[enumfields(spl, proxy, route)] u8);
 
-// #[derive(CodamaType, Default, Debug, PartialEq, EnumWrapper)]
+// #[derive(CodamaType, GenerateTS, Default, Debug, PartialEq, EnumWrapper)]
 // #[repr(u8)]
 // pub enum Target {
 //     #[default]
@@ -151,7 +152,7 @@ pub struct TargetEnum(#[enumfields(spl, proxy, route)] u8);
 //     Route,
 // }
 
-// #[derive(CodamaType)]
+// #[derive(CodamaType, GenerateTS)]
 // #[p_serde]
 // pub struct TargetEnum(u8);
 
@@ -187,7 +188,7 @@ pub struct TargetEnum(#[enumfields(spl, proxy, route)] u8);
 //     }
 // }
 
-#[derive(CodamaType)]
+#[derive(CodamaType, GenerateTS)]
 #[p_serde]
 pub struct StructWithEnum {
     pub num: Uint32,
