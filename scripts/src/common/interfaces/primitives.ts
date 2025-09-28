@@ -1,5 +1,15 @@
 import { OR } from ".";
-import { BitField, Uint16, Uint32, Uint64, Uint128 } from "../schema/codama";
+import {
+  BitField,
+  Uint16,
+  Uint32,
+  Uint64,
+  Uint128,
+  String16,
+  String32,
+  String64,
+  String4096,
+} from "../schema/codama";
 
 type IBitFieldArgSet = { flag: boolean; bit?: number };
 type IBitFieldArgSetRaw = { value: BitField };
@@ -315,5 +325,240 @@ export class TUint128 {
 
     // Combine into 128-bit bigint
     return (part3 << 96n) | (part2 << 64n) | (part1 << 32n) | part0;
+  }
+}
+
+export class TString16 {
+  private readonly name: string = "String16";
+  private readonly byteLength: number = 16;
+  private value: string = "";
+
+  constructor(x: string | String16 = "") {
+    typeof x === "string" ? this.set(x) : this.setRaw(x);
+  }
+
+  get(): string {
+    return this.value;
+  }
+
+  getRaw(): String16 {
+    return this.string16ToBytes(this.value);
+  }
+
+  set(x: string): void {
+    const encoded = new TextEncoder().encode(x);
+    if (encoded.length > this.byteLength - 1) {
+      throw new Error(
+        `String too long: ${encoded.length} bytes exceeds maximum of ${this.byteLength - 1} bytes`,
+      );
+    }
+    this.value = x;
+  }
+
+  setRaw(x: String16): void {
+    if (x.length !== this.byteLength) {
+      throw new Error(
+        `${this.name} array must have exactly ${this.byteLength} elements`,
+      );
+    }
+    this.value = this.bytesToString(x);
+  }
+
+  private string16ToBytes(value: string): String16 {
+    const bytes = new TextEncoder().encode(value);
+
+    if (bytes.length > this.byteLength - 1) {
+      throw new Error(
+        `Encoded string exceeds ${this.byteLength - 1} byte limit`,
+      );
+    }
+
+    const result = new Array(this.byteLength).fill(0);
+    for (let i = 0; i < bytes.length; i++) {
+      result[i] = bytes[i];
+    }
+
+    return result;
+  }
+
+  private bytesToString(bytes: String16): string {
+    let length = bytes.findIndex((x) => x === 0);
+    length = length === -1 ? bytes.length : length;
+
+    try {
+      return new TextDecoder("utf-8", { fatal: true }).decode(
+        new Uint8Array(bytes.slice(0, length)),
+      );
+    } catch (error) {
+      throw new Error(`Invalid UTF-8 sequence in byte array: ${error}`);
+    }
+  }
+}
+
+export class TString32 {
+  private readonly name: string = "String32";
+  private readonly byteLength: number = 32;
+  private value: string = "";
+  constructor(x: string | String32 = "") {
+    typeof x === "string" ? this.set(x) : this.setRaw(x);
+  }
+  get(): string {
+    return this.value;
+  }
+  getRaw(): String32 {
+    return this.stringToBytes(this.value);
+  }
+  set(x: string): void {
+    const encoded = new TextEncoder().encode(x);
+    if (encoded.length > this.byteLength - 1) {
+      throw new Error(
+        `String too long: ${encoded.length} bytes exceeds maximum of ${this.byteLength - 1} bytes`,
+      );
+    }
+    this.value = x;
+  }
+  setRaw(x: String32): void {
+    if (x.length !== this.byteLength) {
+      throw new Error(
+        `${this.name} array must have exactly ${this.byteLength} elements`,
+      );
+    }
+    this.value = this.bytesToString(x);
+  }
+  private stringToBytes(value: string): String32 {
+    const bytes = new TextEncoder().encode(value);
+    if (bytes.length > this.byteLength - 1) {
+      throw new Error(
+        `Encoded string exceeds ${this.byteLength - 1} byte limit`,
+      );
+    }
+    const result = new Array(this.byteLength).fill(0);
+    for (let i = 0; i < bytes.length; i++) {
+      result[i] = bytes[i];
+    }
+    return result;
+  }
+  private bytesToString(bytes: String32): string {
+    let length = bytes.findIndex((x) => x === 0);
+    length = length === -1 ? bytes.length : length;
+    try {
+      return new TextDecoder("utf-8", { fatal: true }).decode(
+        new Uint8Array(bytes.slice(0, length)),
+      );
+    } catch (error) {
+      throw new Error(`Invalid UTF-8 sequence in byte array: ${error}`);
+    }
+  }
+}
+
+export class TString64 {
+  private readonly name: string = "String64";
+  private readonly byteLength: number = 64;
+  private value: string = "";
+  constructor(x: string | String64 = "") {
+    typeof x === "string" ? this.set(x) : this.setRaw(x);
+  }
+  get(): string {
+    return this.value;
+  }
+  getRaw(): String64 {
+    return this.stringToBytes(this.value);
+  }
+  set(x: string): void {
+    const encoded = new TextEncoder().encode(x);
+    if (encoded.length > this.byteLength - 1) {
+      throw new Error(
+        `String too long: ${encoded.length} bytes exceeds maximum of ${this.byteLength - 1} bytes`,
+      );
+    }
+    this.value = x;
+  }
+  setRaw(x: String64): void {
+    if (x.length !== this.byteLength) {
+      throw new Error(
+        `${this.name} array must have exactly ${this.byteLength} elements`,
+      );
+    }
+    this.value = this.bytesToString(x);
+  }
+  private stringToBytes(value: string): String64 {
+    const bytes = new TextEncoder().encode(value);
+    if (bytes.length > this.byteLength - 1) {
+      throw new Error(
+        `Encoded string exceeds ${this.byteLength - 1} byte limit`,
+      );
+    }
+    const result = new Array(this.byteLength).fill(0);
+    for (let i = 0; i < bytes.length; i++) {
+      result[i] = bytes[i];
+    }
+    return result;
+  }
+  private bytesToString(bytes: String64): string {
+    let length = bytes.findIndex((x) => x === 0);
+    length = length === -1 ? bytes.length : length;
+    try {
+      return new TextDecoder("utf-8", { fatal: true }).decode(
+        new Uint8Array(bytes.slice(0, length)),
+      );
+    } catch (error) {
+      throw new Error(`Invalid UTF-8 sequence in byte array: ${error}`);
+    }
+  }
+}
+
+export class TString4096 {
+  private readonly name: string = "String4096";
+  private readonly byteLength: number = 4096;
+  private value: string = "";
+  constructor(x: string | String4096 = "") {
+    typeof x === "string" ? this.set(x) : this.setRaw(x);
+  }
+  get(): string {
+    return this.value;
+  }
+  getRaw(): String4096 {
+    return this.stringToBytes(this.value);
+  }
+  set(x: string): void {
+    const encoded = new TextEncoder().encode(x);
+    if (encoded.length > this.byteLength - 1) {
+      throw new Error(
+        `String too long: ${encoded.length} bytes exceeds maximum of ${this.byteLength - 1} bytes`,
+      );
+    }
+    this.value = x;
+  }
+  setRaw(x: String4096): void {
+    if (x.length !== this.byteLength) {
+      throw new Error(
+        `${this.name} array must have exactly ${this.byteLength} elements`,
+      );
+    }
+    this.value = this.bytesToString(x);
+  }
+  private stringToBytes(value: string): String4096 {
+    const bytes = new TextEncoder().encode(value);
+    if (bytes.length > this.byteLength - 1) {
+      throw new Error(
+        `Encoded string exceeds ${this.byteLength - 1} byte limit`,
+      );
+    }
+    const result = new Array(this.byteLength).fill(0);
+    for (let i = 0; i < bytes.length; i++) {
+      result[i] = bytes[i];
+    }
+    return result;
+  }
+  private bytesToString(bytes: String4096): string {
+    let length = bytes.findIndex((x) => x === 0);
+    length = length === -1 ? bytes.length : length;
+    try {
+      return new TextDecoder("utf-8", { fatal: true }).decode(
+        new Uint8Array(bytes.slice(0, length)),
+      );
+    } catch (error) {
+      throw new Error(`Invalid UTF-8 sequence in byte array: ${error}`);
+    }
   }
 }
