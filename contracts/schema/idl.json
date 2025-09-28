@@ -263,28 +263,11 @@
         },
         {
           "kind": "definedTypeNode",
-          "name": "target",
+          "name": "targetEnum",
           "type": {
-            "kind": "enumTypeNode",
-            "size": {
-              "endian": "le",
-              "format": "u8",
-              "kind": "numberTypeNode"
-            },
-            "variants": [
-              {
-                "kind": "enumEmptyVariantTypeNode",
-                "name": "spl"
-              },
-              {
-                "kind": "enumEmptyVariantTypeNode",
-                "name": "proxy"
-              },
-              {
-                "kind": "enumEmptyVariantTypeNode",
-                "name": "route"
-              }
-            ]
+            "endian": "le",
+            "format": "u8",
+            "kind": "numberTypeNode"
           }
         },
         {

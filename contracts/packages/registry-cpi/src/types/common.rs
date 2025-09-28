@@ -138,14 +138,18 @@ pub enum InstructionData {
     ConfirmAccountRotation {},
 }
 
-#[derive(CodamaType, Default, Debug, PartialEq, EnumWrapper)]
-#[repr(u8)]
-pub enum Target {
-    #[default]
-    Spl,
-    Proxy,
-    Route,
-}
+#[derive(CodamaType, EnumWrapper)]
+#[p_serde]
+pub struct TargetEnum(#[enumfields(spl, proxy, route)] u8);
+
+// #[derive(CodamaType, Default, Debug, PartialEq, EnumWrapper)]
+// #[repr(u8)]
+// pub enum Target {
+//     #[default]
+//     Spl,
+//     Proxy,
+//     Route,
+// }
 
 // #[derive(CodamaType)]
 // #[p_serde]

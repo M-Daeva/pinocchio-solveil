@@ -1,67 +1,114 @@
 use {
     proc_macro::TokenStream,
     quote::quote,
-    syn::{parse_macro_input, Data, DeriveInput, Ident, Variant},
+    syn::{
+        parse_macro_input, punctuated::Punctuated, token::Comma, Attribute, Data, DeriveInput,
+        Field, Fields, Ident, Meta, Path,
+    },
 };
 
-/// Derives a wrapper struct for an enum that stores the enum as its underlying representation
+/// Generates an enum and wrapper implementation from a struct with #[enumfields(...)] attribute
 ///
-/// The generated wrapper struct will have:
-/// - The same name as the enum with "Enum" suffix
-/// - A From<EnumType> implementation
-/// - get_raw() and set_raw() methods for direct access to the underlying value
-/// - get() and set() methods for converting to/from the original enum
-#[proc_macro_derive(EnumWrapper)]
+/// Usage:
+/// ```
+/// #[derive(CodamaType, EnumWrapper)]
+/// #[p_serde]
+/// pub struct TargetEnum(#[enumfields(spl, proxy, route)] u8);
+/// ```
+///
+/// This will generate:
+/// - An enum with the specified variants
+/// - Implementation methods for the wrapper struct
+#[proc_macro_derive(EnumWrapper, attributes(enumfields))]
 pub fn derive_enum_wrapper(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
-    let enum_name = &input.ident;
-    let wrapper_name = Ident::new(&format!("{}Enum", enum_name), enum_name.span());
+    let wrapper_name = &input.ident;
 
-    // Determine the underlying type from #[repr(...)]
-    let underlying_type = input
-        .attrs
-        .iter()
-        .find(|attr| attr.path().is_ident("repr"))
-        .and_then(|attr| attr.parse_args::<Ident>().ok())
-        .unwrap_or_else(|| Ident::new("u8", enum_name.span()));
-
-    // Extract enum variants
-    let variants = match &input.data {
-        Data::Enum(data_enum) => &data_enum.variants,
-        _ => panic!("EnumWrapper can only be used on enums"),
+    // Extract enum name by removing "Enum" suffix if present
+    let enum_name_str = wrapper_name.to_string();
+    let enum_name = if enum_name_str.ends_with("Enum") {
+        Ident::new(
+            &enum_name_str[..enum_name_str.len() - 4],
+            wrapper_name.span(),
+        )
+    } else {
+        return syn::Error::new_spanned(
+            wrapper_name,
+            "Struct name should end with 'Enum' for EnumWrapper derivation",
+        )
+        .to_compile_error()
+        .into();
     };
 
-    // Generate match arms for the get() method
-    let match_arms = variants.iter().enumerate().map(|(index, variant)| {
-        let variant_name = &variant.ident;
-        let discriminant = get_variant_discriminant(variant, index);
-
-        quote! {
-            #discriminant => #enum_name::#variant_name,
-        }
-    });
-
-    // Check if enum has #[derive(...)] attributes to copy relevant ones
-    let derive_attrs = input
-        .attrs
-        .iter()
-        .find(|attr| attr.path().is_ident("derive"))
-        .map(|attr| {
-            // Check if CodamaType is in the derive list
-            let attr_str = quote!(#attr).to_string();
-            if attr_str.contains("CodamaType") {
-                quote! { #[derive(CodamaType)] }
-            } else {
-                quote! {}
+    // Extract the underlying type and enumfields attribute from the struct field
+    let (underlying_type, enum_variants) = match &input.data {
+        Data::Struct(data_struct) => match &data_struct.fields {
+            Fields::Unnamed(fields) if fields.unnamed.len() == 1 => {
+                let field = fields.unnamed.first().unwrap();
+                let underlying_type = &field.ty;
+                match extract_enum_variants(field) {
+                    Ok(variants) => (underlying_type, variants),
+                    Err(e) => return e.to_compile_error().into(),
+                }
             }
-        })
-        .unwrap_or_else(|| quote! {});
+            _ => {
+                return syn::Error::new_spanned(
+                    &input,
+                    "EnumWrapper requires a tuple struct with exactly one field",
+                )
+                .to_compile_error()
+                .into();
+            }
+        },
+        _ => {
+            return syn::Error::new_spanned(
+                &input,
+                "EnumWrapper can only be used on tuple structs",
+            )
+            .to_compile_error()
+            .into();
+        }
+    };
+
+    // Generate enum variants
+    let enum_variant_definitions = enum_variants
+        .iter()
+        .enumerate()
+        .map(|(index, variant_name)| {
+            if index == 0 {
+                quote! {
+                    #[default]
+                    #variant_name,
+                }
+            } else {
+                quote! {
+                    #variant_name,
+                }
+            }
+        });
+
+    // Generate match arms for the get() method
+    let match_arms = enum_variants
+        .iter()
+        .enumerate()
+        .map(|(index, variant_name)| {
+            let index_lit = proc_macro2::Literal::usize_unsuffixed(index);
+            quote! {
+                #index_lit => #enum_name::#variant_name,
+            }
+        });
+
+    // Extract derive attributes from the original struct, excluding EnumWrapper
+    let filtered_derives = filter_derive_attributes(&input.attrs);
 
     let expanded = quote! {
-        #derive_attrs
-        #[p_serde]
-        pub struct #wrapper_name(#underlying_type);
+        #(#filtered_derives)*
+        #[derive(Default, Debug, PartialEq)]
+        #[repr(#underlying_type)]
+        pub enum #enum_name {
+            #(#enum_variant_definitions)*
+        }
 
         impl From<#enum_name> for #wrapper_name {
             fn from(x: #enum_name) -> Self {
@@ -98,13 +145,89 @@ pub fn derive_enum_wrapper(input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
-fn get_variant_discriminant(variant: &Variant, index: usize) -> proc_macro2::TokenStream {
-    // Check if the variant has an explicit discriminant
-    if let Some((_, expr)) = &variant.discriminant {
-        quote! { #expr }
-    } else {
-        // Use the index as the discriminant value
-        let index_lit = proc_macro2::Literal::usize_unsuffixed(index);
-        quote! { #index_lit }
+fn extract_enum_variants(field: &Field) -> Result<Vec<Ident>, syn::Error> {
+    for attr in &field.attrs {
+        if attr.path().is_ident("enumfields") {
+            return parse_enumfields_attribute(attr);
+        }
     }
+
+    Err(syn::Error::new_spanned(
+        field,
+        "Field must have #[enumfields(...)] attribute with variant names",
+    ))
+}
+
+fn parse_enumfields_attribute(attr: &Attribute) -> Result<Vec<Ident>, syn::Error> {
+    match &attr.meta {
+        Meta::List(meta_list) => {
+            let paths: Result<Punctuated<Path, Comma>, _> =
+                meta_list.parse_args_with(Punctuated::parse_terminated);
+
+            match paths {
+                Ok(paths) => {
+                    let mut variants = Vec::new();
+
+                    for path in paths {
+                        if let Some(ident) = path.get_ident() {
+                            // Convert to PascalCase
+                            let pascal_case = to_pascal_case(&ident.to_string());
+                            variants.push(Ident::new(&pascal_case, ident.span()));
+                        } else {
+                            return Err(syn::Error::new_spanned(
+                                path,
+                                "Expected simple identifier in enumfields",
+                            ));
+                        }
+                    }
+
+                    Ok(variants)
+                }
+                Err(e) => Err(syn::Error::new_spanned(
+                    attr,
+                    format!("Failed to parse enumfields arguments: {}", e),
+                )),
+            }
+        }
+        _ => Err(syn::Error::new_spanned(
+            attr,
+            "enumfields attribute must be a list: #[enumfields(variant1, variant2, ...)]",
+        )),
+    }
+}
+
+fn to_pascal_case(s: &str) -> String {
+    s.chars()
+        .next()
+        .map(|c| c.to_uppercase().collect::<String>())
+        .unwrap_or_default()
+        + &s[1..]
+}
+
+fn filter_derive_attributes(attrs: &[Attribute]) -> Vec<proc_macro2::TokenStream> {
+    attrs
+        .iter()
+        .filter_map(|attr| {
+            if attr.path().is_ident("derive") {
+                // Parse the derive attribute and filter out EnumWrapper
+                if let Meta::List(meta_list) = &attr.meta {
+                    if let Ok(paths) =
+                        meta_list.parse_args_with(Punctuated::<Path, Comma>::parse_terminated)
+                    {
+                        let filtered_derives: Vec<_> = paths
+                            .into_iter()
+                            .filter(|path| !path.is_ident("EnumWrapper"))
+                            .collect();
+
+                        if !filtered_derives.is_empty() {
+                            return Some(quote! {
+                                #[derive(#(#filtered_derives),*)]
+                            });
+                        }
+                    }
+                }
+            }
+            None
+        })
+        .collect()
 }
