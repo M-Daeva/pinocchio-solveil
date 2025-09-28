@@ -34,4 +34,5 @@ macro-test-ser = { workspace = true }
 macro-try-from = { workspace = true }
 macro-error = { workspace = true }
 macro-optional-flag = { workspace = true }
+macro-enum-wrapper = { workspace = true }
 base = { workspace = true }

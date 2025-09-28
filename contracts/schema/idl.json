@@ -260,6 +260,57 @@
             ],
             "kind": "structTypeNode"
           }
+        },
+        {
+          "kind": "definedTypeNode",
+          "name": "target",
+          "type": {
+            "kind": "enumTypeNode",
+            "size": {
+              "endian": "le",
+              "format": "u8",
+              "kind": "numberTypeNode"
+            },
+            "variants": [
+              {
+                "kind": "enumEmptyVariantTypeNode",
+                "name": "spl"
+              },
+              {
+                "kind": "enumEmptyVariantTypeNode",
+                "name": "proxy"
+              },
+              {
+                "kind": "enumEmptyVariantTypeNode",
+                "name": "route"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "definedTypeNode",
+          "name": "structWithEnum",
+          "type": {
+            "fields": [
+              {
+                "kind": "structFieldTypeNode",
+                "name": "num",
+                "type": {
+                  "kind": "definedTypeLinkNode",
+                  "name": "uint32"
+                }
+              },
+              {
+                "kind": "structFieldTypeNode",
+                "name": "target",
+                "type": {
+                  "kind": "definedTypeLinkNode",
+                  "name": "targetEnum"
+                }
+              }
+            ],
+            "kind": "structTypeNode"
+          }
         }
       ],
       "errors": [

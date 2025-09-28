@@ -1828,6 +1828,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "macro-enum-wrapper"
+version = "1.0.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.106",
+]
+
+[[package]]
 name = "macro-error"
 version = "1.0.0"
 dependencies = [
@@ -2482,6 +2491,7 @@ dependencies = [
  "bytemuck",
  "codama",
  "macro-account",
+ "macro-enum-wrapper",
  "macro-error",
  "macro-optional-flag",
  "macro-p-serde",
