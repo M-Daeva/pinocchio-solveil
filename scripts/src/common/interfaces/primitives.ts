@@ -399,15 +399,19 @@ export class TString32 {
   private readonly name: string = "String32";
   private readonly byteLength: number = 32;
   private value: string = "";
+
   constructor(x: string | String32 = "") {
     typeof x === "string" ? this.set(x) : this.setRaw(x);
   }
+
   get(): string {
     return this.value;
   }
+
   getRaw(): String32 {
     return this.stringToBytes(this.value);
   }
+
   set(x: string): void {
     const encoded = new TextEncoder().encode(x);
     if (encoded.length > this.byteLength - 1) {
@@ -417,6 +421,7 @@ export class TString32 {
     }
     this.value = x;
   }
+
   setRaw(x: String32): void {
     if (x.length !== this.byteLength) {
       throw new Error(
@@ -425,6 +430,7 @@ export class TString32 {
     }
     this.value = this.bytesToString(x);
   }
+
   private stringToBytes(value: string): String32 {
     const bytes = new TextEncoder().encode(value);
     if (bytes.length > this.byteLength - 1) {
@@ -438,6 +444,7 @@ export class TString32 {
     }
     return result;
   }
+
   private bytesToString(bytes: String32): string {
     let length = bytes.findIndex((x) => x === 0);
     length = length === -1 ? bytes.length : length;
@@ -455,15 +462,19 @@ export class TString64 {
   private readonly name: string = "String64";
   private readonly byteLength: number = 64;
   private value: string = "";
+
   constructor(x: string | String64 = "") {
     typeof x === "string" ? this.set(x) : this.setRaw(x);
   }
+
   get(): string {
     return this.value;
   }
+
   getRaw(): String64 {
     return this.stringToBytes(this.value);
   }
+
   set(x: string): void {
     const encoded = new TextEncoder().encode(x);
     if (encoded.length > this.byteLength - 1) {
@@ -473,6 +484,7 @@ export class TString64 {
     }
     this.value = x;
   }
+
   setRaw(x: String64): void {
     if (x.length !== this.byteLength) {
       throw new Error(
@@ -481,6 +493,7 @@ export class TString64 {
     }
     this.value = this.bytesToString(x);
   }
+
   private stringToBytes(value: string): String64 {
     const bytes = new TextEncoder().encode(value);
     if (bytes.length > this.byteLength - 1) {
@@ -494,6 +507,7 @@ export class TString64 {
     }
     return result;
   }
+
   private bytesToString(bytes: String64): string {
     let length = bytes.findIndex((x) => x === 0);
     length = length === -1 ? bytes.length : length;
@@ -511,15 +525,19 @@ export class TString4096 {
   private readonly name: string = "String4096";
   private readonly byteLength: number = 4096;
   private value: string = "";
+
   constructor(x: string | String4096 = "") {
     typeof x === "string" ? this.set(x) : this.setRaw(x);
   }
+
   get(): string {
     return this.value;
   }
+
   getRaw(): String4096 {
     return this.stringToBytes(this.value);
   }
+
   set(x: string): void {
     const encoded = new TextEncoder().encode(x);
     if (encoded.length > this.byteLength - 1) {
@@ -529,6 +547,7 @@ export class TString4096 {
     }
     this.value = x;
   }
+
   setRaw(x: String4096): void {
     if (x.length !== this.byteLength) {
       throw new Error(
@@ -537,6 +556,7 @@ export class TString4096 {
     }
     this.value = this.bytesToString(x);
   }
+
   private stringToBytes(value: string): String4096 {
     const bytes = new TextEncoder().encode(value);
     if (bytes.length > this.byteLength - 1) {
@@ -550,6 +570,7 @@ export class TString4096 {
     }
     return result;
   }
+
   private bytesToString(bytes: String4096): string {
     let length = bytes.findIndex((x) => x === 0);
     length = length === -1 ? bytes.length : length;
@@ -560,5 +581,57 @@ export class TString4096 {
     } catch (error) {
       throw new Error(`Invalid UTF-8 sequence in byte array: ${error}`);
     }
+  }
+}
+
+export class TEnum<T extends Record<string | number, string | number>> {
+  private readonly name: string = "Enum";
+  private readonly validValues: number[];
+  private value: number = 0;
+
+  constructor(enumObject: T, x: number = 0) {
+    this.validValues = Object.values(enumObject).filter(
+      (v) => typeof v === "number",
+    ) as number[];
+    this.setRaw(x);
+  }
+
+  get(): number {
+    return this.value;
+  }
+
+  getRaw(): number {
+    return this.value;
+  }
+
+  set(x: number): void {
+    this.value = this.validateEnum(x);
+  }
+
+  setRaw(x: number): void {
+    this.value = this.validateEnumValue(x);
+  }
+
+  private validateEnum(x: number): number {
+    if (!this.validValues.includes(x)) {
+      throw new Error(
+        `Value ${x} is not a valid enum value for ${this.name}. Valid values: [${this.validValues.join(", ")}]`,
+      );
+    }
+    return x;
+  }
+
+  private validateEnumValue(x: number): number {
+    if (!Number.isInteger(x) || x < 0 || x > 255) {
+      throw new Error(
+        `Value ${x} is not a valid 8-bit number (must be integer between 0 and 255)`,
+      );
+    }
+    if (!this.validValues.includes(x)) {
+      throw new Error(
+        `Value ${x} is not a valid enum value for ${this.name}. Valid values: [${this.validValues.join(", ")}]`,
+      );
+    }
+    return x;
   }
 }

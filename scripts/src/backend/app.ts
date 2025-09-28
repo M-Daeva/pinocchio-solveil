@@ -1,7 +1,13 @@
 import { fetchConfig } from "../common/schema/codama/accounts/config";
 import { REGISTRY_CPI_PROGRAM_ADDRESS } from "../common/schema/codama/programs/registryCpi";
 import { Address } from "gill";
-import { TBitField, TUint32, TUint64 } from "../common/interfaces/primitives";
+import {
+  TBitField,
+  TEnum,
+  TString32,
+  TUint32,
+  TUint64,
+} from "../common/interfaces/primitives";
 import { readKeypairSigner } from "./utils";
 import { NETWORK_CONFIG, PATH, REVENUE_MINT } from "../common/config";
 import {
@@ -216,12 +222,26 @@ async function main() {
   //   true,
   // );
 
-  await queryConfig(true);
-  await updateConfig(
-    { rotation_timeout: 24 * 3_600, is_paused: true },
-    {},
-    true,
-  );
+  const str32 = new TString32("Hello World!").getRaw();
+  li({ str32 });
+  li({ str: new TString32(str32).get() });
+
+  enum Target {
+    Spl,
+    Proxy,
+    Route,
+  }
+
+  const targetNumber = new TEnum(Target, Target.Proxy).getRaw();
+  console.log({ targetNumber });
+  console.log({ targetEnum: new TEnum(Target, targetNumber).get() });
+
+  // await queryConfig(true);
+  // await updateConfig(
+  //   { rotation_timeout: 24 * 3_600, is_paused: true },
+  //   {},
+  //   true,
+  // );
   // await queryConfig(true);
 }
 
