@@ -153,9 +153,17 @@ function extractOptionalFields(declaration: string): string[] {
 
 // Extract enum fields from enumfields attribute
 function extractEnumFields(declaration: string): string[] {
-  const match = declaration.match(/#\[enumfields\((.*?)\)\]/);
-  if (!match || !match[1]) return [];
-  return match[1].split(",").map((f) => f.trim());
+  const regex = /#\[enumfields\(([^)]*?)\)\]/g;
+  let match;
+  const fields: string[] = [];
+
+  while ((match = regex.exec(declaration)) !== null) {
+    if (match[1]) {
+      fields.push(...match[1].split(",").map((f) => f.trim()));
+    }
+  }
+
+  return fields;
 }
 
 // Parse struct fields
@@ -194,8 +202,9 @@ function parseStructs(content: string): ParsedStruct[] {
   content = removeComments(content);
 
   // Match struct declarations with their full content including attributes
+  // Supports both tuple and brace structs
   const structRegex =
-    /((?:#\[.*?\]\s*)*)\s*pub\s+struct\s+(\w+)(?:\((.*?)\))?\s*\{([^}]*)\}/gs;
+    /((?:#\[.*?\]\s*)*)pub\s+struct\s+(\w+)(?:\s*\(((?:[^()]|\([^)]*\))+)\)\s*;?|\s*\{([\s\S]*?)\})/g;
   let match;
 
   while ((match = structRegex.exec(content)) !== null) {
@@ -206,7 +215,6 @@ function parseStructs(content: string): ParsedStruct[] {
     const derives = extractDerives(attributes);
 
     let structType: ParsedStructType | null = null;
-
     if (derives.includes("CodamaType")) structType = "CodamaType";
     else if (derives.includes("CodamaAccount")) structType = "CodamaAccount";
     else if (derives.includes("CodamaInstruction"))
@@ -215,10 +223,18 @@ function parseStructs(content: string): ParsedStruct[] {
     if (!structType) continue;
 
     const structOptionalFields = extractOptionalFields(attributes);
-    const enumFields = extractEnumFields(attributes);
     const codamaName = extractCodamaName(attributes);
 
-    // Handle EnumWrapper (tuple struct)
+    // detect enumfields from tuple field first
+    let enumFields: string[] = [];
+    if (tupleContent) {
+      enumFields = extractEnumFields(tupleContent);
+    }
+    if (enumFields.length === 0) {
+      enumFields = extractEnumFields(attributes);
+    }
+
+    // Handle EnumWrapper (tuple struct with enumfields)
     if (
       derives.includes("EnumWrapper") &&
       tupleContent &&
@@ -233,8 +249,8 @@ function parseStructs(content: string): ParsedStruct[] {
       continue;
     }
 
+    // Regular struct with fields
     const fields = body ? parseStructFields(body) : [];
-
     let bitFieldFields: string[] = [];
 
     if (derives.includes("OptionFlag")) {
@@ -252,7 +268,8 @@ function parseStructs(content: string): ParsedStruct[] {
           (name) => !fields.find((f) => f.name === name),
         );
         bitFieldFields.push(...newFlags);
-        // Remove the bitField field
+
+        // Remove the BitField field itself
         const index = fields.indexOf(bitField);
         if (index !== -1) {
           fields.splice(index, 1);
@@ -260,7 +277,7 @@ function parseStructs(content: string): ParsedStruct[] {
       }
     }
 
-    // Handle struct-level optional fields
+    // Apply struct-level optional fields
     for (const f of fields) {
       if (structOptionalFields.includes(f.name)) {
         f.isOptional = true;
