@@ -1,6 +1,8 @@
 import * as fs from "fs";
+// import * as fs from "fs/promises";
 import * as path from "path";
 import { rootPath } from "../utils";
+import { l } from "../../common/utils";
 
 interface PathConfig {
   src: Array<{
@@ -418,9 +420,8 @@ function processCrate(crateDir: string, distDir: string): void {
   }
 }
 
-// Main function
 function main() {
-  const config = loadConfig("path.json");
+  const config = loadConfig(rootPath("./src/backend/services/path.json"));
 
   for (const srcConfig of config.src) {
     const srcDir = rootPath(srcConfig.directory);
@@ -437,17 +438,17 @@ function main() {
 
     for (const crate of crates) {
       if (shouldExcludeCrate(crate, srcConfig.exclude)) {
-        console.log(`Skipping excluded crate: ${crate}`);
+        l(`Skipping excluded crate: ${crate}`);
         continue;
       }
 
       const crateDir = path.join(srcDir, crate);
-      console.log(`Processing crate: ${crate}`);
+      l(`Processing crate: ${crate}`);
       processCrate(crateDir, rootPath(config.dist));
     }
   }
 
-  console.log("Code generation complete!");
+  l("Code generation complete!");
 }
 
 main();

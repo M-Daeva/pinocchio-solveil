@@ -19,7 +19,7 @@
   "scripts": {
     "app": "ts-node ./src/backend/app.ts",
     "store": "ts-node ./src/backend/services/store.ts",
-    "codegen": "bun run scripts/backend/services/codegen.ts",
+    "codegen": "bun run ./src/backend/services/codegen.ts",
     "codegen-legacy": "bun run scripts/backend/generate-types.ts",
     "dev": "bun run --watch scripts/backend/app.ts",
     "capture-user-account": "bun run scripts/backend/capture/user-account.ts",
