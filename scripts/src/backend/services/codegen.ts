@@ -1,5 +1,4 @@
-import * as fs from "fs";
-// import * as fs from "fs/promises";
+import * as fs from "fs/promises";
 import * as path from "path";
 import { rootPath } from "../utils";
 import { l } from "../../common/utils";
@@ -42,8 +41,8 @@ interface Field {
 }
 
 // Read and parse config
-function loadConfig(configPath: string): PathConfig {
-  const content = fs.readFileSync(configPath, "utf-8");
+async function loadConfig(configPath: string): Promise<PathConfig> {
+  const content = await fs.readFile(configPath, "utf-8");
   return JSON.parse(content);
 }
 
@@ -313,12 +312,10 @@ function generateEnum(parsed: ParsedStruct, enumName: string): string {
 }
 
 // Process a single Rust file
-function processRustFile(filePath: string): {
-  types: string[];
-  accounts: string[];
-  instructions: string[];
-} {
-  const content = fs.readFileSync(filePath, "utf-8");
+async function processRustFile(
+  filePath: string,
+): Promise<{ types: string[]; accounts: string[]; instructions: string[] }> {
+  const content = await fs.readFile(filePath, "utf-8");
   const structs = parseStructs(content);
   const enums = parseEnums(content);
 
@@ -358,7 +355,7 @@ function processRustFile(filePath: string): {
 }
 
 // Process a crate directory
-function processCrate(crateDir: string, distDir: string): void {
+async function processCrate(crateDir: string, distDir: string): Promise<void> {
   const crateName = path.basename(crateDir);
   const outputDir = path.join(distDir, crateName);
 
@@ -367,14 +364,14 @@ function processCrate(crateDir: string, distDir: string): void {
   let allInstructions: string[] = [];
 
   // Find all .rs files recursively
-  function findRustFiles(dir: string): string[] {
+  async function findRustFiles(dir: string): Promise<string[]> {
     const files: string[] = [];
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    const entries = await fs.readdir(dir, { withFileTypes: true });
 
     for (const entry of entries) {
       const fullPath = path.join(dir, entry.name);
       if (entry.isDirectory()) {
-        files.push(...findRustFiles(fullPath));
+        files.push(...(await findRustFiles(fullPath)));
       } else if (entry.isFile() && entry.name.endsWith(".rs")) {
         files.push(fullPath);
       }
@@ -383,10 +380,10 @@ function processCrate(crateDir: string, distDir: string): void {
     return files;
   }
 
-  const rustFiles = findRustFiles(crateDir);
+  const rustFiles = await findRustFiles(crateDir);
 
   for (const file of rustFiles) {
-    const { types, accounts, instructions } = processRustFile(file);
+    const { types, accounts, instructions } = await processRustFile(file);
     allTypes.push(...types);
     allAccounts.push(...accounts);
     allInstructions.push(...instructions);
@@ -398,41 +395,43 @@ function processCrate(crateDir: string, distDir: string): void {
     allAccounts.length > 0 ||
     allInstructions.length > 0
   ) {
-    fs.mkdirSync(outputDir, { recursive: true });
+    await fs.mkdir(outputDir, { recursive: true });
 
     if (allTypes.length > 0) {
       const content =
         'import { Address } from "gill";\n\n' + allTypes.join("\n");
-      fs.writeFileSync(path.join(outputDir, "types.ts"), content);
+      await fs.writeFile(path.join(outputDir, "types.ts"), content);
     }
 
     if (allAccounts.length > 0) {
       const content =
         'import { Address } from "gill";\n\n' + allAccounts.join("\n");
-      fs.writeFileSync(path.join(outputDir, "accounts.ts"), content);
+      await fs.writeFile(path.join(outputDir, "accounts.ts"), content);
     }
 
     if (allInstructions.length > 0) {
       const content =
         'import { Address } from "gill";\n\n' + allInstructions.join("\n");
-      fs.writeFileSync(path.join(outputDir, "instructions.ts"), content);
+      await fs.writeFile(path.join(outputDir, "instructions.ts"), content);
     }
   }
 }
 
-function main() {
-  const config = loadConfig(rootPath("./src/backend/services/path.json"));
+async function main() {
+  const start = Date.now();
+
+  const config = await loadConfig(rootPath("./src/backend/services/path.json"));
 
   for (const srcConfig of config.src) {
     const srcDir = rootPath(srcConfig.directory);
 
-    if (!fs.existsSync(srcDir)) {
+    const isSrcExists = await fs.exists(srcDir);
+    if (!isSrcExists) {
       console.warn(`Source directory not found: ${srcDir}`);
       continue;
     }
 
-    const crates = fs
-      .readdirSync(srcDir, { withFileTypes: true })
+    const crates = (await fs.readdir(srcDir, { withFileTypes: true }))
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name);
 
@@ -444,11 +443,13 @@ function main() {
 
       const crateDir = path.join(srcDir, crate);
       l(`Processing crate: ${crate}`);
-      processCrate(crateDir, rootPath(config.dist));
+      await processCrate(crateDir, rootPath(config.dist));
     }
   }
 
   l("Code generation complete!");
+
+  l({ time: (Date.now() - start) / 1e3 });
 }
 
 main();
