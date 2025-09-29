@@ -11,5 +11,5 @@ export interface IRange {
 }
 
 export interface IStructWithArray {
-  list: AssetItem[];
+  list: IIAssetItem[];
 }

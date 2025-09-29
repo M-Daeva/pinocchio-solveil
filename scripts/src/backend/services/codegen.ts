@@ -46,6 +46,11 @@ async function loadConfig(configPath: string): Promise<PathConfig> {
   return JSON.parse(content);
 }
 
+// Convert snake_case to camelCase
+function toCamelCase(str: string): string {
+  return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+}
+
 // Convert Rust type to TypeScript type
 function convertType(rustType: string): string {
   // Remove whitespace
@@ -54,7 +59,12 @@ function convertType(rustType: string): string {
   // Handle arrays [Type; length]
   const arrayMatch = rustType.match(/^\[(.+?);\s*\d+\]$/);
   if (arrayMatch && arrayMatch[1]) {
-    return `${convertType(arrayMatch[1])}[]`;
+    const innerType = convertType(arrayMatch[1]);
+    // Add 'I' prefix if it's a custom type (starts with uppercase)
+    const convertedInner = /^[A-Z]/.test(innerType)
+      ? `I${innerType}`
+      : innerType;
+    return `${convertedInner}[]`;
   }
 
   // Basic type mappings
@@ -69,9 +79,20 @@ function convertType(rustType: string): string {
     String32: "string",
     String64: "string",
     String4096: "string",
+    BitField: "boolean",
   };
 
-  return typeMap[rustType] || rustType;
+  // If it's a basic type, return the mapping
+  if (typeMap[rustType]) {
+    return typeMap[rustType] as string;
+  }
+
+  // If it's a custom type (starts with uppercase), add 'I' prefix
+  if (/^[A-Z]/.test(rustType)) {
+    return `I${rustType}`;
+  }
+
+  return rustType;
 }
 
 // Check if crate should be excluded
@@ -136,6 +157,7 @@ function extractEnumFields(declaration: string): string[] {
 function parseStructFields(
   structBody: string,
   optionalFields: string[] = [],
+  bitFieldFields: string[] = [],
 ): Field[] {
   const fields: Field[] = [];
   const fieldRegex = /pub\s+(\w+):\s*([^,\n]+)/g;
@@ -149,8 +171,8 @@ function parseStructFields(
 
     const trimmedFieldType = fieldType.trim().replace(/,$/, "");
 
-    // Skip BitField flags field
-    if (trimmedFieldType === "BitField") continue;
+    // Skip BitField flags field when it has OptionFlag
+    if (trimmedFieldType === "BitField" && bitFieldFields.length > 0) continue;
 
     fields.push({
       name: fieldName,
@@ -215,7 +237,9 @@ function parseStructs(content: string): ParsedStruct[] {
       });
     }
 
-    const fields = body ? parseStructFields(body, optionalFields) : [];
+    const fields = body
+      ? parseStructFields(body, optionalFields, bitFieldFields)
+      : [];
 
     structs.push({
       type: structType,
@@ -270,6 +294,42 @@ function parseEnums(content: string): ParsedEnum[] {
   return enums;
 }
 
+// Collect used types from fields
+function collectUsedTypes(fields: Field[]): Set<string> {
+  const usedTypes = new Set<string>();
+
+  for (const field of fields) {
+    let rustType = field.rustType.trim();
+
+    // Extract type from arrays [Type; length]
+    const arrayMatch = rustType.match(/^\[(.+?);\s*\d+\]$/);
+    if (arrayMatch && arrayMatch[1]) {
+      rustType = arrayMatch[1].trim();
+    }
+
+    // If it's a custom type (starts with uppercase and not a basic type)
+    if (
+      /^[A-Z]/.test(rustType) &&
+      ![
+        "Pubkey",
+        "Uint16",
+        "Uint32",
+        "Uint64",
+        "Uint128",
+        "String16",
+        "String32",
+        "String64",
+        "String4096",
+        "BitField",
+      ].includes(rustType)
+    ) {
+      usedTypes.add(`I${rustType}`);
+    }
+  }
+
+  return usedTypes;
+}
+
 // Generate TypeScript interface
 function generateInterface(
   parsed:
@@ -282,7 +342,8 @@ function generateInterface(
   // Add BitField boolean flags first
   if (parsed.bitFieldFields && parsed.bitFieldFields.length > 0) {
     for (const field of parsed.bitFieldFields) {
-      output += `  ${field}: boolean;\n`;
+      const camelCaseField = toCamelCase(field);
+      output += `  ${camelCaseField}: boolean;\n`;
     }
   }
 
@@ -290,7 +351,8 @@ function generateInterface(
   for (const field of parsed.fields) {
     const tsType = convertType(field.rustType);
     const optional = field.isOptional ? "?" : "";
-    output += `  ${field.name}${optional}: ${tsType};\n`;
+    const camelCaseField = toCamelCase(field.name);
+    output += `  ${camelCaseField}${optional}: ${tsType};\n`;
   }
 
   output += "}\n";
@@ -362,6 +424,7 @@ async function processCrate(crateDir: string, distDir: string): Promise<void> {
   let allTypes: string[] = [];
   let allAccounts: string[] = [];
   let allInstructions: string[] = [];
+  let allStructs: ParsedStruct[] = [];
 
   // Find all .rs files recursively
   async function findRustFiles(dir: string): Promise<string[]> {
@@ -383,6 +446,10 @@ async function processCrate(crateDir: string, distDir: string): Promise<void> {
   const rustFiles = await findRustFiles(crateDir);
 
   for (const file of rustFiles) {
+    const content = await fs.readFile(file, "utf-8");
+    const structs = parseStructs(content);
+    allStructs.push(...structs);
+
     const { types, accounts, instructions } = await processRustFile(file);
     allTypes.push(...types);
     allAccounts.push(...accounts);
@@ -404,14 +471,40 @@ async function processCrate(crateDir: string, distDir: string): Promise<void> {
     }
 
     if (allAccounts.length > 0) {
-      const content =
-        'import { Address } from "gill";\n\n' + allAccounts.join("\n");
+      // Collect used types in accounts
+      const usedTypes = new Set<string>();
+      for (const struct of allStructs) {
+        if (struct.type === "CodamaAccount") {
+          const types = collectUsedTypes(struct.fields);
+          types.forEach((t) => usedTypes.add(t));
+        }
+      }
+
+      let imports = 'import { Address } from "gill";\n';
+      if (usedTypes.size > 0) {
+        imports += `import { ${Array.from(usedTypes).join(", ")} } from "./types";\n`;
+      }
+
+      const content = imports + "\n" + allAccounts.join("\n");
       await fs.writeFile(path.join(outputDir, "accounts.ts"), content);
     }
 
     if (allInstructions.length > 0) {
-      const content =
-        'import { Address } from "gill";\n\n' + allInstructions.join("\n");
+      // Collect used types in instructions
+      const usedTypes = new Set<string>();
+      for (const struct of allStructs) {
+        if (struct.type === "CodamaInstruction") {
+          const types = collectUsedTypes(struct.fields);
+          types.forEach((t) => usedTypes.add(t));
+        }
+      }
+
+      let imports = 'import { Address } from "gill";\n';
+      if (usedTypes.size > 0) {
+        imports += `import { ${Array.from(usedTypes).join(", ")} } from "./types";\n`;
+      }
+
+      const content = imports + "\n" + allInstructions.join("\n");
       await fs.writeFile(path.join(outputDir, "instructions.ts"), content);
     }
   }

@@ -1,36 +1,39 @@
 import { Address } from "gill";
+import { IAssetItem, IRange } from "./types";
 
 export interface IBump {
   config: number;
-  user_counter: number;
-  rotation_state: number;
+  userCounter: number;
+  rotationState: number;
 }
 
 export interface IConfig {
   admin: Address;
-  rotation_timeout: number;
-  registration_fee: AssetItem;
-  data_size_range: Range;
+  isPaused: boolean;
+  rotationTimeout: number;
+  registrationFee: IAssetItem;
+  dataSizeRange: IRange;
 }
 
 export interface IUserCounter {
-  last_user_id: number;
+  lastUserId: number;
 }
 
 export interface IRotationState {
   owner: Address;
-  new_owner: Address;
-  expiration_date: bigint;
+  newOwner: Address;
+  expirationDate: bigint;
 }
 
 export interface IUserId {
+  flags: boolean;
   id: number;
-  account_bump: number;
-  rotation_state_bump: number;
+  accountBump: number;
+  rotationStateBump: number;
 }
 
 export interface IUserAccount {
   data: string;
   nonce: bigint;
-  max_size: number;
+  maxSize: number;
 }
