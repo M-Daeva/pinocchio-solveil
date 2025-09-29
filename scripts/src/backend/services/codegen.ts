@@ -52,18 +52,22 @@ function toCamelCase(str: string): string {
 }
 
 // Convert Rust type to TypeScript type
-function convertType(rustType: string): string {
+function convertType(
+  rustType: string,
+  allStructNames: Set<string> = new Set(),
+): string {
   // Remove whitespace
   rustType = rustType.trim();
 
   // Handle arrays [Type; length]
   const arrayMatch = rustType.match(/^\[(.+?);\s*\d+\]$/);
   if (arrayMatch && arrayMatch[1]) {
-    const innerType = convertType(arrayMatch[1]);
-    // Add 'I' prefix if it's a custom type (starts with uppercase)
-    const convertedInner = /^[A-Z]/.test(innerType)
-      ? `I${innerType}`
-      : innerType;
+    const innerType = convertType(arrayMatch[1], allStructNames);
+    // Add 'I' prefix if it's a custom type (starts with uppercase) and doesn't already have it
+    const convertedInner =
+      /^[A-Z]/.test(innerType) && !innerType.startsWith("I")
+        ? `I${innerType}`
+        : innerType;
     return `${convertedInner}[]`;
   }
 
@@ -87,8 +91,8 @@ function convertType(rustType: string): string {
     return typeMap[rustType] as string;
   }
 
-  // If it's a custom type (starts with uppercase), add 'I' prefix
-  if (/^[A-Z]/.test(rustType)) {
+  // If it's a custom type (starts with uppercase), add 'I' prefix only if it doesn't have it
+  if (/^[A-Z]/.test(rustType) && !rustType.startsWith("I")) {
     return `I${rustType}`;
   }
 
