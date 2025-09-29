@@ -38,6 +38,7 @@ interface Field {
   name: string;
   rustType: string;
   isOptional?: boolean;
+  optionalList?: string[];
 }
 
 // Read and parse config
@@ -158,31 +159,30 @@ function extractEnumFields(declaration: string): string[] {
 }
 
 // Parse struct fields
-function parseStructFields(
-  structBody: string,
-  optionalFields: string[] = [],
-  bitFieldFields: string[] = [],
-): Field[] {
+function parseStructFields(structBody: string): Field[] {
   const fields: Field[] = [];
-  const fieldRegex = /pub\s+(\w+):\s*([^,\n]+)/g;
+  const fieldRegex = /((?:#\[.*?\]\s*)*)pub\s+(\w+):\s*([^,\n]+),?/gs;
   let match;
 
   while ((match = fieldRegex.exec(structBody)) !== null) {
-    const fieldName = match[1];
-    const fieldType = match[2];
+    const [, fieldAttributes, fieldName, fieldType] = match;
 
     if (!fieldName || !fieldType) continue;
 
     const trimmedFieldType = fieldType.trim().replace(/,$/, "");
 
-    // Skip BitField flags field when it has OptionFlag
-    if (trimmedFieldType === "BitField" && bitFieldFields.length > 0) continue;
+    const optionalList = extractOptionalFields(fieldAttributes || "");
 
-    fields.push({
+    const field: Field = {
       name: fieldName,
       rustType: trimmedFieldType,
-      isOptional: optionalFields.includes(fieldName),
-    });
+    };
+
+    if (optionalList.length > 0) {
+      field.optionalList = optionalList;
+    }
+
+    fields.push(field);
   }
 
   return fields;
@@ -214,7 +214,7 @@ function parseStructs(content: string): ParsedStruct[] {
 
     if (!structType) continue;
 
-    const optionalFields = extractOptionalFields(attributes);
+    const structOptionalFields = extractOptionalFields(attributes);
     const enumFields = extractEnumFields(attributes);
     const codamaName = extractCodamaName(attributes);
 
@@ -233,24 +233,46 @@ function parseStructs(content: string): ParsedStruct[] {
       continue;
     }
 
-    // Handle BitField with OptionFlag
+    const fields = body ? parseStructFields(body) : [];
+
     let bitFieldFields: string[] = [];
-    if (derives.includes("OptionFlag") && body) {
-      bitFieldFields = optionalFields.filter((field) => {
-        return !body.includes(`pub ${field}:`);
-      });
+
+    if (derives.includes("OptionFlag")) {
+      const bitFields = fields.filter(
+        (f) => f.rustType === "BitField" && f.optionalList,
+      );
+      for (const bitField of bitFields) {
+        const optionalList = bitField.optionalList || [];
+        for (const f of fields) {
+          if (optionalList.includes(f.name)) {
+            f.isOptional = true;
+          }
+        }
+        const newFlags = optionalList.filter(
+          (name) => !fields.find((f) => f.name === name),
+        );
+        bitFieldFields.push(...newFlags);
+        // Remove the bitField field
+        const index = fields.indexOf(bitField);
+        if (index !== -1) {
+          fields.splice(index, 1);
+        }
+      }
     }
 
-    const fields = body
-      ? parseStructFields(body, optionalFields, bitFieldFields)
-      : [];
+    // Handle struct-level optional fields
+    for (const f of fields) {
+      if (structOptionalFields.includes(f.name)) {
+        f.isOptional = true;
+      }
+    }
 
     structs.push({
       type: structType,
       name,
       codamaName,
       fields,
-      optionalFields,
+      optionalFields: structOptionalFields,
       bitFieldFields,
     });
   }

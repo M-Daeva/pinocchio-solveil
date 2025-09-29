@@ -26,7 +26,8 @@ export interface IRotationState {
 }
 
 export interface IUserId {
-  flags: boolean;
+  isOpen: boolean;
+  isActivated: boolean;
   id: number;
   accountBump: number;
   rotationStateBump: number;
