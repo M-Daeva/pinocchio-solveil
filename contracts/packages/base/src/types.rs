@@ -13,7 +13,6 @@ use {
         program_error::ProgramError,
         ProgramResult,
     },
-    pinocchio_ts_generator::GenerateTS,
 };
 
 pub type Result<T> = core::result::Result<T, ProgramError>;
@@ -101,7 +100,7 @@ where
     }
 }
 
-#[derive(CodamaType, GenerateTS)]
+#[derive(CodamaType)]
 #[p_serde]
 pub struct BitField(u8);
 
@@ -148,7 +147,7 @@ impl BitField {
     }
 }
 
-#[derive(CodamaType, GenerateTS)]
+#[derive(CodamaType)]
 #[p_serde]
 pub struct Uint16([u8; 2]);
 
@@ -181,7 +180,7 @@ impl Uint16 {
     }
 }
 
-#[derive(CodamaType, GenerateTS)]
+#[derive(CodamaType)]
 #[p_serde]
 pub struct Uint32([u8; 4]);
 
@@ -214,7 +213,7 @@ impl Uint32 {
     }
 }
 
-#[derive(CodamaType, GenerateTS)]
+#[derive(CodamaType)]
 #[p_serde]
 pub struct Uint64([u8; 8]);
 
@@ -247,7 +246,7 @@ impl Uint64 {
     }
 }
 
-#[derive(CodamaType, GenerateTS)]
+#[derive(CodamaType)]
 #[p_serde]
 pub struct Uint128([u8; 16]);
 
@@ -280,7 +279,7 @@ impl Uint128 {
     }
 }
 
-#[derive(CodamaType, GenerateTS)]
+#[derive(CodamaType)]
 #[p_serde]
 pub struct String16([u8; 16]);
 
@@ -324,7 +323,7 @@ impl String16 {
     }
 }
 
-#[derive(CodamaType, GenerateTS)]
+#[derive(CodamaType)]
 #[p_serde]
 pub struct String32([u8; 32]);
 
@@ -368,7 +367,7 @@ impl String32 {
     }
 }
 
-#[derive(CodamaType, GenerateTS, Debug, PartialEq, Eq, Pod, Zeroable, Clone, Copy)]
+#[derive(CodamaType, Debug, PartialEq, Eq, Pod, Zeroable, Clone, Copy)]
 #[repr(C)]
 pub struct String64([u8; 64]);
 
@@ -423,7 +422,7 @@ impl String64 {
     }
 }
 
-#[derive(CodamaType, GenerateTS, Debug, PartialEq, Eq, Pod, Zeroable, Clone, Copy)]
+#[derive(CodamaType, Debug, PartialEq, Eq, Pod, Zeroable, Clone, Copy)]
 #[repr(C)]
 pub struct String4096([u8; 4096]);
 
@@ -483,3 +482,102 @@ impl String4096 {
         self.0[len] = 0;
     }
 }
+
+// #[derive(CodamaType, Debug, PartialEq, Eq, Clone, Copy)]
+// #[repr(transparent)]
+// pub struct Array<T, const S: usize>([T; S])
+// where
+//     T: Pod + Zeroable;
+
+// // Safety: Array<T, S> is #[repr(transparent)] over [T; S]
+// // When T: Pod, then [T; S]: Pod
+// unsafe impl<T, const S: usize> Pod for Array<T, S> where T: Pod + Zeroable {}
+
+// // Safety: When T: Zeroable, then [T; S]: Zeroable
+// unsafe impl<T, const S: usize> Zeroable for Array<T, S> where T: Pod + Zeroable {}
+
+// impl<T, const S: usize> Array<T, S>
+// where
+//     T: Pod + Zeroable,
+// {
+//     /// Create a new Array from a raw array
+//     #[inline]
+//     pub const fn new(arr: [T; S]) -> Self {
+//         Self(arr)
+//     }
+
+//     /// Get a reference to the raw array
+//     #[inline]
+//     pub const fn get_raw(&self) -> &[T; S] {
+//         &self.0
+//     }
+
+//     /// Get a mutable reference to the raw array
+//     #[inline]
+//     pub fn get_raw_mut(&mut self) -> &mut [T; S] {
+//         &mut self.0
+//     }
+
+//     /// Set the raw array
+//     #[inline]
+//     pub fn set_raw(&mut self, arr: [T; S]) {
+//         self.0 = arr;
+//     }
+
+//     /// Convert into the inner array
+//     #[inline]
+//     pub fn into_inner(self) -> [T; S] {
+//         self.0
+//     }
+// }
+
+// impl<T, const S: usize> From<[T; S]> for Array<T, S>
+// where
+//     T: Pod + Zeroable,
+// {
+//     #[inline]
+//     fn from(arr: [T; S]) -> Self {
+//         Self(arr)
+//     }
+// }
+
+// impl<T, const S: usize> From<Array<T, S>> for [T; S]
+// where
+//     T: Pod + Zeroable,
+// {
+//     #[inline]
+//     fn from(arr: Array<T, S>) -> Self {
+//         arr.0
+//     }
+// }
+
+// impl<T, const S: usize> AsRef<[T; S]> for Array<T, S>
+// where
+//     T: Pod + Zeroable,
+// {
+//     #[inline]
+//     fn as_ref(&self) -> &[T; S] {
+//         &self.0
+//     }
+// }
+
+// impl<T, const S: usize> AsMut<[T; S]> for Array<T, S>
+// where
+//     T: Pod + Zeroable,
+// {
+//     #[inline]
+//     fn as_mut(&mut self) -> &mut [T; S] {
+//         &mut self.0
+//     }
+// }
+
+// impl<T, const S: usize> Default for Array<T, S>
+// where
+//     T: Pod + Zeroable,
+// {
+//     #[inline]
+//     fn default() -> Self {
+//         // Safety: T is Pod + Zeroable, so a zeroed array is valid
+//         unsafe { core::mem::zeroed() }
+//     }
+// }

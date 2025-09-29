@@ -310,7 +310,6 @@ dependencies = [
  "pinocchio-pubkey",
  "pinocchio-system",
  "pinocchio-token",
- "pinocchio-ts-generator",
  "solana-instruction",
  "solana-pubkey",
  "strum",
@@ -2255,15 +2254,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pinocchio-ts-generator"
-version = "1.0.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.106",
-]
-
-[[package]]
 name = "pkg-config"
 version = "0.3.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2511,7 +2501,6 @@ dependencies = [
  "pinocchio-log",
  "pinocchio-pubkey",
  "pinocchio-system",
- "pinocchio-ts-generator",
  "solana-instruction",
  "solana-pubkey",
  "strum",

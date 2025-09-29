@@ -1,0 +1,12 @@
+{
+  "src": [
+    {
+      "directory": "../contracts/packages",
+      "exclude": [
+        "base",
+        "macro*"
+      ]
+    }
+  ],
+  "dist": "./src/common/schema/codama/codegen"
+}

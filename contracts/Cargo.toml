@@ -62,7 +62,6 @@ macro-try-from = { path = "./packages/macro-try-from" }
 macro-error = { path = "./packages/macro-error" }
 macro-optional-flag = { path = "./packages/macro-optional-flag" }
 macro-enum-wrapper = { path = "./packages/macro-enum-wrapper" }
-pinocchio-ts-generator = { path = "./packages/pinocchio-ts-generator" }
 base = { path = "./packages/base" }
 registry-cpi = { path = "./packages/registry-cpi" }
 

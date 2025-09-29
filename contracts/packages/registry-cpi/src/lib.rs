@@ -1,7 +1,6 @@
 use pinocchio_pubkey::declare_id;
 
 pub mod error;
-pub mod schema;
 pub mod state;
 pub mod types;
 

@@ -26,6 +26,8 @@ pub struct Accounts<'a> {
     pub user_rotation_state: &'a AccountInfo,
 }
 
+// #[derive(CodamaInstruction)]
+// #[codama(name = "ConfirmAccountRotation")]
 #[test_ser(Discriminator::ConfirmAccountRotation)]
 #[p_serde]
 pub struct InstructionData {}

@@ -17,7 +17,6 @@ std = []
 
 [dependencies]
 codama = { workspace = true }
-pinocchio-ts-generator = { workspace = true }
 pinocchio = { workspace = true }
 pinocchio-log = { workspace = true }
 pinocchio-pubkey = { workspace = true }
