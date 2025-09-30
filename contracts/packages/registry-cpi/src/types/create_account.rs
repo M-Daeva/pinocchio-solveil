@@ -5,6 +5,7 @@ use {
         types::{Result, Uint32},
     },
     bytemuck::{Pod, Zeroable},
+    codama::CodamaInstruction,
     macro_p_serde::p_serde,
     macro_test_ser::test_ser,
     macro_try_from::AccountTryFrom,
@@ -36,6 +37,8 @@ pub struct Accounts<'a> {
     pub user_rotation_state: &'a AccountInfo,
 }
 
+#[derive(CodamaInstruction)]
+// #[codama(name = "CreateAccount")]
 #[test_ser(Discriminator::CreateAccount)]
 #[p_serde]
 pub struct InstructionData {

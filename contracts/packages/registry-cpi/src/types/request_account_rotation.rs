@@ -2,6 +2,7 @@ use {
     crate::state::Discriminator,
     base::{traits::DataLen, types::Result},
     bytemuck::{Pod, Zeroable},
+    codama::CodamaInstruction,
     macro_p_serde::p_serde,
     macro_test_ser::test_ser,
     macro_try_from::AccountTryFrom,
@@ -24,6 +25,8 @@ pub struct Accounts<'a> {
     pub user_rotation_state: &'a AccountInfo,
 }
 
+#[derive(CodamaInstruction)]
+// #[codama(name = "RequestAccountRotation")]
 #[test_ser(Discriminator::RequestAccountRotation)]
 #[p_serde]
 pub struct InstructionData {

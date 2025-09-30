@@ -2,6 +2,7 @@ use {
     crate::state::Discriminator,
     base::{traits::DataLen, types::Result},
     bytemuck::{Pod, Zeroable},
+    codama::CodamaInstruction,
     macro_p_serde::p_serde,
     macro_test_ser::test_ser,
     macro_try_from::AccountTryFrom,
@@ -34,6 +35,8 @@ pub struct Accounts<'a> {
     pub revenue_app_ata: &'a AccountInfo,
 }
 
+#[derive(CodamaInstruction)]
+// #[codama(name = "ActivateAccount")]
 #[test_ser(Discriminator::ActivateAccount)]
 #[p_serde]
 pub struct InstructionData {}

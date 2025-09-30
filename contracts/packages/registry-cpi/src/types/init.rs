@@ -8,11 +8,8 @@ use {
         types::{BitField, Result, Uint32},
     },
     bytemuck::{Pod, Zeroable},
+    codama::CodamaInstruction,
     macro_optional_flag::OptionFlag,
-    // codama::{
-    //     CodamaAccount, CodamaAccounts, CodamaErrors, CodamaInstruction, CodamaInstructions,
-    //     CodamaType,
-    // },
     macro_p_serde::p_serde,
     macro_test_ser::test_ser,
     macro_try_from::AccountTryFrom,
@@ -48,8 +45,9 @@ pub struct Accounts<'a> {
     pub revenue_app_ata: &'a AccountInfo,
 }
 
+#[derive(CodamaInstruction, OptionFlag)]
+// #[codama(name = "Init")]
 #[test_ser(Discriminator::Init)]
-#[derive(OptionFlag)]
 #[p_serde]
 pub struct InstructionData {
     #[optional(rotation_timeout, account_registration_fee, account_data_size_range)]

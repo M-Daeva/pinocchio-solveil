@@ -8,8 +8,8 @@ export interface IBump {
 }
 
 export interface IConfig {
-  admin: Address;
   isPaused: boolean;
+  admin: Address;
   rotationTimeout: number;
   registrationFee: IAssetItem;
   dataSizeRange: IRange;

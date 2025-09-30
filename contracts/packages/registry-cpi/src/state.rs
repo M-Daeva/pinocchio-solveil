@@ -63,12 +63,13 @@ pub struct Bump {
     pub rotation_state: u8,
 }
 
-#[derive(CodamaAccount)]
+#[derive(CodamaAccount, OptionFlag)]
 #[p_serde]
 pub struct Config {
+    #[optional(is_paused)]
+    pub flags: BitField,
     /// can update the config and execute priveledged instructions
     pub admin: Pubkey,
-    pub is_paused: BitField,
     pub rotation_timeout: Uint32,
     pub registration_fee: AssetItem,
     pub data_size_range: Range,

@@ -84,7 +84,6 @@ function convertType(
     String32: "string",
     String64: "string",
     String4096: "string",
-    BitField: "boolean",
   };
 
   // If it's a basic type, return the mapping
@@ -146,9 +145,13 @@ function extractCodamaName(declaration: string): string | undefined {
 
 // Extract optional fields from OptionFlag
 function extractOptionalFields(declaration: string): string[] {
-  const match = declaration.match(/#\[optional\((.*?)\)\]/);
+  const match = declaration.match(/#\[optional\(([\s\S]*?)\)\]/);
   if (!match || !match[1]) return [];
-  return match[1].split(",").map((f) => f.trim());
+  // Split on commas, trim whitespace, and handle multi-line attributes
+  return match[1]
+    .split(",")
+    .map((f) => f.trim())
+    .filter((f) => f !== "");
 }
 
 // Extract enum fields from enumfields attribute
@@ -259,17 +262,17 @@ function parseStructs(content: string): ParsedStruct[] {
       );
       for (const bitField of bitFields) {
         const optionalList = bitField.optionalList || [];
+        // Store all fields from optional attribute
+        bitFieldFields = [...optionalList];
+
+        // Mark existing fields as optional if they appear in optionalList
         for (const f of fields) {
           if (optionalList.includes(f.name)) {
             f.isOptional = true;
           }
         }
-        const newFlags = optionalList.filter(
-          (name) => !fields.find((f) => f.name === name),
-        );
-        bitFieldFields.push(...newFlags);
 
-        // Remove the BitField field itself
+        // Remove the BitField field itself from fields
         const index = fields.indexOf(bitField);
         if (index !== -1) {
           fields.splice(index, 1);
@@ -277,7 +280,7 @@ function parseStructs(content: string): ParsedStruct[] {
       }
     }
 
-    // Apply struct-level optional fields
+    // Apply struct-level optional fields (from struct attributes)
     for (const f of fields) {
       if (structOptionalFields.includes(f.name)) {
         f.isOptional = true;
@@ -382,20 +385,77 @@ function generateInterface(
 ): string {
   let output = `export interface ${interfaceName} {\n`;
 
-  // Add BitField boolean flags first
+  // Collect all fields to maintain order from optional attribute
+  const allFields: { name: string; tsType: string; isOptional: boolean }[] = [];
+
+  // Handle BitField flags (both existing and non-existent fields)
   if (parsed.bitFieldFields && parsed.bitFieldFields.length > 0) {
     for (const field of parsed.bitFieldFields) {
-      const camelCaseField = toCamelCase(field);
-      output += `  ${camelCaseField}: boolean;\n`;
+      const isOptional = field.startsWith("_");
+      const fieldName = isOptional ? field.slice(1) : field;
+      const camelCaseField = toCamelCase(fieldName);
+
+      // Check if the field exists in the struct
+      const existingField = parsed.fields.find((f) => f.name === field);
+      if (existingField) {
+        // Existing field, mark as optional
+        allFields.push({
+          name: camelCaseField,
+          tsType: convertType(existingField.rustType),
+          isOptional: true,
+        });
+      } else {
+        // Non-existent field, add as boolean (optional if prefixed with '_')
+        allFields.push({
+          name: camelCaseField,
+          tsType: "boolean",
+          isOptional,
+        });
+      }
     }
   }
 
-  // Add regular fields
+  // Add remaining fields that are not in bitFieldFields
   for (const field of parsed.fields) {
-    const tsType = convertType(field.rustType);
-    const optional = field.isOptional ? "?" : "";
+    if (field.rustType === "BitField") continue; // Skip BitField itself
     const camelCaseField = toCamelCase(field.name);
-    output += `  ${camelCaseField}${optional}: ${tsType};\n`;
+    // Skip fields already handled via bitFieldFields
+    if (parsed.bitFieldFields && parsed.bitFieldFields.includes(field.name)) {
+      continue;
+    }
+    allFields.push({
+      name: camelCaseField,
+      tsType: convertType(field.rustType),
+      isOptional: field.isOptional || false,
+    });
+  }
+
+  // Sort fields to match the order in bitFieldFields (if available)
+  let orderedFields = allFields;
+  if (parsed.bitFieldFields && parsed.bitFieldFields.length > 0) {
+    const optionalList = parsed.bitFieldFields.map((f) =>
+      toCamelCase(f.startsWith("_") ? f.slice(1) : f),
+    );
+    orderedFields = [];
+    // Add fields in the order of optionalList
+    for (const optField of optionalList) {
+      const field = allFields.find((f) => f.name === optField);
+      if (field) {
+        orderedFields.push(field);
+      }
+    }
+    // Add remaining fields that were not in optionalList
+    for (const field of allFields) {
+      if (!optionalList.includes(field.name)) {
+        orderedFields.push(field);
+      }
+    }
+  }
+
+  // Generate TypeScript interface fields
+  for (const field of orderedFields) {
+    const optional = field.isOptional ? "?" : "";
+    output += `  ${field.name}${optional}: ${field.tsType};\n`;
   }
 
   output += "}\n";

@@ -5,6 +5,7 @@ use {
         types::{BitField, Result, Uint64},
     },
     bytemuck::{Pod, Zeroable},
+    codama::CodamaInstruction,
     macro_optional_flag::OptionFlag,
     macro_p_serde::p_serde,
     macro_test_ser::test_ser,
@@ -39,8 +40,9 @@ pub struct Accounts<'a> {
     pub revenue_app_ata: &'a AccountInfo,
 }
 
+#[derive(CodamaInstruction, OptionFlag)]
+// #[codama(name = "WithdrawRevenue")]
 #[test_ser(Discriminator::WithdrawRevenue)]
-#[derive(OptionFlag)]
 #[p_serde]
 pub struct InstructionData {
     #[optional(amount)]

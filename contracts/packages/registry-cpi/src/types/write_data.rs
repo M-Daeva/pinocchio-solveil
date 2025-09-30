@@ -5,6 +5,7 @@ use {
         types::{Result, String4096, Uint64},
     },
     bytemuck::{Pod, Zeroable},
+    codama::CodamaInstruction,
     macro_p_serde::p_serde,
     macro_test_ser::test_ser,
     macro_try_from::AccountTryFrom,
@@ -23,6 +24,8 @@ pub struct Accounts<'a> {
     pub user_account: &'a AccountInfo,
 }
 
+#[derive(CodamaInstruction)]
+// #[codama(name = "WriteData")]
 #[test_ser(Discriminator::WriteData)]
 #[p_serde]
 pub struct InstructionData {
