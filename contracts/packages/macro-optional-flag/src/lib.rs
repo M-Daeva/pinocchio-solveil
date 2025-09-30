@@ -123,9 +123,15 @@ pub fn derive_option_flag(input: TokenStream) -> TokenStream {
         } else {
             quote! { pub fn } // public for standalone flags
         };
+        let getter_non_snake_case = if is_underscore_prefixed {
+            quote! { #[allow(non_snake_case)] }
+        } else {
+            quote! {}
+        };
 
         methods.push(quote! {
             #[doc = #getter_doc]
+            #getter_non_snake_case
             #[inline]
             #getter_visibility #getter_name(&self) -> bool {
                 self.flags.get_flag(Self::#const_ident)
@@ -141,9 +147,15 @@ pub fn derive_option_flag(input: TokenStream) -> TokenStream {
         } else {
             quote! { pub fn } // public for standalone flags
         };
+        let setter_non_snake_case = if is_underscore_prefixed {
+            quote! { #[allow(non_snake_case)] }
+        } else {
+            quote! {}
+        };
 
         methods.push(quote! {
             #[doc = #setter_doc]
+            #setter_non_snake_case
             #[inline]
             #setter_visibility #setter_name(&mut self, x: bool) {
                 self.flags.set_flag(Self::#const_ident, x);

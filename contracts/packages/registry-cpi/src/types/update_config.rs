@@ -29,7 +29,6 @@ pub struct Accounts<'a> {
     pub admin_rotation_state: &'a AccountInfo,
 }
 
-// TODO: #[allow(non_snake_case)]
 #[derive(CodamaInstruction, OptionFlag)]
 // #[codama(name = "UpdateConfig")]
 #[test_ser(Discriminator::UpdateConfig)]
