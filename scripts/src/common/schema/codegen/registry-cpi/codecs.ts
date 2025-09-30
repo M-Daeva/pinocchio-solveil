@@ -10,12 +10,17 @@ import {
 } from "../../codama";
 import {
   DEFAULT_ADDRESS,
-  FlagsHandler,
   TBitField,
+  TBitFieldBuilder,
   TUint32,
   TUint64,
 } from "../../../interfaces/primitives";
 
+// TODO
+// x?.admin || DEFAULT_ADDRESS
+// x?.accountBump || 0
+
+// type codec args should be optional
 export function encAssetItem(x?: IAssetItem): AssetItem {
   return {
     amount: new TUint64(x?.amount).getRaw(),
@@ -44,56 +49,67 @@ export function decRange(x?: Range): IRange {
   };
 }
 
-// type/state codecs args should be optional
-export function encConfig(x?: IConfig): Config {
+// state codec args can't be optional
+export function encConfig(x: IConfig): Config {
   return {
-    flags: new TBitField({ flag: x?.isPaused || false }).getRaw(),
-    admin: x?.admin || DEFAULT_ADDRESS,
-    rotationTimeout: new TUint32(x?.rotationTimeout).getRaw(),
-    registrationFee: encAssetItem(x?.registrationFee),
-    dataSizeRange: encRange(x?.dataSizeRange),
+    flags: new TBitFieldBuilder().withBool(x.isPaused).build().getRaw(),
+    admin: x.admin || DEFAULT_ADDRESS,
+    rotationTimeout: new TUint32(x.rotationTimeout).getRaw(),
+    registrationFee: encAssetItem(x.registrationFee),
+    dataSizeRange: encRange(x.dataSizeRange),
   };
 }
 
-export function decConfig(x?: Config): IConfig {
+export function decConfig(x: Config): IConfig {
   return {
-    isPaused: new TBitField({ value: x?.flags || 0 }).get(),
-    admin: x?.admin || DEFAULT_ADDRESS,
-    rotationTimeout: new TUint32(x?.rotationTimeout).get(),
-    registrationFee: decAssetItem(x?.registrationFee),
-    dataSizeRange: decRange(x?.dataSizeRange),
+    isPaused: new TBitField(x.flags).get(),
+    admin: x.admin || DEFAULT_ADDRESS,
+    rotationTimeout: new TUint32(x.rotationTimeout).get(),
+    registrationFee: decAssetItem(x.registrationFee),
+    dataSizeRange: decRange(x.dataSizeRange),
   };
 }
 
-// TODO
-// export function encUserId(x?: IUserId): UserId {
-//   return {
-//     flags,
-//     id,
-//     accountBump,
-//     rotationStateBump,
-//   };
-// }
+export function encUserId(x: IUserId): UserId {
+  return {
+    flags: new TBitFieldBuilder()
+      .withBool(x.isOpen)
+      .withBool(x.isActivated)
+      .build()
+      .getRaw(),
+    id: new TUint32(x.id).getRaw(),
+    accountBump: x.accountBump,
+    rotationStateBump: x.rotationStateBump,
+  };
+}
+
+export function decUserId(x: UserId): IUserId {
+  return {
+    isOpen: new TBitField(x.flags).get(0),
+    isActivated: new TBitField(x.flags).get(1),
+    id: new TUint32(x.id).get(),
+    accountBump: x.accountBump,
+    rotationStateBump: x.rotationStateBump,
+  };
+}
 
 // we need only encoders for ixs
-// ix codecs args can't be optional
+// ix codec args can't be optional
 export function encUpdateConfigInstructionDataArgs(
   x: IUpdateConfigInstructionDataArgs,
 ): UpdateConfigInstructionDataArgs {
-  // TODO: add optional boolean feature
-  const fh = new FlagsHandler();
-
-  let data: UpdateConfigInstructionDataArgs = {
-    flags: 0,
-    admin: fh.add(x.admin, DEFAULT_ADDRESS),
-    // isPaused: new TBitField({ flag: fh.add(x.isPaused, false) }).getRaw(),
-    rotationTimeout: new TUint32(fh.add(x.rotationTimeout)).getRaw(),
-    registrationFeeAmount: new TUint64(
-      fh.add(x.registrationFeeAmount, 0n),
-    ).getRaw(),
-    dataSizeRange: encRange(fh.add(x.dataSizeRange)),
+  return {
+    flags: new TBitFieldBuilder()
+      .withOptBool(x.isPaused)
+      .withOptNonBool(x.admin)
+      .withOptNonBool(x.rotationTimeout)
+      .withOptNonBool(x.registrationFeeAmount)
+      .withOptNonBool(x.dataSizeRange)
+      .build()
+      .getRaw(),
+    admin: x.admin || DEFAULT_ADDRESS,
+    rotationTimeout: new TUint32(x.rotationTimeout).getRaw(),
+    registrationFeeAmount: new TUint64(x.registrationFeeAmount).getRaw(),
+    dataSizeRange: encRange(x.dataSizeRange),
   };
-
-  // flags should be updated based on input data fields presence
-  return { ...data, flags: fh.get() };
 }

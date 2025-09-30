@@ -1,5 +1,4 @@
 import { SYSTEM_PROGRAM_ADDRESS } from "gill/programs";
-import { OR } from ".";
 import {
   BitField,
   Uint16,
@@ -14,21 +13,23 @@ import {
 
 export const DEFAULT_ADDRESS = SYSTEM_PROGRAM_ADDRESS;
 
-type IBitFieldArgSet = { flag: boolean; bit?: number };
-type IBitFieldArgSetRaw = { value: BitField };
+// [flag, bit][]
+type IBitFieldArgSet = [boolean | undefined, number][];
 
 export class TBitField {
   private readonly bitMaxValue: number = 7;
   private readonly byteMaxValue: number = 255;
   private value: number = 0;
 
-  constructor(x?: OR<IBitFieldArgSet, IBitFieldArgSetRaw>) {
+  constructor(x?: IBitFieldArgSet | BitField) {
     if (!x) {
       this.setRaw(0);
-    } else if ("flag" in x) {
-      this.set(x.flag, x.bit);
+    } else if (typeof x === "number") {
+      this.setRaw(x);
     } else {
-      this.setRaw(x.value);
+      for (const [flag, bit] of x) {
+        this.set(flag || false, bit);
+      }
     }
   }
 
@@ -80,6 +81,49 @@ export class TBitField {
 
   private resetBit(bit: number): void {
     this.value = this.value & ~(1 << bit);
+  }
+}
+
+export class TBitFieldBuilder {
+  private idx: number = 0;
+  private value: IBitFieldArgSet = [];
+
+  withBool(x: boolean): this {
+    this.value.push([x, this.idx]);
+    this.idx++;
+    return this;
+  }
+
+  // { x: undefined } - { flag: false, value: false }
+  // { x: false } - { flag: true, value: false }
+  // { x: true } - { flag: true, value: true }
+  withOptBool(x?: boolean | undefined): this {
+    if (typeof x === "undefined") {
+      this.value.push([false, this.idx]);
+      this.value.push([false, this.idx + 1]);
+    } else {
+      this.value.push([true, this.idx]);
+      this.value.push([x, this.idx + 1]);
+    }
+    this.idx += 2;
+    return this;
+  }
+
+  withOptNonBool<T>(x?: T extends boolean ? never : T): this {
+    if (typeof x === "boolean") {
+      throw new Error(
+        "withNonBool does not accept booleans. Use withBool instead.",
+      );
+    }
+
+    const flag = typeof x === "undefined" ? false : true;
+    this.value.push([flag, this.idx]);
+    this.idx++;
+    return this;
+  }
+
+  build(): TBitField {
+    return new TBitField(this.value);
   }
 }
 
