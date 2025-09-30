@@ -20,6 +20,7 @@
     "app": "ts-node ./src/backend/app.ts",
     "store": "ts-node ./src/backend/services/store.ts",
     "codegen": "bun run ./src/backend/services/codegen.ts",
+    "codegen2": "bun run ./src/backend/services/codegen2.ts",
     "codegen-legacy": "bun run scripts/backend/generate-types.ts",
     "dev": "bun run --watch scripts/backend/app.ts",
     "capture-user-account": "bun run scripts/backend/capture/user-account.ts",
@@ -43,7 +44,8 @@
     "gill": "^0.11.0",
     "mathjs": "^14.7.0",
     "solana-kite": "^1.5.5",
-    "tweetnacl": "^1.0.3"
+    "tweetnacl": "^1.0.3",
+    "typescript": "^5.9.2"
   },
   "devDependencies": {
     "@types/bn.js": "^5.2.0",

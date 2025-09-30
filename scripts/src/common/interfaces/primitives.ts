@@ -128,39 +128,6 @@ export class TBitFieldBuilder {
   }
 }
 
-export class FlagsHandler {
-  private counter: number = 0;
-  private mask: number[] = [];
-
-  constructor(counter: number = 0) {
-    this.counter = counter;
-  }
-
-  add<T>(x: T | undefined, defaultValue?: T): T {
-    this.counter++;
-
-    if (typeof x !== "undefined") {
-      this.mask.push(this.counter - 1);
-      return x;
-    }
-
-    if (defaultValue) {
-      return defaultValue;
-    }
-
-    return undefined as T;
-  }
-
-  get(): number {
-    let flags = new TBitField();
-    for (const bit of this.mask) {
-      flags.set(true, bit);
-    }
-
-    return flags.getRaw();
-  }
-}
-
 export type Uint8 = number;
 
 export class TUint8 {
