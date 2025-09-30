@@ -10,26 +10,28 @@ use {
 /// in the `#[optional(...)]` attribute on the `flags` field. The struct must have a
 /// `flags` field of type `BitField`.
 ///
-/// For flags that correspond to existing struct fields, it also generates Option-based
+/// For flags that correspond to existing struct fields, it generates Option-based
 /// getter and setter methods that manage both the flag and the field value.
+///
+/// For flags that don't correspond to existing fields, it generates flag getters/setters.
+/// If a flag name starts with an underscore, it also generates Option-based
+/// getter and setter methods treating it as a virtual boolean field.
 ///
 /// # Example
 ///
 /// ```rust
 /// #[derive(OptionFlag)]
-/// pub struct UserId {
-///     #[optional(is_open, account_bump)]
+/// pub struct InstructionData {
+///     #[optional(_is_paused, admin)]
 ///     pub flags: BitField,
-///     pub id: Uint32,
-///     pub account_bump: u8,
-///     pub rotation_state_bump: u8,
+///     pub admin: Pubkey,
 /// }
 /// ```
 ///
 /// This generates:
-/// - Constants: `IS_OPEN`, `ACCOUNT_BUMP`
-/// - Flag getters/setters: `get_is_open_flag()`, `set_is_open_flag()`, etc.
-/// - Field getters/setters (for existing fields): `get_account_bump()`, `set_account_bump()`
+/// - Constants: `_IS_PAUSED`, `IS_PAUSED`, `ADMIN`
+/// - Flag getters/setters: `get_is_paused_flag()`, `set_is_paused_flag()`, etc.
+/// - Field getters/setters: `get_is_paused()`, `set_is_paused()`, `get_admin()`, `set_admin()`
 ///
 /// # Panics
 ///
@@ -72,31 +74,54 @@ pub fn derive_option_flag(input: TokenStream) -> TokenStream {
     // Generate constants and methods
     let mut constants = Vec::new();
     let mut methods = Vec::new();
+    let mut bit_index = 0u8;
 
-    for (index, flag_name) in flag_names.iter().enumerate() {
-        let const_name = flag_name.to_string().to_uppercase();
-        let const_ident = Ident::new(&const_name, flag_name.span());
-        let getter_name = Ident::new(&format!("get_{}_flag", flag_name), flag_name.span());
-        let setter_name = Ident::new(&format!("set_{}_flag", flag_name), flag_name.span());
+    for flag_name in flag_names.iter() {
+        let flag_name_str = flag_name.to_string();
+        let is_underscore_prefixed = flag_name_str.starts_with('_');
+        let clean_flag_name = if is_underscore_prefixed {
+            Ident::new(&flag_name_str[1..], flag_name.span())
+        } else {
+            flag_name.clone()
+        };
 
-        // Generate constant with documentation
-        let index_u8 = index as u8;
+        // Determine bit indices and constant names
+        let (const_ident, value_const_ident, next_bit_index) = if is_underscore_prefixed {
+            let const_name = flag_name_str.to_uppercase();
+            let const_ident = Ident::new(&const_name, flag_name.span());
+            let value_const_name = flag_name_str[1..].to_uppercase();
+            let value_const_ident = Ident::new(&value_const_name, flag_name.span());
+            (const_ident, Some(value_const_ident), bit_index + 2)
+        } else {
+            let const_name = flag_name_str.to_uppercase();
+            let const_ident = Ident::new(&const_name, flag_name.span());
+            (const_ident, None, bit_index + 1)
+        };
+
+        // Generate constants
         let const_doc = format!("Flag bit index for the `{}` flag.", flag_name);
         constants.push(quote! {
             #[doc = #const_doc]
-            const #const_ident: u8 = #index_u8;
+            const #const_ident: u8 = #bit_index;
         });
 
-        // Check if this flag corresponds to an existing field
-        let flag_name_str = flag_name.to_string();
-        let has_corresponding_field = field_map.contains_key(&flag_name_str);
+        if let Some(value_const_ident) = &value_const_ident {
+            let value_const_doc = format!("Value bit index for the `{}` flag.", clean_flag_name);
+            let value_index = bit_index + 1;
+            constants.push(quote! {
+                #[doc = #value_const_doc]
+                const #value_const_ident: u8 = #value_index;
+            });
+        }
 
-        // Generate flag getter method with appropriate visibility
+        // Generate flag getter method
+        let getter_name = Ident::new(&format!("get_{}_flag", flag_name), flag_name.span());
         let getter_doc = format!("Returns whether the `{}` flag is set.", flag_name);
-        let getter_visibility = if has_corresponding_field {
-            quote! { fn } // private
+        let getter_visibility = if field_map.contains_key(&flag_name_str) || is_underscore_prefixed
+        {
+            quote! { fn } // private for existing fields or underscore-prefixed
         } else {
-            quote! { pub fn } // public
+            quote! { pub fn } // public for standalone flags
         };
 
         methods.push(quote! {
@@ -107,12 +132,14 @@ pub fn derive_option_flag(input: TokenStream) -> TokenStream {
             }
         });
 
-        // Generate flag setter method with appropriate visibility
+        // Generate flag setter method
+        let setter_name = Ident::new(&format!("set_{}_flag", flag_name), flag_name.span());
         let setter_doc = format!("Sets the `{}` flag to the specified value.", flag_name);
-        let setter_visibility = if has_corresponding_field {
-            quote! { fn } // private
+        let setter_visibility = if field_map.contains_key(&flag_name_str) || is_underscore_prefixed
+        {
+            quote! { fn } // private for existing fields or underscore-prefixed
         } else {
-            quote! { pub fn } // public
+            quote! { pub fn } // public for standalone flags
         };
 
         methods.push(quote! {
@@ -123,13 +150,14 @@ pub fn derive_option_flag(input: TokenStream) -> TokenStream {
             }
         });
 
-        // If there's a corresponding field, generate Option-based getter and setter
-        if let Some(field_type) = field_map.get(&flag_name_str) {
+        // Handle existing field or underscore-prefixed flag
+        if field_map.contains_key(&flag_name_str) {
+            // Existing field: generate Option-based getter and setter
             let field_ident = Ident::new(&flag_name_str, flag_name.span());
+            let field_type = field_map.get(&flag_name_str).unwrap();
             let option_getter_name = Ident::new(&format!("get_{}", flag_name), flag_name.span());
             let option_setter_name = Ident::new(&format!("set_{}", flag_name), flag_name.span());
 
-            // Generate Option-based getter
             let option_getter_doc = format!(
                 "Returns the value of `{}` if the flag is set, otherwise None.",
                 flag_name
@@ -146,7 +174,6 @@ pub fn derive_option_flag(input: TokenStream) -> TokenStream {
                 }
             });
 
-            // Generate Option-based setter
             let option_setter_doc = format!(
                 "Sets the value of `{}` and updates the corresponding flag.",
                 flag_name
@@ -166,7 +193,51 @@ pub fn derive_option_flag(input: TokenStream) -> TokenStream {
                     }
                 }
             });
+        } else if is_underscore_prefixed {
+            // Underscore-prefixed flag: generate Option<bool> getter and setter
+            let option_getter_name =
+                Ident::new(&format!("get_{}", clean_flag_name), flag_name.span());
+            let option_setter_name =
+                Ident::new(&format!("set_{}", clean_flag_name), flag_name.span());
+
+            let option_getter_doc = format!(
+                "Returns the value of `{}` if the flag is set, otherwise None.",
+                clean_flag_name
+            );
+            methods.push(quote! {
+                #[doc = #option_getter_doc]
+                #[inline]
+                pub fn #option_getter_name(&self) -> Option<bool> {
+                    if self.#getter_name() {
+                        Some(self.flags.get_flag(Self::#value_const_ident))
+                    } else {
+                        None
+                    }
+                }
+            });
+
+            let option_setter_doc = format!(
+                "Sets the value of `{}` and updates the corresponding flag.",
+                clean_flag_name
+            );
+            methods.push(quote! {
+                #[doc = #option_setter_doc]
+                #[inline]
+                pub fn #option_setter_name(&mut self, x: Option<bool>) {
+                    match x {
+                        Some(x) => {
+                            self.#setter_name(true);
+                            self.flags.set_flag(Self::#value_const_ident, x);
+                        },
+                        None => {
+                            self.#setter_name(false);
+                        }
+                    }
+                }
+            });
         }
+
+        bit_index = next_bit_index;
     }
 
     // Generate the impl block

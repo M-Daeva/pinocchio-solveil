@@ -55,7 +55,7 @@ pub fn update_config(accounts: &[AccountInfo], instruction_data: &[u8]) -> Progr
     }
 
     if let Some(x) = ix.get_is_paused() {
-        config.is_paused = x;
+        config.set_is_paused_flag(x);
     }
 
     if let Some(x) = ix.get_rotation_timeout() {

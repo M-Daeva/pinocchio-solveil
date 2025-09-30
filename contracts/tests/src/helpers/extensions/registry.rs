@@ -210,7 +210,7 @@ impl RegistryExtension for App {
 
         let mut ix_data = types::update_config::InstructionData::default();
         ix_data.set_admin(admin.map(|x| sol_to_pin_pubkey(&x.pubkey())));
-        ix_data.set_is_paused(is_paused.map(|x| x.into()));
+        ix_data.set_is_paused(is_paused);
         ix_data.set_rotation_timeout(rotation_timeout.map(|x| x.into()));
         ix_data.set_registration_fee_amount(registration_fee_amount.map(|x| x.into()));
         ix_data.set_data_size_range(data_size_range);

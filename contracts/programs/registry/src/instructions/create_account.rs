@@ -52,7 +52,7 @@ pub fn create_account(accounts: &[AccountInfo], instruction_data: &[u8]) -> Prog
     // === use guards ===
 
     // don't allow register accounts in paused program
-    if config.is_paused.get_bit() {
+    if config.get_is_paused_flag() {
         Err(AnyError::Custom(CustomError::ContractIsPaused))?;
     }
 

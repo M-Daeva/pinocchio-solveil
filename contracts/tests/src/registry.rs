@@ -46,7 +46,7 @@ fn init_default() -> TestResult<()> {
         app.registry_query_config()?,
         Config {
             admin: AppUser::Admin.pubkey(),
-            is_paused: BitField::default(),
+            flags: BitField::default(),
             rotation_timeout: Uint32::from(ROTATION_TIMEOUT),
             registration_fee: AssetItem {
                 amount: Uint64::from(ACCOUNT_REGISTRATION_FEE_AMOUNT),
@@ -113,7 +113,7 @@ fn update_config_default() -> TestResult<()> {
         app.registry_query_config()?,
         Config {
             admin: AppUser::Admin.pubkey(),
-            is_paused: BitField::from(false),
+            flags: BitField::from(false),
             rotation_timeout: Uint32::from(ROTATION_TIMEOUT),
             registration_fee: AssetItem {
                 amount: Uint64::from(ACCOUNT_REGISTRATION_FEE_AMOUNT),
