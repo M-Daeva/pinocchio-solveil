@@ -9,29 +9,26 @@ import {
   UserId,
 } from "../../codama";
 import {
-  DEFAULT_ADDRESS,
+  TAddress,
   TBitField,
   TBitFieldBuilder,
   TUint32,
   TUint64,
+  TUint8,
 } from "../../../interfaces/primitives";
-
-// TODO
-// x?.admin || DEFAULT_ADDRESS
-// x?.accountBump || 0
 
 // type codec args should be optional
 export function encAssetItem(x?: IAssetItem): AssetItem {
   return {
     amount: new TUint64(x?.amount).getRaw(),
-    asset: x?.asset || DEFAULT_ADDRESS,
+    asset: new TAddress(x?.asset).getRaw(),
   };
 }
 
 export function decAssetItem(x?: AssetItem): IAssetItem {
   return {
     amount: new TUint64(x?.amount).get(),
-    asset: x?.asset || DEFAULT_ADDRESS,
+    asset: new TAddress(x?.asset).get(),
   };
 }
 
@@ -53,7 +50,7 @@ export function decRange(x?: Range): IRange {
 export function encConfig(x: IConfig): Config {
   return {
     flags: new TBitFieldBuilder().withBool(x.isPaused).build().getRaw(),
-    admin: x.admin || DEFAULT_ADDRESS,
+    admin: new TAddress(x.admin).getRaw(),
     rotationTimeout: new TUint32(x.rotationTimeout).getRaw(),
     registrationFee: encAssetItem(x.registrationFee),
     dataSizeRange: encRange(x.dataSizeRange),
@@ -63,7 +60,7 @@ export function encConfig(x: IConfig): Config {
 export function decConfig(x: Config): IConfig {
   return {
     isPaused: new TBitField(x.flags).get(),
-    admin: x.admin || DEFAULT_ADDRESS,
+    admin: new TAddress(x.admin).get(),
     rotationTimeout: new TUint32(x.rotationTimeout).get(),
     registrationFee: decAssetItem(x.registrationFee),
     dataSizeRange: decRange(x.dataSizeRange),
@@ -78,8 +75,8 @@ export function encUserId(x: IUserId): UserId {
       .build()
       .getRaw(),
     id: new TUint32(x.id).getRaw(),
-    accountBump: x.accountBump,
-    rotationStateBump: x.rotationStateBump,
+    accountBump: new TUint8(x.accountBump).getRaw(),
+    rotationStateBump: new TUint8(x.rotationStateBump).getRaw(),
   };
 }
 
@@ -88,8 +85,8 @@ export function decUserId(x: UserId): IUserId {
     isOpen: new TBitField(x.flags).get(0),
     isActivated: new TBitField(x.flags).get(1),
     id: new TUint32(x.id).get(),
-    accountBump: x.accountBump,
-    rotationStateBump: x.rotationStateBump,
+    accountBump: new TUint8(x.accountBump).get(),
+    rotationStateBump: new TUint8(x.rotationStateBump).get(),
   };
 }
 
@@ -107,7 +104,7 @@ export function encUpdateConfigInstructionDataArgs(
       .withOptNonBool(x.dataSizeRange)
       .build()
       .getRaw(),
-    admin: x.admin || DEFAULT_ADDRESS,
+    admin: new TAddress(x.admin).get(),
     rotationTimeout: new TUint32(x.rotationTimeout).getRaw(),
     registrationFeeAmount: new TUint64(x.registrationFeeAmount).getRaw(),
     dataSizeRange: encRange(x.dataSizeRange),

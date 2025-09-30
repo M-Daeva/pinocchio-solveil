@@ -10,6 +10,7 @@ import {
   String64,
   String4096,
 } from "../schema/codama";
+import { Address } from "gill";
 
 export const DEFAULT_ADDRESS = SYSTEM_PROGRAM_ADDRESS;
 
@@ -157,6 +158,43 @@ export class FlagsHandler {
     }
 
     return flags.getRaw();
+  }
+}
+
+export type Uint8 = number;
+
+export class TUint8 {
+  private readonly name: string = "Uint8";
+  private readonly maxValue: number = 0xff;
+  private value: number = 0;
+
+  constructor(x: number | Uint8 = 0) {
+    this.set(x);
+  }
+
+  get(): number {
+    return this.value;
+  }
+
+  getRaw(): Uint8 {
+    return this.get();
+  }
+
+  set(x: number): void {
+    this.value = this.validateUint8(x);
+  }
+
+  setRaw(x: Uint8): void {
+    this.value = x;
+  }
+
+  private validateUint8(x: number | Uint8): number {
+    if (!Number.isInteger(x) || x < 0 || x > this.maxValue) {
+      throw new Error(
+        `Value ${x} is not a valid ${this.name} (must be integer between 0 and ${this.maxValue})`,
+      );
+    }
+    return x;
   }
 }
 
@@ -405,6 +443,30 @@ export class TUint128 {
 
     // Combine into 128-bit bigint
     return (part3 << 96n) | (part2 << 64n) | (part1 << 32n) | part0;
+  }
+}
+
+export class TAddress {
+  private value: Address = DEFAULT_ADDRESS;
+
+  constructor(x: Address = DEFAULT_ADDRESS) {
+    this.set(x);
+  }
+
+  get(): Address {
+    return this.value;
+  }
+
+  getRaw(): Address {
+    return this.get();
+  }
+
+  set(x: Address): void {
+    this.value = x;
+  }
+
+  setRaw(x: Address): void {
+    this.set(x);
   }
 }
 
