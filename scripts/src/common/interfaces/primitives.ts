@@ -1,3 +1,4 @@
+import { SYSTEM_PROGRAM_ADDRESS } from "gill/programs";
 import { OR } from ".";
 import {
   BitField,
@@ -10,6 +11,8 @@ import {
   String64,
   String4096,
 } from "../schema/codama";
+
+export const DEFAULT_ADDRESS = SYSTEM_PROGRAM_ADDRESS;
 
 type IBitFieldArgSet = { flag: boolean; bit?: number };
 type IBitFieldArgSetRaw = { value: BitField };
@@ -77,6 +80,39 @@ export class TBitField {
 
   private resetBit(bit: number): void {
     this.value = this.value & ~(1 << bit);
+  }
+}
+
+export class FlagsHandler {
+  private counter: number = 0;
+  private mask: number[] = [];
+
+  constructor(counter: number = 0) {
+    this.counter = counter;
+  }
+
+  add<T>(x: T | undefined, defaultValue?: T): T {
+    this.counter++;
+
+    if (typeof x !== "undefined") {
+      this.mask.push(this.counter - 1);
+      return x;
+    }
+
+    if (defaultValue) {
+      return defaultValue;
+    }
+
+    return undefined as T;
+  }
+
+  get(): number {
+    let flags = new TBitField();
+    for (const bit of this.mask) {
+      flags.set(true, bit);
+    }
+
+    return flags.getRaw();
   }
 }
 

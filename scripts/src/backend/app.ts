@@ -36,12 +36,12 @@ import {
 } from "../common/schema/codama/instructions";
 
 import * as IRegistry from "../common/interfaces/registry";
+import { IConfig } from "../common/schema/codama/codegen/registry-cpi/accounts";
+import { IUpdateConfigInstructionDataArgs } from "../common/schema/codama/codegen/registry-cpi/instructions";
 import {
   decConfig,
   encUpdateConfigInstructionDataArgs,
-  IConfig,
-  IUpdateConfigInstructionDataArgs,
-} from "../common/interfaces/codecs";
+} from "../common/schema/codama/codegen/registry-cpi/codecs";
 
 // const addr = getAddressEncoder();
 
@@ -188,17 +188,17 @@ async function updateConfig(
 
   const ixArgs = encUpdateConfigInstructionDataArgs(args);
 
-  li({ ixArgs });
+  li({ args, ixArgs });
   return;
 
-  // const ixs = [
-  //   getUpdateConfigInstruction({
-  //     ...ixAccs,
-  //     ...ixArgs,
-  //   }),
-  // ];
+  const ixs = [
+    getUpdateConfigInstruction({
+      ...ixAccs,
+      ...ixArgs,
+    }),
+  ];
 
-  // return handleTx(client, sender, signerList, ixs, computeConfig, isDisplayed);
+  return handleTx(client, sender, signerList, ixs, computeConfig, isDisplayed);
 }
 
 async function queryConfig(isDisplayed: boolean = false): Promise<IConfig> {
@@ -221,27 +221,21 @@ async function main() {
   //   {},
   //   true,
   // );
-
-  const str32 = new TString32("Hello World!").getRaw();
-  li({ str32 });
-  li({ str: new TString32(str32).get() });
-
-  enum Target {
-    Spl,
-    Proxy,
-    Route,
-  }
-
-  const targetNumber = new TEnum(Target, Target.Proxy).getRaw();
-  console.log({ targetNumber });
-  console.log({ targetEnum: new TEnum(Target, targetNumber).get() });
-
-  // await queryConfig(true);
-  // await updateConfig(
-  //   { rotation_timeout: 24 * 3_600, is_paused: true },
-  //   {},
-  //   true,
-  // );
+  //
+  // const str32 = new TString32("Hello World!").getRaw();
+  // li({ str32 });
+  // li({ str: new TString32(str32).get() });
+  // enum Target {
+  //   Spl,
+  //   Proxy,
+  //   Route,
+  // }
+  // const targetNumber = new TEnum(Target, Target.Proxy).getRaw();
+  // console.log({ targetNumber });
+  // console.log({ targetEnum: new TEnum(Target, targetNumber).get() });
+  //
+  await queryConfig(true);
+  await updateConfig({ rotationTimeout: 24 * 3_600, isPaused: true }, {}, true);
   // await queryConfig(true);
 }
 
