@@ -13,7 +13,6 @@ export * from './string16';
 export * from './string32';
 export * from './string4096';
 export * from './string64';
-export * from './structWithArray';
 export * from './targetEnum';
 export * from './uint128';
 export * from './uint16';

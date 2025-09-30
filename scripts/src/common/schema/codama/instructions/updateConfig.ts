@@ -84,7 +84,6 @@ export type UpdateConfigInstructionData = {
   discriminator: number;
   flags: BitField;
   admin: Address;
-  isPaused: BitField;
   rotationTimeout: Uint32;
   registrationFeeAmount: Uint64;
   dataSizeRange: Range;
@@ -93,7 +92,6 @@ export type UpdateConfigInstructionData = {
 export type UpdateConfigInstructionDataArgs = {
   flags: BitFieldArgs;
   admin: Address;
-  isPaused: BitFieldArgs;
   rotationTimeout: Uint32Args;
   registrationFeeAmount: Uint64Args;
   dataSizeRange: RangeArgs;
@@ -105,7 +103,6 @@ export function getUpdateConfigInstructionDataEncoder(): Encoder<UpdateConfigIns
       ['discriminator', getU8Encoder()],
       ['flags', getBitFieldEncoder()],
       ['admin', getAddressEncoder()],
-      ['isPaused', getBitFieldEncoder()],
       ['rotationTimeout', getUint32Encoder()],
       ['registrationFeeAmount', getUint64Encoder()],
       ['dataSizeRange', getRangeEncoder()],
@@ -119,7 +116,6 @@ export function getUpdateConfigInstructionDataDecoder(): Decoder<UpdateConfigIns
     ['discriminator', getU8Decoder()],
     ['flags', getBitFieldDecoder()],
     ['admin', getAddressDecoder()],
-    ['isPaused', getBitFieldDecoder()],
     ['rotationTimeout', getUint32Decoder()],
     ['registrationFeeAmount', getUint64Decoder()],
     ['dataSizeRange', getRangeDecoder()],
@@ -146,7 +142,6 @@ export type UpdateConfigInput<
   adminRotationState: Address<TAccountAdminRotationState>;
   flags: UpdateConfigInstructionDataArgs['flags'];
   admin: UpdateConfigInstructionDataArgs['admin'];
-  isPaused: UpdateConfigInstructionDataArgs['isPaused'];
   rotationTimeout: UpdateConfigInstructionDataArgs['rotationTimeout'];
   registrationFeeAmount: UpdateConfigInstructionDataArgs['registrationFeeAmount'];
   dataSizeRange: UpdateConfigInstructionDataArgs['dataSizeRange'];

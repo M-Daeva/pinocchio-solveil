@@ -15,7 +15,3 @@ export enum ITargetEnum {
   Proxy,
   Route,
 }
-
-export interface IStructWithArray {
-  list: IAssetItem[];
-}

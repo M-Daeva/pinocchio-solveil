@@ -36,12 +36,12 @@ import {
 } from "../common/schema/codama/instructions";
 
 import * as IRegistry from "../common/interfaces/registry";
-import { IConfig } from "../common/schema/codama/codegen/registry-cpi/accounts";
-import { IUpdateConfigInstructionDataArgs } from "../common/schema/codama/codegen/registry-cpi/instructions";
+import { IConfig } from "../common/schema/codegen/registry-cpi/accounts";
+import { IUpdateConfigInstructionDataArgs } from "../common/schema/codegen/registry-cpi/instructions";
 import {
   decConfig,
   encUpdateConfigInstructionDataArgs,
-} from "../common/schema/codama/codegen/registry-cpi/codecs";
+} from "../common/schema/codegen/registry-cpi/codecs";
 
 // const addr = getAddressEncoder();
 

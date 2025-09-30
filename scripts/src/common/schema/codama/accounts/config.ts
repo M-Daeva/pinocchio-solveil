@@ -48,16 +48,16 @@ import {
 } from '../types';
 
 export type Config = {
+  flags: BitField;
   admin: Address;
-  isPaused: BitField;
   rotationTimeout: Uint32;
   registrationFee: AssetItem;
   dataSizeRange: Range;
 };
 
 export type ConfigArgs = {
+  flags: BitFieldArgs;
   admin: Address;
-  isPaused: BitFieldArgs;
   rotationTimeout: Uint32Args;
   registrationFee: AssetItemArgs;
   dataSizeRange: RangeArgs;
@@ -65,8 +65,8 @@ export type ConfigArgs = {
 
 export function getConfigEncoder(): Encoder<ConfigArgs> {
   return getStructEncoder([
+    ['flags', getBitFieldEncoder()],
     ['admin', getAddressEncoder()],
-    ['isPaused', getBitFieldEncoder()],
     ['rotationTimeout', getUint32Encoder()],
     ['registrationFee', getAssetItemEncoder()],
     ['dataSizeRange', getRangeEncoder()],
@@ -75,8 +75,8 @@ export function getConfigEncoder(): Encoder<ConfigArgs> {
 
 export function getConfigDecoder(): Decoder<Config> {
   return getStructDecoder([
+    ['flags', getBitFieldDecoder()],
     ['admin', getAddressDecoder()],
-    ['isPaused', getBitFieldDecoder()],
     ['rotationTimeout', getUint32Decoder()],
     ['registrationFee', getAssetItemDecoder()],
     ['dataSizeRange', getRangeDecoder()],

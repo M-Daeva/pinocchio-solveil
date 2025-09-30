@@ -8,5 +8,5 @@
       ]
     }
   ],
-  "dist": "./src/common/schema/codama/codegen"
+  "dist": "./src/common/schema/codegen"
 }

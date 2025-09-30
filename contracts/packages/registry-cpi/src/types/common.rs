@@ -27,6 +27,7 @@ pub struct Range {
 // TODO: add pda - #[codama(seed(type = public_key, value = program_id))]
 // TODO: add discriminator and name
 
+// TODO: to generate codama idl and code
 // #[derive(CodamaInstructions)]
 // #[repr(u8)]
 // pub enum InstructionData {
@@ -54,7 +55,6 @@ pub struct Range {
 //     UpdateConfig {
 //         flags: BitField,
 //         admin: Pubkey,
-//         is_paused: BitField,
 //         rotation_timeout: Uint32,
 //         registration_fee_amount: Uint64,
 //         data_size_range: Range,
@@ -190,8 +190,8 @@ pub struct TargetEnum(#[enumfields(spl, proxy, route)] u8);
 //     }
 // }
 
-#[derive(CodamaType)]
-#[p_serde]
-pub struct StructWithArray {
-    pub list: [AssetItem; 5],
-}
+// #[derive(CodamaType)]
+// #[p_serde]
+// pub struct StructWithArray {
+//     pub list: [AssetItem; 5],
+// }
