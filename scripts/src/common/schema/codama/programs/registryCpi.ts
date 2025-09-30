@@ -11,7 +11,7 @@ import {
   getU8Encoder,
   type Address,
   type ReadonlyUint8Array,
-} from 'gill';
+} from "gill";
 import {
   type ParsedActivateAccountInstruction,
   type ParsedCloseAccountInstruction,
@@ -24,10 +24,10 @@ import {
   type ParsedUpdateConfigInstruction,
   type ParsedWithdrawRevenueInstruction,
   type ParsedWriteDataInstruction,
-} from '../instructions';
+} from "../instructions";
 
 export const REGISTRY_CPI_PROGRAM_ADDRESS =
-  'DLYBwwHjtnYh8BNYFGkTgCZ8cn4cyR5xSJREJ6xU31PA' as Address<'DLYBwwHjtnYh8BNYFGkTgCZ8cn4cyR5xSJREJ6xU31PA'>;
+  "7fRVH4R3ij3K4UvE6uUPfF6FR7pfsD74qz9oBETaet6b" as Address<"7fRVH4R3ij3K4UvE6uUPfF6FR7pfsD74qz9oBETaet6b">;
 
 export enum RegistryCpiAccount {
   Bump,
@@ -53,9 +53,9 @@ export enum RegistryCpiInstruction {
 }
 
 export function identifyRegistryCpiInstruction(
-  instruction: { data: ReadonlyUint8Array } | ReadonlyUint8Array
+  instruction: { data: ReadonlyUint8Array } | ReadonlyUint8Array,
 ): RegistryCpiInstruction {
-  const data = 'data' in instruction ? instruction.data : instruction;
+  const data = "data" in instruction ? instruction.data : instruction;
   if (containsBytes(data, getU8Encoder().encode(0), 0)) {
     return RegistryCpiInstruction.Init;
   }
@@ -90,12 +90,12 @@ export function identifyRegistryCpiInstruction(
     return RegistryCpiInstruction.ConfirmAccountRotation;
   }
   throw new Error(
-    'The provided instruction could not be identified as a registryCpi instruction.'
+    "The provided instruction could not be identified as a registryCpi instruction.",
   );
 }
 
 export type ParsedRegistryCpiInstruction<
-  TProgram extends string = 'DLYBwwHjtnYh8BNYFGkTgCZ8cn4cyR5xSJREJ6xU31PA',
+  TProgram extends string = "7fRVH4R3ij3K4UvE6uUPfF6FR7pfsD74qz9oBETaet6b",
 > =
   | ({
       instructionType: RegistryCpiInstruction.Init;

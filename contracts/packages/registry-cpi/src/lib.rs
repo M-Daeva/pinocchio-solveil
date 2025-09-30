@@ -4,4 +4,4 @@ pub mod error;
 pub mod state;
 pub mod types;
 
-declare_id!("DLYBwwHjtnYh8BNYFGkTgCZ8cn4cyR5xSJREJ6xU31PA");
+declare_id!("7fRVH4R3ij3K4UvE6uUPfF6FR7pfsD74qz9oBETaet6b");
