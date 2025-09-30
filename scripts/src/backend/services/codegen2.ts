@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import ts from "typescript";
+import { rootPath } from "../utils";
 
 interface Config {
   src: Array<{ directory: string; exclude: string[] }>;
@@ -362,12 +363,12 @@ function generateCodecs(
 }
 
 function main() {
-  const configPath = "./path.json";
+  const configPath = rootPath("./src/backend/services/path.json");
   const config = loadConfig(configPath);
 
   // Process each program directory
   for (const src of config.src) {
-    const packagesDir = path.resolve(src.directory);
+    const packagesDir = path.resolve(rootPath(src.directory));
     if (!fs.existsSync(packagesDir)) continue;
 
     const programs = fs.readdirSync(packagesDir).filter((name) => {
