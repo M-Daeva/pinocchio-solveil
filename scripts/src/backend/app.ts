@@ -31,7 +31,14 @@ async function main() {
   // console.log({ targetNumber });
   // console.log({ targetEnum: new TEnum(Target, targetNumber).get() });
   //
+
+  // TODO: find out why the program set default value of revenue mint on init
+  // instead of fPcP9vGoowPikgu7oTRCJKHUvSNn9N5WZhYshR4UXyo
+
   await h.queryConfig(true);
+  await h.queryUserCounter(true); // TODO: check why default lastUserId: 3738929409
+  await h.queryAdminRotationState(true);
+  await h.queryRevenue(true);
   // await h.tryUpdateConfig(
   //   { rotationTimeout: 24 * 3_600, isPaused: true },
   //   {},

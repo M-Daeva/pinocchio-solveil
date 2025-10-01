@@ -469,20 +469,33 @@ export function tokenProgramFactory(rpc: RpcAny) {
 
     // it's a token, so get the mint account to determine which token program owns it
     const mintAccount = await rpc.getAccountInfo(mint).send();
-    if (!mintAccount) {
-      throw new Error(`Mint account ${mint.toString()} not found`);
+
+    if (!mintAccount?.value) {
+      throw new Error(
+        `Mint account ${mint.toString()} not found or uninitialized`,
+      );
     }
 
     // determine if it's Token Program or Token 2022
-    const mintAccountOwner = mintAccount.value?.owner;
-    let tokenProgram: Address;
+    const mintAccountOwner = mintAccount.value.owner;
 
+    // Check if the account is owned by System Program (not a token mint)
+    if (mintAccountOwner === SYSTEM_PROGRAM_ADDRESS) {
+      throw new Error(
+        `Account ${mint.toString()} is owned by System Program (not a token mint). ` +
+          `This might be a regular wallet address or an uninitialized account.`,
+      );
+    }
+
+    let tokenProgram: Address;
     if (mintAccountOwner === TOKEN_PROGRAM_ADDRESS) {
       tokenProgram = TOKEN_PROGRAM_ADDRESS;
     } else if (mintAccountOwner === TOKEN_2022_PROGRAM_ADDRESS) {
       tokenProgram = TOKEN_2022_PROGRAM_ADDRESS;
     } else {
-      throw new Error(`Unknown token program: ${mintAccountOwner}`);
+      throw new Error(
+        `Unknown token program: ${mintAccountOwner}. Expected Token Program or Token-2022 Program.`,
+      );
     }
 
     return tokenProgram;

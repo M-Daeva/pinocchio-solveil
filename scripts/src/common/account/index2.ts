@@ -47,6 +47,10 @@ import {
   ConfirmAdminRotationInput,
   ConfirmAdminRotationInstructionDataArgs,
   fetchConfig,
+  fetchRotationState,
+  fetchUserAccount,
+  fetchUserCounter,
+  fetchUserId,
   getConfirmAccountRotationInstruction,
   getConfirmAdminRotationInstruction,
   getUpdateConfigInstruction,
@@ -63,6 +67,10 @@ import {
 import { PATH } from "../config";
 import {
   decConfig,
+  decRotationState,
+  decUserAccount,
+  decUserCounter,
+  decUserId,
   encConfirmAccountRotationInstructionDataArgs,
   encConfirmAdminRotationInstructionDataArgs,
   encUpdateConfigInstructionDataArgs,
@@ -73,7 +81,13 @@ import {
   SYSTEM_PROGRAM_ADDRESS,
   TOKEN_PROGRAM_ADDRESS,
 } from "gill/programs";
-import { IConfig } from "../schema/codegen/registry-cpi/accounts";
+import {
+  IConfig,
+  IRotationState,
+  IUserAccount,
+  IUserCounter,
+  IUserId,
+} from "../schema/codegen/registry-cpi/accounts";
 
 // TODO: pda w/o parameters can be stored
 class RegistryPda {
@@ -524,44 +538,53 @@ export class RegistryHelpers {
     return logAndReturn(decConfig(data), isDisplayed);
   }
 
-  // async queryUserCounter(isDisplayed: boolean = false) {
-  //   const [pda] = PublicKey.findProgramAddressSync(
-  //     [Buffer.from("user_counter")],
-  //     this.program.programId,
-  //   );
-  //   const res = await this.program.account.userCounter.fetch(pda);
+  async queryUserCounter(isDisplayed: boolean = false): Promise<IUserCounter> {
+    const { client, pda } = this;
+    const [userCounter] = await pda.config();
+    const { data } = await fetchUserCounter(client.rpc, userCounter);
 
-  //   return logAndReturn(res, isDisplayed);
-  // }
+    return logAndReturn(decUserCounter(data), isDisplayed);
+  }
 
-  // async queryAdminRotationState(isDisplayed: boolean = false) {
-  //   const [pda] = PublicKey.findProgramAddressSync(
-  //     [Buffer.from("admin_rotation_state")],
-  //     this.program.programId,
-  //   );
-  //   const res = await this.program.account.rotationState.fetch(pda);
+  async queryAdminRotationState(
+    isDisplayed: boolean = false,
+  ): Promise<IRotationState> {
+    const { client, pda } = this;
+    const [adminRotationState] = await pda.adminRotationState();
+    const { data } = await fetchRotationState(client.rpc, adminRotationState);
 
-  //   return logAndReturn(res, isDisplayed);
-  // }
+    return logAndReturn(decRotationState(data), isDisplayed);
+  }
 
-  // async queryUserId(user: PublicKey, isDisplayed: boolean = false) {
-  //   const [pda] = this.getUserIdPda(user);
-  //   const res = await this.program.account.userId.fetch(pda);
+  async queryUserId(
+    user: Address,
+    isDisplayed: boolean = false,
+  ): Promise<IUserId> {
+    const { client, pda } = this;
+    const [userId] = await pda.userId(user);
+    const { data } = await fetchUserId(client.rpc, userId);
 
-  //   return logAndReturn(res, isDisplayed);
-  // }
+    return logAndReturn(decUserId(data), isDisplayed);
+  }
 
-  // async queryUserAccountById(id: number) {
-  //   const [pda] = this.getUserAccountPda(id);
-  //   return this.program.account.userAccount.fetch(pda);
-  // }
+  async queryUserAccountById(
+    id: number,
+    isDisplayed: boolean = false,
+  ): Promise<IUserAccount> {
+    const { client, pda } = this;
+    const [userAccount] = await pda.userAccount(id);
+    const { data } = await fetchUserAccount(client.rpc, userAccount);
 
-  // async queryUserAccount(user: PublicKey, isDisplayed: boolean = false) {
-  //   const { id } = await this.queryUserId(user);
-  //   const res = await this.queryUserAccountById(id);
+    return logAndReturn(decUserAccount(data), isDisplayed);
+  }
 
-  //   return logAndReturn(res, isDisplayed);
-  // }
+  async queryUserAccount(
+    user: Address,
+    isDisplayed: boolean = false,
+  ): Promise<IUserAccount> {
+    const { id } = await this.queryUserId(user);
+    return this.queryUserAccountById(id, isDisplayed);
+  }
 
   // async queryUserAccountList(batchSize: number = 100): Promise<
   //   {
@@ -675,6 +698,25 @@ export class RegistryHelpers {
 
   //   return logAndReturn(res, isDisplayed);
   // }
+
+  async queryRevenue(isDisplayed: boolean = false) {
+    const { client, pda } = this;
+    const [configPda] = await pda.config();
+    const {
+      registrationFee: { asset },
+    } = await this.queryConfig();
+
+    const tokenProgram = await this.tokenProgram(asset);
+    const ata = await getAssociatedTokenAccountAddress(
+      asset,
+      configPda,
+      tokenProgram,
+    );
+
+    const res = await ChainHelpers.getAtaTokenBalance(client.rpc, ata);
+
+    return logAndReturn(res, isDisplayed);
+  }
 }
 
 export class ChainHelpers {
@@ -869,6 +911,22 @@ export class ChainHelpers {
 
   //   return uiAmount || 0;
   // }
+
+  // TODO: test
+  static async getAtaTokenBalance(
+    rpc: RpcAny,
+    ownerAta: Address,
+  ): Promise<number> {
+    let uiAmountString: string = "0";
+
+    try {
+      ({
+        value: { uiAmountString },
+      } = await rpc.getTokenAccountBalance(ownerAta).send());
+    } catch (_) {}
+
+    return Number(uiAmountString);
+  }
 
   // async getTokenBalance(
   //   mint: PublicKey | string,
