@@ -2,404 +2,415 @@ import * as fs from "fs";
 import * as path from "path";
 import ts from "typescript";
 import { rootPath } from "../utils";
+import { l } from "../../common/utils";
 
 interface Config {
-  src: Array<{ directory: string; exclude: string[] }>;
+  src: { directory: string; exclude: string[] }[];
   dist: string;
 }
 
-type Category = "types" | "accounts" | "instructions";
-
 interface TypeInfo {
   name: string;
-  interfaceName: string;
+  members: ts.PropertySignature[];
+}
+
+interface Pair {
+  intName: string;
   codamaName: string;
-  fields: FieldInfo[];
-  category: Category;
+  intMembers: ts.PropertySignature[];
+  codamaMembers: ts.PropertySignature[];
+  category: "types" | "accounts" | "instructions";
 }
 
-interface FieldInfo {
-  name: string;
-  type: string;
-  isOptional: boolean;
-  isArray: boolean;
-  isBoolean: boolean;
-}
+const primitiveMap: { [key: string]: string } = {
+  number: "TUint8",
+  Uint8: "TUint8",
+  Uint16: "TUint16",
+  Uint32: "TUint32",
+  Uint64: "TUint64",
+  Uint128: "TUint128",
+  Address: "TAddress",
+  String16: "TString16",
+  String32: "TString32",
+  String64: "TString64",
+  String4096: "TString4096",
+  BitField: "TBitField",
+};
 
-interface CodamaFieldInfo {
-  name: string;
-  type: string;
-  isArray: boolean;
-}
-
-function loadConfig(configPath: string): Config {
-  const content = fs.readFileSync(configPath, "utf-8");
-  return JSON.parse(content);
-}
-
-function findInterfaceTypes(distPath: string): Map<string, TypeInfo> {
-  const typesMap = new Map<string, TypeInfo>();
-  const categories: Array<Category> = ["types", "accounts", "instructions"];
-
-  for (const category of categories) {
-    const filePath = path.join(distPath, `${category}.ts`);
-    if (!fs.existsSync(filePath)) continue;
-
-    const sourceFile = ts.createSourceFile(
-      filePath,
-      fs.readFileSync(filePath, "utf-8"),
-      ts.ScriptTarget.Latest,
-      true,
-    );
-
-    ts.forEachChild(sourceFile, (node) => {
-      if (ts.isInterfaceDeclaration(node) && node.name.text.startsWith("I")) {
-        const interfaceName = node.name.text;
-        const codamaName = interfaceName.substring(1);
-        const fields = extractFields(node);
-
-        typesMap.set(interfaceName, {
-          name: interfaceName,
-          interfaceName,
-          codamaName,
-          fields,
-          category,
-        });
-      }
-    });
-  }
-
-  return typesMap;
-}
-
-function extractFields(node: ts.InterfaceDeclaration): FieldInfo[] {
-  const fields: FieldInfo[] = [];
-
-  node.members.forEach((member) => {
+function getInterfaces(
+  sourceFile: ts.SourceFile,
+  filePath: string,
+): Map<string, ts.PropertySignature[]> {
+  const interfaces = new Map<string, ts.PropertySignature[]>();
+  ts.forEachChild(sourceFile, (node) => {
     if (
-      ts.isPropertySignature(member) &&
-      member.name &&
-      ts.isIdentifier(member.name)
+      ts.isInterfaceDeclaration(node) &&
+      ts.isIdentifier(node.name) &&
+      node.name.text.startsWith("I")
     ) {
-      const name = member.name.text;
-      const isOptional = !!member.questionToken;
-      let type = "unknown";
-      let isArray = false;
-      let isBoolean = false;
+      const members = node.members.filter(
+        ts.isPropertySignature,
+      ) as ts.PropertySignature[];
+      interfaces.set(node.name.text, members);
+      l(`Found interface ${node.name.text} in ${filePath}`);
+    }
+  });
+  return interfaces;
+}
 
-      if (member.type) {
-        type = member.type.getText();
-        isArray = ts.isArrayTypeNode(member.type);
-        isBoolean = member.type.kind === ts.SyntaxKind.BooleanKeyword;
-      }
+function getTypeFromFile(filePath: string): TypeInfo[] {
+  const content = fs.readFileSync(filePath, "utf8");
+  const sourceFile = ts.createSourceFile(
+    filePath,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+  );
+  const types: TypeInfo[] = [];
 
-      fields.push({ name, type, isOptional, isArray, isBoolean });
+  ts.forEachChild(sourceFile, (node) => {
+    if (ts.isTypeAliasDeclaration(node) && ts.isIdentifier(node.name)) {
+      const members = ts.isTypeLiteralNode(node.type)
+        ? (node.type.members.filter(
+            ts.isPropertySignature,
+          ) as ts.PropertySignature[])
+        : [];
+      types.push({ name: node.name.text, members });
+      l(
+        `Found type ${node.name.text} in ${filePath} with ${members.length} members`,
+      );
     }
   });
 
-  return fields;
-}
-
-function findCodamaTypes(distPath: string): Map<string, CodamaFieldInfo[]> {
-  const codamaPath = distPath.replace(/codegen$/, "codama");
-  const codamaTypes = new Map<string, CodamaFieldInfo[]>();
-  const categories: Category[] = ["types", "accounts", "instructions"];
-
-  for (const category of categories) {
-    const categoryPath = path.join(codamaPath, category);
-    if (!fs.existsSync(categoryPath)) continue;
-
-    const files = fs.readdirSync(categoryPath).filter((f) => f.endsWith(".ts"));
-
-    for (const file of files) {
-      const filePath = path.join(categoryPath, file);
-      const sourceFile = ts.createSourceFile(
-        filePath,
-        fs.readFileSync(filePath, "utf-8"),
-        ts.ScriptTarget.Latest,
-        true,
-      );
-
-      ts.forEachChild(sourceFile, (node) => {
-        if (ts.isTypeAliasDeclaration(node)) {
-          const typeName = node.name.text;
-          const fields = extractCodamaFields(node.type);
-          codamaTypes.set(typeName, fields);
-        }
-      });
-    }
+  if (types.length === 0) {
+    l(`No type aliases found in ${filePath}`);
   }
-
-  return codamaTypes;
-}
-
-function extractCodamaFields(typeNode: ts.TypeNode): CodamaFieldInfo[] {
-  const fields: CodamaFieldInfo[] = [];
-
-  if (ts.isTypeLiteralNode(typeNode)) {
-    typeNode.members.forEach((member) => {
-      if (
-        ts.isPropertySignature(member) &&
-        member.name &&
-        ts.isIdentifier(member.name)
-      ) {
-        const name = member.name.text;
-        let type = "unknown";
-        let isArray = false;
-
-        if (member.type) {
-          type = member.type.getText();
-          isArray = ts.isArrayTypeNode(member.type);
-        }
-
-        fields.push({ name, type, isArray });
-      }
-    });
-  }
-
-  return fields;
-}
-
-function getTransformerClass(type: string): string | null {
-  if (type.includes("bigint") || type === "Uint64") return "TUint64";
-  if (type.includes("Uint128")) return "TUint128";
-  if (type === "number" || type === "Uint32") return "TUint32";
-  if (type === "Uint16") return "TUint16";
-  if (type === "Uint8") return "TUint8";
-  if (type.includes("Address")) return "TAddress";
-  if (type.includes("String16")) return "TString16";
-  if (type.includes("String32")) return "TString32";
-  if (type.includes("String64")) return "TString64";
-  if (type.includes("String4096")) return "TString4096";
-  return null;
-}
-
-function hasFlagsField(codamaFields: CodamaFieldInfo[]): boolean {
-  return codamaFields.some((f) => f.name === "flags" && f.type === "BitField");
-}
-
-function generateEncoder(
-  typeInfo: TypeInfo,
-  codamaFields: CodamaFieldInfo[],
-  allTypes: Map<string, TypeInfo>,
-): string {
-  const isOptional = typeInfo.category === "types";
-  const paramPrefix = isOptional ? "x?:" : "x:";
-
-  let body = "  return {\n";
-  const hasFlags = hasFlagsField(codamaFields);
-
-  if (hasFlags) {
-    const flagFields = typeInfo.fields.filter(
-      (f) =>
-        f.isBoolean ||
-        (f.isOptional && !f.isBoolean) ||
-        (f.isOptional && f.isBoolean),
-    );
-
-    if (flagFields.length > 0) {
-      body += "    flags: new TBitFieldBuilder()\n";
-      flagFields.forEach((field) => {
-        if (field.isBoolean && !field.isOptional) {
-          body += `      .withBool(x.${field.name})\n`;
-        } else if (field.isOptional && field.isBoolean) {
-          body += `      .withOptBool(x.${field.name})\n`;
-        } else if (field.isOptional) {
-          body += `      .withOptNonBool(x.${field.name})\n`;
-        }
-      });
-      body += "      .build()\n";
-      body += "      .getRaw(),\n";
-    }
-  }
-
-  for (const codamaField of codamaFields) {
-    if (codamaField.name === "flags") continue;
-
-    const interfaceField = typeInfo.fields.find(
-      (f) => f.name === codamaField.name || codamaField.name.startsWith(f.name),
-    );
-
-    if (!interfaceField) continue;
-
-    const transformer = getTransformerClass(interfaceField.type);
-    const prefix = isOptional ? "x?." : "x.";
-
-    if (transformer) {
-      body += `    ${codamaField.name}: new ${transformer}(${prefix}${interfaceField.name}).getRaw(),\n`;
-    } else {
-      // Check if it's a custom type
-      const customType = Array.from(allTypes.values()).find((t) =>
-        interfaceField.type.includes(t.interfaceName),
-      );
-      if (customType) {
-        const encoderName = `enc${customType.codamaName}`;
-        body += `    ${codamaField.name}: ${encoderName}(${prefix}${interfaceField.name}),\n`;
-      }
-    }
-  }
-
-  body += "  };";
-
-  return `export function enc${typeInfo.codamaName}(${paramPrefix} ${typeInfo.interfaceName}): ${typeInfo.codamaName} {\n${body}\n}`;
-}
-
-function generateDecoder(
-  typeInfo: TypeInfo,
-  codamaFields: CodamaFieldInfo[],
-  allTypes: Map<string, TypeInfo>,
-): string {
-  const isOptional = typeInfo.category === "types";
-  const paramPrefix = isOptional ? "x?:" : "x:";
-
-  let body = "  return {\n";
-  const hasFlags = hasFlagsField(codamaFields);
-
-  let flagIndex = 0;
-  for (const field of typeInfo.fields) {
-    if (
-      hasFlags &&
-      (field.isBoolean ||
-        (field.isOptional && !field.isBoolean) ||
-        (field.isOptional && field.isBoolean))
-    ) {
-      const prefix = isOptional ? "x?." : "x.";
-      body += `    ${field.name}: new TBitField(${prefix}flags).get(${flagIndex}),\n`;
-      flagIndex++;
-      continue;
-    }
-
-    const transformer = getTransformerClass(field.type);
-    const prefix = isOptional ? "x?." : "x.";
-
-    if (transformer) {
-      body += `    ${field.name}: new ${transformer}(${prefix}${field.name}).get(),\n`;
-    } else {
-      const customType = Array.from(allTypes.values()).find((t) =>
-        field.type.includes(t.interfaceName),
-      );
-      if (customType) {
-        const decoderName = `dec${customType.codamaName}`;
-        body += `    ${field.name}: ${decoderName}(${prefix}${field.name}),\n`;
-      }
-    }
-  }
-
-  body += "  };";
-
-  return `export function dec${typeInfo.codamaName}(${paramPrefix} ${typeInfo.codamaName}): ${typeInfo.interfaceName} {\n${body}\n}`;
-}
-
-function generateCodecs(
-  typesMap: Map<string, TypeInfo>,
-  codamaTypes: Map<string, CodamaFieldInfo[]>,
-): string {
-  const imports = new Set<string>();
-  const transformers = new Set<string>();
-  const interfaceImports: Map<string, Set<string>> = new Map([
-    ["types", new Set()],
-    ["accounts", new Set()],
-    ["instructions", new Set()],
-  ]);
-  const codamaImports = new Set<string>();
-
-  // Collect all necessary imports
-  for (const [_, typeInfo] of typesMap) {
-    interfaceImports.get(typeInfo.category)!.add(typeInfo.interfaceName);
-    codamaImports.add(typeInfo.codamaName);
-
-    for (const field of typeInfo.fields) {
-      const transformer = getTransformerClass(field.type);
-      if (transformer) {
-        transformers.add(transformer);
-      }
-    }
-
-    const codamaFields = codamaTypes.get(typeInfo.codamaName);
-    if (codamaFields && hasFlagsField(codamaFields)) {
-      transformers.add("TBitField");
-      transformers.add("TBitFieldBuilder");
-    }
-  }
-
-  // Generate import statements
-  let output = "";
-
-  for (const [category, names] of interfaceImports) {
-    if (names.size > 0) {
-      output += `import { ${Array.from(names).join(", ")} } from "./${category}";\n`;
-    }
-  }
-
-  if (codamaImports.size > 0) {
-    output += `import {\n  ${Array.from(codamaImports).join(",\n  ")}\n} from "../../codama";\n`;
-  }
-
-  if (transformers.size > 0) {
-    output += `import {\n  ${Array.from(transformers).sort().join(",\n  ")}\n} from "../../../interfaces/primitives";\n`;
-  }
-
-  output += "\n";
-
-  // Generate codecs in order: types, accounts, instructions
-  const categories: Array<Category> = ["types", "accounts", "instructions"];
-
-  for (const category of categories) {
-    for (const [_, typeInfo] of typesMap) {
-      if (typeInfo.category !== category) continue;
-
-      const codamaFields = codamaTypes.get(typeInfo.codamaName);
-      if (!codamaFields) continue;
-
-      output += generateEncoder(typeInfo, codamaFields, typesMap) + "\n\n";
-
-      if (category !== "instructions") {
-        output += generateDecoder(typeInfo, codamaFields, typesMap) + "\n\n";
-      }
-    }
-  }
-
-  return output.trim() + "\n";
+  return types;
 }
 
 function main() {
   const configPath = rootPath("./src/backend/services/path.json");
-  const config = loadConfig(configPath);
+  if (!fs.existsSync(configPath)) {
+    console.error(`Config file ${configPath} not found`);
+    return;
+  }
+  const config: Config = JSON.parse(fs.readFileSync(configPath, "utf8"));
 
-  // Process each program directory
-  for (const src of config.src) {
-    const packagesDir = path.resolve(rootPath(src.directory));
-    if (!fs.existsSync(packagesDir)) continue;
+  const codamaRoot = rootPath(config.dist).replace(/codegen$/, "codama");
+  const codamaMap = new Map<string, ts.PropertySignature[]>();
 
-    const programs = fs.readdirSync(packagesDir).filter((name) => {
-      const isExcluded = src.exclude.some((pattern) => {
-        if (pattern.endsWith("*")) {
-          return name.startsWith(pattern.slice(0, -1));
-        }
-        return name === pattern;
+  l(`Scanning Codama root: ${codamaRoot}`);
+  ["types", "accounts", "instructions"].forEach((cat) => {
+    const dir = path.join(codamaRoot, cat);
+    if (fs.existsSync(dir)) {
+      const files = fs.readdirSync(dir).filter((f) => f.endsWith(".ts"));
+      l(`Found ${files.length} files in ${dir}: ${files.join(", ")}`);
+      files.forEach((f) => {
+        const fullPath = path.join(dir, f);
+        const types = getTypeFromFile(fullPath);
+        types.forEach((typeInfo) => {
+          codamaMap.set(typeInfo.name, typeInfo.members);
+          l(`Added Codama type ${typeInfo.name} from ${fullPath}`);
+        });
       });
-      return (
-        !isExcluded && fs.statSync(path.join(packagesDir, name)).isDirectory()
+    } else {
+      console.warn(`Directory ${dir} does not exist`);
+    }
+  });
+
+  l(`Codama types found: ${Array.from(codamaMap.keys()).join(", ")}`);
+
+  let programs: string[] = [];
+  config.src.forEach((srcItem) => {
+    const baseDir = srcItem.directory;
+    if (!fs.existsSync(baseDir)) {
+      console.warn(`Source directory ${baseDir} does not exist`);
+      return;
+    }
+    const excludes = srcItem.exclude;
+    const subs = fs
+      .readdirSync(baseDir, { withFileTypes: true })
+      .filter((d) => d.isDirectory())
+      .map((d) => d.name);
+    const filtered = subs.filter(
+      (p) =>
+        !excludes.some((ex) =>
+          ex.endsWith("*") ? p.startsWith(ex.slice(0, -1)) : p === ex,
+        ),
+    );
+    programs = [...programs, ...filtered];
+  });
+
+  l(`Programs found: ${programs.join(", ")}`);
+
+  programs.forEach((program) => {
+    const interfaceDir = path.join(config.dist, program);
+    const typesFile = path.join(interfaceDir, "types.ts");
+    const accountsFile = path.join(interfaceDir, "accounts.ts");
+    const instructionsFile = path.join(interfaceDir, "instructions.ts");
+
+    if (
+      !fs.existsSync(typesFile) ||
+      !fs.existsSync(accountsFile) ||
+      !fs.existsSync(instructionsFile)
+    ) {
+      console.warn(
+        `Missing files for program ${program}: types=${fs.existsSync(typesFile)}, accounts=${fs.existsSync(accountsFile)}, instructions=${fs.existsSync(instructionsFile)}`,
       );
+      return;
+    }
+
+    const typesSource = ts.createSourceFile(
+      typesFile,
+      fs.readFileSync(typesFile, "utf8"),
+      ts.ScriptTarget.Latest,
+      true,
+    );
+    const accountsSource = ts.createSourceFile(
+      accountsFile,
+      fs.readFileSync(accountsFile, "utf8"),
+      ts.ScriptTarget.Latest,
+      true,
+    );
+    const instructionsSource = ts.createSourceFile(
+      instructionsFile,
+      fs.readFileSync(instructionsFile, "utf8"),
+      ts.ScriptTarget.Latest,
+      true,
+    );
+
+    const typesInterfaces = getInterfaces(typesSource, typesFile);
+    const accountsInterfaces = getInterfaces(accountsSource, accountsFile);
+    const instructionsInterfaces = getInterfaces(
+      instructionsSource,
+      instructionsFile,
+    );
+
+    l(`Interfaces for ${program}:`);
+    l(`  Types: ${Array.from(typesInterfaces.keys()).join(", ")}`);
+    l(`  Accounts: ${Array.from(accountsInterfaces.keys()).join(", ")}`);
+    l(
+      `  Instructions: ${Array.from(instructionsInterfaces.keys()).join(", ")}`,
+    );
+
+    const pairs: Pair[] = [];
+
+    function addPairs(
+      interfaces: Map<string, ts.PropertySignature[]>,
+      category: Pair["category"],
+    ) {
+      for (const [intName, intMembers] of interfaces) {
+        const codamaName = intName.slice(1);
+        const codamaMembers = codamaMap.get(codamaName);
+        if (codamaMembers) {
+          pairs.push({
+            intName,
+            codamaName,
+            intMembers,
+            codamaMembers,
+            category,
+          });
+          l(`Matched ${intName} with Codama type ${codamaName}`);
+        } else {
+          console.warn(
+            `Codama type ${codamaName} not found for ${intName} in ${category}`,
+          );
+        }
+      }
+    }
+
+    addPairs(typesInterfaces, "types");
+    addPairs(accountsInterfaces, "accounts");
+    addPairs(instructionsInterfaces, "instructions");
+
+    if (pairs.length === 0) {
+      console.warn(
+        `No type pairs found for program ${program}, skipping codec generation`,
+      );
+      return;
+    }
+
+    // Collect imports
+    const typeIs: string[] = [];
+    const accountIs: string[] = [];
+    const instructionIs: string[] = [];
+    const codamaTypesSet = new Set<string>();
+    const primitiveTsSet = new Set<string>();
+
+    pairs.forEach((pair) => {
+      codamaTypesSet.add(pair.codamaName);
+      if (pair.category === "types") typeIs.push(pair.intName);
+      else if (pair.category === "accounts") accountIs.push(pair.intName);
+      else instructionIs.push(pair.intName);
     });
 
-    for (const program of programs) {
-      const programDistPath = path.join(config.dist, program);
-      if (!fs.existsSync(programDistPath)) continue;
+    // Generate content
+    const lines: string[] = [];
 
-      console.log(`Processing program: ${program}`);
-
-      const typesMap = findInterfaceTypes(programDistPath);
-      const codamaTypes = findCodamaTypes(config.dist);
-
-      const codecContent = generateCodecs(typesMap, codamaTypes);
-
-      const codecPath = path.join(programDistPath, "codecs.ts");
-      fs.writeFileSync(codecPath, codecContent);
-
-      console.log(`Generated codecs: ${codecPath}`);
+    if (typeIs.length > 0) {
+      lines.push(`import { ${typeIs.join(", ")} } from "./types";`);
     }
-  }
+    if (accountIs.length > 0) {
+      lines.push(`import { ${accountIs.join(", ")} } from "./accounts";`);
+    }
+    if (instructionIs.length > 0) {
+      lines.push(
+        `import { ${instructionIs.join(", ")} } from "./instructions";`,
+      );
+    }
+    if (codamaTypesSet.size > 0) {
+      lines.push(
+        `import { ${Array.from(codamaTypesSet).join(", ")} } from "../../codama";`,
+      );
+    }
+
+    // Primitives will be inserted after generation
+    lines.push("");
+
+    pairs.forEach((pair) => {
+      // enc
+      const funcName = `enc${pair.codamaName}`;
+      const arg =
+        pair.category === "types"
+          ? `x?: ${pair.intName}`
+          : `x: ${pair.intName}`;
+      const returnType = pair.codamaName;
+      lines.push(`export function ${funcName}(${arg}): ${returnType} {`);
+      const bodyLines: string[] = ["  return {"];
+
+      const hasFlags = pair.codamaMembers.some(
+        (m) => ts.isIdentifier(m.name) && m.name.text === "flags",
+      );
+      const flagFields: ts.PropertySignature[] = [];
+      if (hasFlags) {
+        pair.intMembers.forEach((m) => {
+          if (!m.type || !ts.isIdentifier(m.name)) return;
+          const iType = m.type.getText();
+          const isBool = iType === "boolean";
+          const isOpt = !!m.questionToken;
+          if (isBool || (isOpt && !isBool)) {
+            flagFields.push(m);
+          }
+        });
+      }
+
+      pair.codamaMembers.forEach((c) => {
+        if (!c.type || !ts.isIdentifier(c.name)) {
+          console.warn(
+            `Skipping codama member in ${pair.codamaName}: missing type or non-identifier name`,
+          );
+          return;
+        }
+        const cName = c.name.text;
+        let cType = c.type.getText();
+        const baseType = cType.endsWith("Args") ? cType.slice(0, -4) : cType;
+
+        bodyLines.push(`    ${cName}: `);
+        if (cName === "flags") {
+          primitiveTsSet.add("TBitFieldBuilder");
+          let builderLine = bodyLines.pop() + "new TBitFieldBuilder()";
+          bodyLines.push(builderLine);
+          flagFields.forEach((f) => {
+            if (!f.type || !ts.isIdentifier(f.name)) return;
+            const fName = f.name.text;
+            const isBool = f.type.getText() === "boolean";
+            const isOpt = !!f.questionToken;
+            let method = "";
+            if (isBool && !isOpt) method = "withBool";
+            else if (isBool && isOpt) method = "withOptBool";
+            else method = "withOptNonBool";
+            bodyLines.push(`      .${method}(x.${fName})`);
+          });
+          bodyLines.push(`      .build().getRaw(),`);
+        } else {
+          const trans = primitiveMap[baseType];
+          if (trans) {
+            primitiveTsSet.add(trans);
+            bodyLines[bodyLines.length - 1] +=
+              `new ${trans}(x.${cName}).getRaw(),`;
+          } else {
+            bodyLines[bodyLines.length - 1] += `enc${baseType}(x.${cName}),`;
+          }
+        }
+      });
+
+      bodyLines.push("  };");
+      lines.push(...bodyLines);
+      lines.push("}");
+      lines.push("");
+
+      if (pair.category !== "instructions") {
+        // dec
+        const decName = `dec${pair.codamaName}`;
+        const decArg = `x: ${pair.codamaName}`;
+        const decReturn = pair.intName;
+        lines.push(`export function ${decName}(${decArg}): ${decReturn} {`);
+        const decBody: string[] = ["  return {"];
+
+        let flagIndex = 0;
+        pair.intMembers.forEach((i) => {
+          if (!i.type || !ts.isIdentifier(i.name)) {
+            console.warn(
+              `Skipping interface member in ${pair.intName}: missing type or non-identifier name`,
+            );
+            return;
+          }
+          const iName = i.name.text;
+          const iType = i.type.getText();
+          const isBool = iType === "boolean";
+          const isOpt = !!i.questionToken;
+          decBody.push(`    ${iName}: `);
+
+          if (isBool || (isOpt && !isBool)) {
+            primitiveTsSet.add("TBitField");
+            decBody[decBody.length - 1] +=
+              `new TBitField(x.flags).get(${flagIndex}),`;
+            flagIndex++;
+          } else {
+            const cField = pair.codamaMembers.find(
+              (cm) => ts.isIdentifier(cm.name) && cm.name.text === iName,
+            );
+            if (!cField || !cField.type) {
+              console.warn(
+                `Missing codama field or type for ${iName} in ${pair.codamaName}`,
+              );
+              return;
+            }
+            let cType = cField.type.getText();
+            const baseType = cType.endsWith("Args")
+              ? cType.slice(0, -4)
+              : cType;
+            const trans = primitiveMap[baseType];
+            if (trans) {
+              primitiveTsSet.add(trans);
+              decBody[decBody.length - 1] += `new ${trans}(x.${iName}).get(),`;
+            } else {
+              decBody[decBody.length - 1] += `dec${baseType}(x.${iName}),`;
+            }
+          }
+        });
+
+        decBody.push("  };");
+        lines.push(...decBody);
+        lines.push("}");
+        lines.push("");
+      }
+    });
+
+    // Insert primitives import after codama
+    if (primitiveTsSet.size > 0) {
+      const primImport = `import { ${Array.from(primitiveTsSet).sort().join(", ")} } from "../../../interfaces/primitives";`;
+      const insertIndex =
+        lines.findIndex(
+          (l) => l.startsWith("import { ") && l.includes('from "../../codama"'),
+        ) + 1;
+      lines.splice(insertIndex, 0, primImport);
+    }
+
+    const codecFile = path.join(interfaceDir, "codecs.ts");
+    fs.writeFileSync(codecFile, lines.join("\n"));
+    l(`Generated codecs for ${program} at ${codecFile}`);
+  });
 }
 
 main();

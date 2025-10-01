@@ -1,76 +1,50 @@
 import { IAssetItem, IRange } from "./types";
 import { IBump, IConfig, IUserCounter, IRotationState, IUserId, IUserAccount } from "./accounts";
 import { IRequestAccountRotationInstructionDataArgs, IWithdrawRevenueInstructionDataArgs, IUpdateConfigInstructionDataArgs, IActivateAccountInstructionDataArgs, ICreateAccountInstructionDataArgs, IInitInstructionDataArgs, IConfirmAccountRotationInstructionDataArgs, IConfirmAdminRotationInstructionDataArgs, IReopenAccountInstructionDataArgs, ICloseAccountInstructionDataArgs, IWriteDataInstructionDataArgs } from "./instructions";
-import {
-  AssetItem,
-  Range,
-  Bump,
-  Config,
-  UserCounter,
-  RotationState,
-  UserId,
-  UserAccount,
-  RequestAccountRotationInstructionDataArgs,
-  WithdrawRevenueInstructionDataArgs,
-  UpdateConfigInstructionDataArgs,
-  ActivateAccountInstructionDataArgs,
-  CreateAccountInstructionDataArgs,
-  InitInstructionDataArgs,
-  ConfirmAccountRotationInstructionDataArgs,
-  ConfirmAdminRotationInstructionDataArgs,
-  ReopenAccountInstructionDataArgs,
-  CloseAccountInstructionDataArgs,
-  WriteDataInstructionDataArgs
-} from "../../codama";
-import {
-  TAddress,
-  TBitField,
-  TBitFieldBuilder,
-  TUint32,
-  TUint64
-} from "../../../interfaces/primitives";
+import { AssetItem, Range, Bump, Config, UserCounter, RotationState, UserId, UserAccount, RequestAccountRotationInstructionDataArgs, WithdrawRevenueInstructionDataArgs, UpdateConfigInstructionDataArgs, ActivateAccountInstructionDataArgs, CreateAccountInstructionDataArgs, InitInstructionDataArgs, ConfirmAccountRotationInstructionDataArgs, ConfirmAdminRotationInstructionDataArgs, ReopenAccountInstructionDataArgs, CloseAccountInstructionDataArgs, WriteDataInstructionDataArgs } from "../../codama";
+import { TAddress, TBitField, TBitFieldBuilder, TString4096, TUint32, TUint64, TUint8 } from "../../../interfaces/primitives";
 
 export function encAssetItem(x?: IAssetItem): AssetItem {
   return {
-    amount: new TUint64(x?.amount).getRaw(),
-    asset: new TAddress(x?.asset).getRaw(),
+    amount: new TUint64(x.amount).getRaw(),
+    asset: new TAddress(x.asset).getRaw(),
   };
 }
 
-export function decAssetItem(x?: AssetItem): IAssetItem {
+export function decAssetItem(x: AssetItem): IAssetItem {
   return {
-    amount: new TUint64(x?.amount).get(),
-    asset: new TAddress(x?.asset).get(),
+    amount: new TUint64(x.amount).get(),
+    asset: new TAddress(x.asset).get(),
   };
 }
 
 export function encRange(x?: IRange): Range {
   return {
-    min: new TUint32(x?.min).getRaw(),
-    max: new TUint32(x?.max).getRaw(),
+    min: new TUint32(x.min).getRaw(),
+    max: new TUint32(x.max).getRaw(),
   };
 }
 
-export function decRange(x?: Range): IRange {
+export function decRange(x: Range): IRange {
   return {
-    min: new TUint32(x?.min).get(),
-    max: new TUint32(x?.max).get(),
+    min: new TUint32(x.min).get(),
+    max: new TUint32(x.max).get(),
   };
 }
 
 export function encBump(x: IBump): Bump {
   return {
-    config: new TUint32(x.config).getRaw(),
-    userCounter: new TUint32(x.userCounter).getRaw(),
-    rotationState: new TUint32(x.rotationState).getRaw(),
+    config: new TUint8(x.config).getRaw(),
+    userCounter: new TUint8(x.userCounter).getRaw(),
+    rotationState: new TUint8(x.rotationState).getRaw(),
   };
 }
 
 export function decBump(x: Bump): IBump {
   return {
-    config: new TUint32(x.config).get(),
-    userCounter: new TUint32(x.userCounter).get(),
-    rotationState: new TUint32(x.rotationState).get(),
+    config: new TUint8(x.config).get(),
+    userCounter: new TUint8(x.userCounter).get(),
+    rotationState: new TUint8(x.rotationState).get(),
   };
 }
 
@@ -78,8 +52,7 @@ export function encConfig(x: IConfig): Config {
   return {
     flags: new TBitFieldBuilder()
       .withBool(x.isPaused)
-      .build()
-      .getRaw(),
+      .build().getRaw(),
     admin: new TAddress(x.admin).getRaw(),
     rotationTimeout: new TUint32(x.rotationTimeout).getRaw(),
     registrationFee: encAssetItem(x.registrationFee),
@@ -130,11 +103,10 @@ export function encUserId(x: IUserId): UserId {
     flags: new TBitFieldBuilder()
       .withBool(x.isOpen)
       .withBool(x.isActivated)
-      .build()
-      .getRaw(),
+      .build().getRaw(),
     id: new TUint32(x.id).getRaw(),
-    accountBump: new TUint32(x.accountBump).getRaw(),
-    rotationStateBump: new TUint32(x.rotationStateBump).getRaw(),
+    accountBump: new TUint8(x.accountBump).getRaw(),
+    rotationStateBump: new TUint8(x.rotationStateBump).getRaw(),
   };
 }
 
@@ -143,13 +115,14 @@ export function decUserId(x: UserId): IUserId {
     isOpen: new TBitField(x.flags).get(0),
     isActivated: new TBitField(x.flags).get(1),
     id: new TUint32(x.id).get(),
-    accountBump: new TUint32(x.accountBump).get(),
-    rotationStateBump: new TUint32(x.rotationStateBump).get(),
+    accountBump: new TUint8(x.accountBump).get(),
+    rotationStateBump: new TUint8(x.rotationStateBump).get(),
   };
 }
 
 export function encUserAccount(x: IUserAccount): UserAccount {
   return {
+    data: new TString4096(x.data).getRaw(),
     nonce: new TUint64(x.nonce).getRaw(),
     maxSize: new TUint32(x.maxSize).getRaw(),
   };
@@ -157,6 +130,7 @@ export function encUserAccount(x: IUserAccount): UserAccount {
 
 export function decUserAccount(x: UserAccount): IUserAccount {
   return {
+    data: new TString4096(x.data).get(),
     nonce: new TUint64(x.nonce).get(),
     maxSize: new TUint32(x.maxSize).get(),
   };
@@ -170,12 +144,22 @@ export function encRequestAccountRotationInstructionDataArgs(x: IRequestAccountR
 
 export function encWithdrawRevenueInstructionDataArgs(x: IWithdrawRevenueInstructionDataArgs): WithdrawRevenueInstructionDataArgs {
   return {
+    flags: new TBitFieldBuilder()
+      .withOptNonBool(x.amount)
+      .build().getRaw(),
     amount: new TUint64(x.amount).getRaw(),
   };
 }
 
 export function encUpdateConfigInstructionDataArgs(x: IUpdateConfigInstructionDataArgs): UpdateConfigInstructionDataArgs {
   return {
+    flags: new TBitFieldBuilder()
+      .withOptBool(x.isPaused)
+      .withOptNonBool(x.admin)
+      .withOptNonBool(x.rotationTimeout)
+      .withOptNonBool(x.registrationFeeAmount)
+      .withOptNonBool(x.dataSizeRange)
+      .build().getRaw(),
     admin: new TAddress(x.admin).getRaw(),
     rotationTimeout: new TUint32(x.rotationTimeout).getRaw(),
     registrationFeeAmount: new TUint64(x.registrationFeeAmount).getRaw(),
@@ -196,6 +180,11 @@ export function encCreateAccountInstructionDataArgs(x: ICreateAccountInstruction
 
 export function encInitInstructionDataArgs(x: IInitInstructionDataArgs): InitInstructionDataArgs {
   return {
+    flags: new TBitFieldBuilder()
+      .withOptNonBool(x.rotationTimeout)
+      .withOptNonBool(x.accountRegistrationFee)
+      .withOptNonBool(x.accountDataSizeRange)
+      .build().getRaw(),
     rotationTimeout: new TUint32(x.rotationTimeout).getRaw(),
     accountRegistrationFee: encAssetItem(x.accountRegistrationFee),
     accountDataSizeRange: encRange(x.accountDataSizeRange),
@@ -225,6 +214,7 @@ export function encCloseAccountInstructionDataArgs(x: ICloseAccountInstructionDa
 
 export function encWriteDataInstructionDataArgs(x: IWriteDataInstructionDataArgs): WriteDataInstructionDataArgs {
   return {
+    data: new TString4096(x.data).getRaw(),
     nonce: new TUint64(x.nonce).getRaw(),
   };
 }
