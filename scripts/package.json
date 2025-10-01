@@ -21,7 +21,6 @@
     "store": "ts-node ./src/backend/services/store.ts",
     "codegen": "bun run ./src/backend/services/codegen.ts",
     "codegen2": "bun run ./src/backend/services/codegen2.ts",
-    "codegen-legacy": "bun run scripts/backend/generate-types.ts",
     "dev": "bun run --watch scripts/backend/app.ts",
     "capture-user-account": "bun run scripts/backend/capture/user-account.ts",
     "test-rs": "./build.sh && cd tests-rs && clear && cargo show && cd ..",

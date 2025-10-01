@@ -7,6 +7,7 @@ import {
   Seed,
   PdaResp,
   RpcAny,
+  XOR,
 } from "../interfaces";
 import { decryptDeserialize, serializeEncrypt } from "./converters";
 import { generateEncryptionKey, MessageSigningWallet } from "./encryption";
@@ -19,11 +20,17 @@ import {
   logAndReturn,
   numberToRustBuffer,
   pdaFactory,
+  getClient,
+  handleTx,
 } from "../utils";
 
 import * as IRegistry from "../interfaces/registry";
 
-import { getInitInstruction } from "../schema/codama/instructions/init";
+import {
+  getInitInstruction,
+  InitInput,
+  InitInstructionDataArgs,
+} from "../schema/codama/instructions/init";
 import BN from "bn.js";
 import {
   address,
@@ -33,8 +40,40 @@ import {
   LAMPORTS_PER_SOL,
 } from "gill";
 import { TxResponse } from "../interfaces/tx";
-import { fetchConfig, REGISTRY_CPI_PROGRAM_ADDRESS } from "../schema/codama";
-import { BitField, Uint32, Uint64 } from "../interfaces/primitives";
+import {
+  ConfirmAccountRotationInput,
+  ConfirmAccountRotationInstructionData,
+  ConfirmAccountRotationInstructionDataArgs,
+  ConfirmAdminRotationInput,
+  ConfirmAdminRotationInstructionDataArgs,
+  fetchConfig,
+  getConfirmAccountRotationInstruction,
+  getConfirmAdminRotationInstruction,
+  getUpdateConfigInstruction,
+  REGISTRY_CPI_PROGRAM_ADDRESS,
+  UpdateConfigInput,
+  UpdateConfigInstructionDataArgs,
+} from "../schema/codama";
+import {
+  IConfirmAccountRotationInstructionDataArgs,
+  IConfirmAdminRotationInstructionDataArgs,
+  IInitInstructionDataArgs,
+  IUpdateConfigInstructionDataArgs,
+} from "../schema/codegen/registry-cpi/instructions";
+import { PATH } from "../config";
+import {
+  decConfig,
+  encConfirmAccountRotationInstructionDataArgs,
+  encConfirmAdminRotationInstructionDataArgs,
+  encUpdateConfigInstructionDataArgs,
+} from "../schema/codegen/registry-cpi/codecs";
+import {
+  ASSOCIATED_TOKEN_PROGRAM_ADDRESS,
+  getAssociatedTokenAccountAddress,
+  SYSTEM_PROGRAM_ADDRESS,
+  TOKEN_PROGRAM_ADDRESS,
+} from "gill/programs";
+import { IConfig } from "../schema/codegen/registry-cpi/accounts";
 
 // TODO: pda w/o parameters can be stored
 class RegistryPda {
@@ -122,13 +161,17 @@ class RegistryPda {
 //   }
 // }
 
-// TODO: check TxResponse
 export class RegistryHelpers {
-  pda: RegistryPda;
+  private systemProgram = SYSTEM_PROGRAM_ADDRESS;
+  // private tokenProgram = TOKEN_PROGRAM_ADDRESS;
+  private associatedTokenProgram = ASSOCIATED_TOKEN_PROGRAM_ADDRESS;
+
+  pda = new RegistryPda();
 
   private client: ClientAny;
   private sender: KeyPairSigner;
 
+  private tokenProgram: (mint: Address) => Promise<Address>;
   private handleTx: (
     signerList: CryptoKeyPair[],
     instructions: Ix[],
@@ -136,63 +179,120 @@ export class RegistryHelpers {
     isDisplayed: boolean,
   ) => Promise<TxResponse>;
 
-  private tokenProgram: (mint: Address) => Promise<Address>;
-
   constructor(client: ClientAny, sender: KeyPairSigner) {
-    this.pda = new RegistryPda();
-
     this.client = client;
     this.sender = sender;
-    this.handleTx = handleTxFactory(client, sender);
     this.tokenProgram = tokenProgramFactory(client.rpc);
+    this.handleTx = handleTxFactory(client, sender);
   }
 
   async tryInit(
-    args: IRegistry.InitArgs,
-    revenueMint: PublicKey,
-    params: TxParams = {},
+    args: IInitInstructionDataArgs,
+    revenueMint: Address,
+    computeConfig: ComputeConfig = {},
     isDisplayed: boolean = false,
-  ): Promise<anchor.web3.TransactionSignature> {
-    const ix = await this.program.methods
-      .init(...IARegistry.convertInitArgs(args))
-      .accounts({
-        tokenProgram: await this.getTokenProgram(revenueMint),
-        revenueMint,
-        sender: this.sender,
-      })
-      .instruction();
+  ): Promise<TxResponse> {
+    const { sender, pda, systemProgram, associatedTokenProgram } = this;
+    const signerList: CryptoKeyPair[] = [sender.keyPair];
 
-    return this.handleTx([ix], params, isDisplayed);
+    const [[bump], [config], [userCounter], [adminRotationState]] =
+      await Promise.all([
+        pda.bump(),
+        pda.config(),
+        pda.userCounter(),
+        pda.adminRotationState(),
+      ]);
+
+    const tokenProgram = await this.tokenProgram(revenueMint);
+    const revenueAppAta = await getAssociatedTokenAccountAddress(
+      revenueMint,
+      config,
+      tokenProgram,
+    );
+
+    const ixAccs: XOR<InitInput, InitInstructionDataArgs> = {
+      systemProgram,
+      tokenProgram,
+      associatedTokenProgram,
+      sender,
+      bump,
+      config,
+      userCounter,
+      adminRotationState,
+      revenueMint,
+      revenueAppAta,
+    };
+
+    const ixs = [
+      getUpdateConfigInstruction({
+        ...ixAccs,
+        ...encUpdateConfigInstructionDataArgs(args),
+      }),
+    ];
+
+    return this.handleTx(signerList, ixs, computeConfig, isDisplayed);
   }
 
   async tryUpdateConfig(
-    args: IRegistry.UpdateConfigArgs,
-    params: TxParams = {},
+    args: IUpdateConfigInstructionDataArgs,
+    computeConfig: ComputeConfig = {},
     isDisplayed: boolean = false,
-  ): Promise<anchor.web3.TransactionSignature> {
-    const ix = await this.program.methods
-      .updateConfig(...IARegistry.convertUpdateConfigArgs(args))
-      .accounts({
-        sender: this.sender,
-      })
-      .instruction();
+  ): Promise<TxResponse> {
+    const { sender, pda } = this;
+    const signerList: CryptoKeyPair[] = [sender.keyPair];
 
-    return this.handleTx([ix], params, isDisplayed);
+    const [[config], [adminRotationState]] = await Promise.all([
+      pda.config(),
+      pda.adminRotationState(),
+    ]);
+
+    const ixAccs: XOR<UpdateConfigInput, UpdateConfigInstructionDataArgs> = {
+      sender,
+      config,
+      adminRotationState,
+    };
+
+    const ixs = [
+      getUpdateConfigInstruction({
+        ...ixAccs,
+        ...encUpdateConfigInstructionDataArgs(args),
+      }),
+    ];
+
+    return this.handleTx(signerList, ixs, computeConfig, isDisplayed);
   }
 
-  // async tryConfirmAdminRotation(
-  //   params: TxParams = {},
-  //   isDisplayed: boolean = false,
-  // ): Promise<anchor.web3.TransactionSignature> {
-  //   const ix = await this.program.methods
-  //     .confirmAdminRotation()
-  //     .accounts({
-  //       sender: this.sender,
-  //     })
-  //     .instruction();
+  async tryConfirmAdminRotation(
+    args: IConfirmAdminRotationInstructionDataArgs,
+    computeConfig: ComputeConfig = {},
+    isDisplayed: boolean = false,
+  ): Promise<TxResponse> {
+    const { sender, pda } = this;
+    const signerList: CryptoKeyPair[] = [sender.keyPair];
 
-  //   return this.handleTx([ix], params, isDisplayed);
-  // }
+    const [[config], [adminRotationState]] = await Promise.all([
+      pda.config(),
+      pda.adminRotationState(),
+    ]);
+
+    const ixAccs: XOR<
+      ConfirmAdminRotationInput,
+      ConfirmAdminRotationInstructionDataArgs
+    > = {
+      sender,
+      config,
+      adminRotationState,
+    };
+
+    const ixs = [
+      getConfirmAdminRotationInstruction({
+        ...ixAccs,
+        ...encConfirmAdminRotationInstructionDataArgs(args),
+      }),
+    ];
+
+    return this.handleTx(signerList, ixs, computeConfig, isDisplayed);
+  }
 
   // async tryWithdrawRevenue(
   //   args: IRegistry.WithdrawRevenueArgs,
@@ -416,142 +516,143 @@ export class RegistryHelpers {
   //   return this.handleTx([ix], params, isDisplayed);
   // }
 
-  async queryConfig(isDisplayed: boolean = false) {
-    const [pda] = this.getConfigPda();
-    const res = await this.program.account.config.fetch(pda);
+  async queryConfig(isDisplayed: boolean = false): Promise<IConfig> {
+    const { client, pda } = this;
+    const [config] = await pda.config();
+    const { data } = await fetchConfig(client.rpc, config);
 
-    return logAndReturn(res, isDisplayed);
+    return logAndReturn(decConfig(data), isDisplayed);
   }
 
-  async queryUserCounter(isDisplayed: boolean = false) {
-    const [pda] = PublicKey.findProgramAddressSync(
-      [Buffer.from("user_counter")],
-      this.program.programId,
-    );
-    const res = await this.program.account.userCounter.fetch(pda);
+  // async queryUserCounter(isDisplayed: boolean = false) {
+  //   const [pda] = PublicKey.findProgramAddressSync(
+  //     [Buffer.from("user_counter")],
+  //     this.program.programId,
+  //   );
+  //   const res = await this.program.account.userCounter.fetch(pda);
 
-    return logAndReturn(res, isDisplayed);
-  }
+  //   return logAndReturn(res, isDisplayed);
+  // }
 
-  async queryAdminRotationState(isDisplayed: boolean = false) {
-    const [pda] = PublicKey.findProgramAddressSync(
-      [Buffer.from("admin_rotation_state")],
-      this.program.programId,
-    );
-    const res = await this.program.account.rotationState.fetch(pda);
+  // async queryAdminRotationState(isDisplayed: boolean = false) {
+  //   const [pda] = PublicKey.findProgramAddressSync(
+  //     [Buffer.from("admin_rotation_state")],
+  //     this.program.programId,
+  //   );
+  //   const res = await this.program.account.rotationState.fetch(pda);
 
-    return logAndReturn(res, isDisplayed);
-  }
+  //   return logAndReturn(res, isDisplayed);
+  // }
 
-  async queryUserId(user: PublicKey, isDisplayed: boolean = false) {
-    const [pda] = this.getUserIdPda(user);
-    const res = await this.program.account.userId.fetch(pda);
+  // async queryUserId(user: PublicKey, isDisplayed: boolean = false) {
+  //   const [pda] = this.getUserIdPda(user);
+  //   const res = await this.program.account.userId.fetch(pda);
 
-    return logAndReturn(res, isDisplayed);
-  }
+  //   return logAndReturn(res, isDisplayed);
+  // }
 
-  async queryUserAccountById(id: number) {
-    const [pda] = this.getUserAccountPda(id);
-    return this.program.account.userAccount.fetch(pda);
-  }
+  // async queryUserAccountById(id: number) {
+  //   const [pda] = this.getUserAccountPda(id);
+  //   return this.program.account.userAccount.fetch(pda);
+  // }
 
-  async queryUserAccount(user: PublicKey, isDisplayed: boolean = false) {
-    const { id } = await this.queryUserId(user);
-    const res = await this.queryUserAccountById(id);
+  // async queryUserAccount(user: PublicKey, isDisplayed: boolean = false) {
+  //   const { id } = await this.queryUserId(user);
+  //   const res = await this.queryUserAccountById(id);
 
-    return logAndReturn(res, isDisplayed);
-  }
+  //   return logAndReturn(res, isDisplayed);
+  // }
 
-  async queryUserAccountList(batchSize: number = 100): Promise<
-    {
-      id: number;
-      data: string;
-      nonce: BN;
-      maxSize: number;
-    }[]
-  > {
-    let userAccountList: {
-      id: number;
-      data: string;
-      nonce: BN;
-      maxSize: number;
-    }[] = [];
+  // async queryUserAccountList(batchSize: number = 100): Promise<
+  //   {
+  //     id: number;
+  //     data: string;
+  //     nonce: BN;
+  //     maxSize: number;
+  //   }[]
+  // > {
+  //   let userAccountList: {
+  //     id: number;
+  //     data: string;
+  //     nonce: BN;
+  //     maxSize: number;
+  //   }[] = [];
 
-    const { lastUserId } = await this.queryUserCounter();
+  //   const { lastUserId } = await this.queryUserCounter();
 
-    // Create all PDAs first
-    const userAccountPdas: { id: number; pda: PublicKey }[] = [];
-    for (let i = 1; i <= lastUserId; i++) {
-      const [pda] = this.getUserAccountPda(i);
-      userAccountPdas.push({ id: i, pda });
-    }
+  //   // Create all PDAs first
+  //   const userAccountPdas: { id: number; pda: PublicKey }[] = [];
+  //   for (let i = 1; i <= lastUserId; i++) {
+  //     const [pda] = this.getUserAccountPda(i);
+  //     userAccountPdas.push({ id: i, pda });
+  //   }
 
-    // Batch fetch accounts
-    for (let i = 0; i < userAccountPdas.length; i += batchSize) {
-      const batch = userAccountPdas.slice(i, i + batchSize);
-      const pdas = batch.map((item) => item.pda);
+  //   // Batch fetch accounts
+  //   for (let i = 0; i < userAccountPdas.length; i += batchSize) {
+  //     const batch = userAccountPdas.slice(i, i + batchSize);
+  //     const pdas = batch.map((item) => item.pda);
 
-      try {
-        const accountList =
-          await this.program.account.userAccount.fetchMultiple(pdas);
+  //     try {
+  //       const accountList =
+  //         await this.program.account.userAccount.fetchMultiple(pdas);
 
-        // Process the batch
-        for (let j = 0; j < accountList.length; j++) {
-          const account = accountList[j];
+  //       // Process the batch
+  //       for (let j = 0; j < accountList.length; j++) {
+  //         const account = accountList[j];
 
-          // Account exists
-          if (account) {
-            userAccountList.push({
-              id: batch[j].id,
-              ...account,
-            });
-          }
-        }
-      } catch (error) {
-        li(`Error fetching batch starting at index ${i}: ${error}`);
+  //         // Account exists
+  //         if (account) {
+  //           userAccountList.push({
+  //             id: batch[j].id,
+  //             ...account,
+  //           });
+  //         }
+  //       }
+  //     } catch (error) {
+  //       li(`Error fetching batch starting at index ${i}: ${error}`);
 
-        // Fallback to individual fetches for this batch
-        for (const { id, pda } of batch) {
-          try {
-            const account = await this.program.account.userAccount.fetch(pda);
+  //       // Fallback to individual fetches for this batch
+  //       for (const { id, pda } of batch) {
+  //         try {
+  //           const account = await this.program.account.userAccount.fetch(pda);
 
-            userAccountList.push({
-              id,
-              ...account,
-            });
-          } catch (err) {
-            li(`Failed to fetch account ${id}: ${err}`);
-          }
-        }
-      }
-    }
+  //           userAccountList.push({
+  //             id,
+  //             ...account,
+  //           });
+  //         } catch (err) {
+  //           li(`Failed to fetch account ${id}: ${err}`);
+  //         }
+  //       }
+  //     }
+  //   }
 
-    return userAccountList;
-  }
+  //   return userAccountList;
+  // }
 
-  async readUserData(
-    wallet: MessageSigningWallet,
-    dataEncrypted: string,
-    nonce: BN,
-    isDisplayed: boolean = false,
-  ) {
-    const encKey = await generateEncryptionKey(wallet);
-    const res: DataRecord[] = decryptDeserialize(
-      encKey,
-      nonce.toString(),
-      dataEncrypted,
-    );
+  // async readUserData(
+  //   wallet: MessageSigningWallet,
+  //   dataEncrypted: string,
+  //   nonce: BN,
+  //   isDisplayed: boolean = false,
+  // ) {
+  //   const encKey = await generateEncryptionKey(wallet);
+  //   const res: DataRecord[] = decryptDeserialize(
+  //     encKey,
+  //     nonce.toString(),
+  //     dataEncrypted,
+  //   );
 
-    return logAndReturn(res, isDisplayed);
-  }
+  //   return logAndReturn(res, isDisplayed);
+  // }
 
-  async queryUserRotationState(user: PublicKey, isDisplayed: boolean = false) {
-    const { id } = await this.queryUserId(user);
-    const [pda] = this.getUserRotationStatePda(id);
-    const res = await this.program.account.rotationState.fetch(pda);
+  // async queryUserRotationState(user: PublicKey, isDisplayed: boolean = false) {
+  //   const { id } = await this.queryUserId(user);
+  //   const [pda] = this.getUserRotationStatePda(id);
+  //   const res = await this.program.account.rotationState.fetch(pda);
 
-    return logAndReturn(res, isDisplayed);
-  }
+  //   return logAndReturn(res, isDisplayed);
+  // }
 
   // async queryRevenue(isDisplayed: boolean = false) {
   //   const [configPda] = this.getConfigPda();
