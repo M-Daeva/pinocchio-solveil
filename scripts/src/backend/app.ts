@@ -10,7 +10,7 @@ async function main() {
   const sender = await readKeypairSigner(PATH.OWNER_KEYPAIR);
   const h = new RegistryHelpers(client, sender);
 
-  // await h.tryInit(
+  // await h.exec.init(
   //   {
   //     rotationTimeout: 48 * 3_600,
   //   },
@@ -35,16 +35,16 @@ async function main() {
   // TODO: find out why the program set default value of revenue mint on init
   // instead of fPcP9vGoowPikgu7oTRCJKHUvSNn9N5WZhYshR4UXyo
 
-  await h.queryConfig(true);
-  await h.queryUserCounter(true); // TODO: check why default lastUserId: 3738929409
-  await h.queryAdminRotationState(true);
-  await h.queryRevenue(true);
-  // await h.tryUpdateConfig(
+  await h.query.config(true);
+  await h.query.userCounter(true); // TODO: check why default lastUserId: 3738929409
+  await h.query.adminRotationState(true);
+  await h.query.revenue(true);
+  // await h.exec.updateConfig(
   //   { rotationTimeout: 24 * 3_600, isPaused: true },
   //   {},
   //   true,
   // );
-  // await h.queryConfig(true);
+  // await h.query.config(true);
 }
 
 main();
