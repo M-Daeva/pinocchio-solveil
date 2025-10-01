@@ -41,32 +41,56 @@ import {
 } from "gill";
 import { TxResponse } from "../interfaces/tx";
 import {
+  ActivateAccountInput,
+  ActivateAccountInstructionDataArgs,
+  CloseAccountInput,
+  CloseAccountInstructionDataArgs,
   ConfirmAccountRotationInput,
   ConfirmAccountRotationInstructionData,
   ConfirmAccountRotationInstructionDataArgs,
   ConfirmAdminRotationInput,
   ConfirmAdminRotationInstructionDataArgs,
+  CreateAccountInput,
+  CreateAccountInstructionDataArgs,
   fetchConfig,
   fetchRotationState,
   fetchUserAccount,
   fetchUserCounter,
   fetchUserId,
+  getActivateAccountInstruction,
+  getCloseAccountInstruction,
   getConfirmAccountRotationInstruction,
   getConfirmAdminRotationInstruction,
+  getCreateAccountInstruction,
+  getReopenAccountInstruction,
+  getRequestAccountRotationInstruction,
   getUpdateConfigInstruction,
   getWithdrawRevenueInstruction,
+  getWriteDataInstruction,
   REGISTRY_CPI_PROGRAM_ADDRESS,
+  ReopenAccountInput,
+  ReopenAccountInstructionDataArgs,
+  RequestAccountRotationInput,
+  RequestAccountRotationInstructionDataArgs,
   UpdateConfigInput,
   UpdateConfigInstructionDataArgs,
   WithdrawRevenueInput,
   WithdrawRevenueInstructionDataArgs,
+  WriteDataInput,
+  WriteDataInstructionDataArgs,
 } from "../schema/codama";
 import {
+  IActivateAccountInstructionDataArgs,
+  ICloseAccountInstructionDataArgs,
   IConfirmAccountRotationInstructionDataArgs,
   IConfirmAdminRotationInstructionDataArgs,
+  ICreateAccountInstructionDataArgs,
   IInitInstructionDataArgs,
+  IReopenAccountInstructionDataArgs,
+  IRequestAccountRotationInstructionDataArgs,
   IUpdateConfigInstructionDataArgs,
   IWithdrawRevenueInstructionDataArgs,
+  IWriteDataInstructionDataArgs,
 } from "../schema/codegen/registry-cpi/instructions";
 import { PATH } from "../config";
 import {
@@ -75,10 +99,16 @@ import {
   decUserAccount,
   decUserCounter,
   decUserId,
+  encActivateAccountInstructionDataArgs,
+  encCloseAccountInstructionDataArgs,
   encConfirmAccountRotationInstructionDataArgs,
   encConfirmAdminRotationInstructionDataArgs,
+  encCreateAccountInstructionDataArgs,
+  encReopenAccountInstructionDataArgs,
+  encRequestAccountRotationInstructionDataArgs,
   encUpdateConfigInstructionDataArgs,
   encWithdrawRevenueInstructionDataArgs,
+  encWriteDataInstructionDataArgs,
 } from "../schema/codegen/registry-cpi/codecs";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ADDRESS,
@@ -95,26 +125,26 @@ import {
   IUserId,
 } from "../schema/codegen/registry-cpi/accounts";
 
+// TODO: use 1 file per contract
+
 export class RegistryHelpers {
-  pda: RegistryPda;
-
-  client: ClientAny;
-  sender: KeyPairSigner;
-
   programId: Address;
-
+  pda: RegistryPda;
   query: RegistryQuery;
   exec: RegistryExec;
 
   constructor(client: ClientAny, sender: KeyPairSigner) {
-    this.pda = new RegistryPda();
-    this.client = client;
-    this.sender = sender;
-    this.programId = REGISTRY_CPI_PROGRAM_ADDRESS;
-
     const tokenProgram = tokenProgramFactory(client.rpc);
+    this.programId = REGISTRY_CPI_PROGRAM_ADDRESS;
+    this.pda = new RegistryPda(this.programId);
     this.query = new RegistryQuery(client.rpc, this.pda, tokenProgram);
-    this.exec = new RegistryExec(this.pda, client, sender, tokenProgram);
+    this.exec = new RegistryExec(
+      this.pda,
+      client,
+      sender,
+      tokenProgram,
+      this.query,
+    );
   }
 }
 
@@ -122,8 +152,8 @@ export class RegistryHelpers {
 class RegistryPda {
   private pda: (seeds: Seed[]) => Promise<PdaResp>;
 
-  constructor() {
-    this.pda = pdaFactory(REGISTRY_CPI_PROGRAM_ADDRESS);
+  constructor(programId: Address) {
+    this.pda = pdaFactory(programId);
   }
 
   async bump(): Promise<PdaResp> {
@@ -395,8 +425,8 @@ export class RegistryExec {
   private associatedTokenProgram = ASSOCIATED_TOKEN_PROGRAM_ADDRESS;
 
   private pda: RegistryPda;
+  private query: RegistryQuery;
 
-  private client: ClientAny;
   private sender: KeyPairSigner;
 
   private tokenProgram: (mint: Address) => Promise<Address>;
@@ -412,12 +442,13 @@ export class RegistryExec {
     client: ClientAny,
     sender: KeyPairSigner,
     tokenProgram: (mint: Address) => Promise<Address>,
+    query: RegistryQuery,
   ) {
     this.pda = pda;
-    this.client = client;
     this.sender = sender;
     this.tokenProgram = tokenProgram;
     this.handleTx = handleTxFactory(client, sender);
+    this.query = query;
   }
 
   async init(
@@ -497,7 +528,6 @@ export class RegistryExec {
   }
 
   async confirmAdminRotation(
-    args: IConfirmAdminRotationInstructionDataArgs,
     computeConfig: ComputeConfig = {},
     isDisplayed: boolean = false,
   ): Promise<TxResponse> {
@@ -521,7 +551,7 @@ export class RegistryExec {
     const ixs = [
       getConfirmAdminRotationInstruction({
         ...ixAccs,
-        ...encConfirmAdminRotationInstructionDataArgs(args),
+        ...encConfirmAdminRotationInstructionDataArgs({}),
       }),
     ];
 
@@ -573,207 +603,371 @@ export class RegistryExec {
     return this.handleTx(signerList, ixs, computeConfig, isDisplayed);
   }
 
-  // async tryCreateAccount(
-  //   maxDataSize: number,
-  //   params: TxParams = {},
-  //   isDisplayed: boolean = false,
-  // ): Promise<anchor.web3.TransactionSignature> {
-  //   const { lastUserId } = await this.queryUserCounter();
-  //   const expectedUserId = lastUserId + 1;
-  //   const [userAccountPda] = this.getUserAccountPda(expectedUserId);
-  //   const [userRotationStatePda] = this.getUserRotationStatePda(expectedUserId);
+  async createAccount(
+    args: ICreateAccountInstructionDataArgs,
+    computeConfig: ComputeConfig = {},
+    isDisplayed: boolean = false,
+  ): Promise<TxResponse> {
+    const { sender, pda, systemProgram } = this;
+    const signerList: CryptoKeyPair[] = [sender.keyPair];
 
-  //   const ix = await this.program.methods
-  //     .createAccount(maxDataSize)
-  //     .accounts({
-  //       sender: this.sender,
-  //       userAccount: userAccountPda,
-  //       userRotationState: userRotationStatePda,
-  //     })
-  //     .instruction();
+    const { lastUserId } = await this.query.userCounter();
+    const expectedUserId = lastUserId + 1;
 
-  //   return this.handleTx([ix], params, isDisplayed);
-  // }
+    const [
+      [bump],
+      [config],
+      [userCounter],
+      [userId],
+      [userAccount],
+      [userRotationState],
+    ] = await Promise.all([
+      pda.bump(),
+      pda.config(),
+      pda.userCounter(),
+      pda.userId(sender.address),
+      pda.userAccount(expectedUserId),
+      pda.userRotationState(expectedUserId),
+    ]);
 
-  // async tryCreateAndActivateAccount(
-  //   maxDataSize: number,
-  //   revenueMint: PublicKey,
-  //   params: TxParams = {},
-  //   isDisplayed: boolean = false,
-  // ): Promise<anchor.web3.TransactionSignature> {
-  //   const { lastUserId } = await this.queryUserCounter();
-  //   const expectedUserId = lastUserId + 1;
-  //   const [userAccountPda] = this.getUserAccountPda(expectedUserId);
-  //   const [userRotationStatePda] = this.getUserRotationStatePda(expectedUserId);
+    const ixAccs: XOR<CreateAccountInput, CreateAccountInstructionDataArgs> = {
+      systemProgram,
+      sender,
+      bump,
+      config,
+      userCounter,
+      userId,
+      userAccount,
+      userRotationState,
+    };
 
-  //   const createIx = await this.program.methods
-  //     .createAccount(maxDataSize)
-  //     .accounts({
-  //       sender: this.sender,
-  //       userAccount: userAccountPda,
-  //       userRotationState: userRotationStatePda,
-  //     })
-  //     .instruction();
+    const ixs = [
+      getCreateAccountInstruction({
+        ...ixAccs,
+        ...encCreateAccountInstructionDataArgs(args),
+      }),
+    ];
 
-  //   const activateIx = await this.program.methods
-  //     .activateAccount(this.sender)
-  //     .accounts({
-  //       tokenProgram: await this.getTokenProgram(revenueMint),
-  //       sender: this.sender,
-  //       revenueMint,
-  //     })
-  //     .instruction();
+    return this.handleTx(signerList, ixs, computeConfig, isDisplayed);
+  }
 
-  //   return this.handleTx([createIx, activateIx], params, isDisplayed);
-  // }
+  async createAndActivateAccount(
+    args: ICreateAccountInstructionDataArgs,
+    revenueMint: Address,
+    computeConfig: ComputeConfig = {},
+    isDisplayed: boolean = false,
+  ): Promise<TxResponse> {
+    const { sender, pda, systemProgram, associatedTokenProgram } = this;
+    const signerList: CryptoKeyPair[] = [sender.keyPair];
 
-  // // get estimated tx cost in SOL
-  // async simulateCreateAccount(
-  //   maxDataSize: number,
-  //   lamportsPerCu: number = 10_000,
-  //   isDisplayed: boolean = false,
-  // ) {
-  //   const { lastUserId } = await this.queryUserCounter();
-  //   const expectedUserId = lastUserId + 1;
-  //   const [userAccountPda] = this.getUserAccountPda(expectedUserId);
-  //   const [userRotationStatePda] = this.getUserRotationStatePda(expectedUserId);
+    const { lastUserId } = await this.query.userCounter();
+    const expectedUserId = lastUserId + 1;
 
-  //   const res = await this.program.methods
-  //     .createAccount(maxDataSize)
-  //     .accounts({
-  //       sender: this.sender,
-  //       userAccount: userAccountPda,
-  //       userRotationState: userRotationStatePda,
-  //     })
-  //     .simulate();
+    const [
+      [bump],
+      [config],
+      [userCounter],
+      [userId],
+      [userAccount],
+      [userRotationState],
+    ] = await Promise.all([
+      pda.bump(),
+      pda.config(),
+      pda.userCounter(),
+      pda.userId(sender.address),
+      pda.userAccount(expectedUserId),
+      pda.userRotationState(expectedUserId),
+    ]);
 
-  //   const cuRegex = /consumed\s+(\d+)\s+of\s+(\d+)\s+compute units/i;
-  //   let cu = 0;
+    const tokenProgram = await this.tokenProgram(revenueMint);
+    const [revenueSenderAta, revenueAppAta] = await Promise.all([
+      getAssociatedTokenAccountAddress(
+        revenueMint,
+        sender.address,
+        tokenProgram,
+      ),
+      getAssociatedTokenAccountAddress(revenueMint, config, tokenProgram),
+    ]);
 
-  //   for (const line of res.raw) {
-  //     const match = line.match(cuRegex);
-  //     if (match) {
-  //       cu = parseInt(match[1], 10);
-  //       break;
-  //     }
-  //   }
+    const createIx: XOR<CreateAccountInput, CreateAccountInstructionDataArgs> =
+      {
+        systemProgram,
+        sender,
+        bump,
+        config,
+        userCounter,
+        userId,
+        userAccount,
+        userRotationState,
+      };
 
-  //   const txPrice = (cu * lamportsPerCu) / LAMPORTS_PER_SOL;
-  //   const info = {
-  //     cu,
-  //     lamportsPerCu,
-  //     txPrice,
-  //   };
+    const activateIx: XOR<
+      ActivateAccountInput,
+      ActivateAccountInstructionDataArgs
+    > = {
+      systemProgram,
+      tokenProgram,
+      associatedTokenProgram,
+      sender,
+      bump,
+      config,
+      userId,
+      revenueMint,
+      revenueSenderAta,
+      revenueAppAta,
+    };
 
-  //   return logAndReturn(info, isDisplayed);
-  // }
+    const ixs = [
+      getCreateAccountInstruction({
+        ...createIx,
+        ...encCreateAccountInstructionDataArgs(args),
+      }),
+      getActivateAccountInstruction({
+        ...activateIx,
+        ...encActivateAccountInstructionDataArgs({}),
+      }),
+    ];
 
-  // async tryCloseAccount(
-  //   params: TxParams = {},
-  //   isDisplayed: boolean = false,
-  // ): Promise<anchor.web3.TransactionSignature> {
-  //   const ix = await this.program.methods
-  //     .closeAccount()
-  //     .accounts({
-  //       sender: this.sender,
-  //     })
-  //     .instruction();
+    return this.handleTx(signerList, ixs, computeConfig, isDisplayed);
+  }
 
-  //   return this.handleTx([ix], params, isDisplayed);
-  // }
+  async closeAccount(
+    computeConfig: ComputeConfig = {},
+    isDisplayed: boolean = false,
+  ): Promise<TxResponse> {
+    const { sender, pda, systemProgram } = this;
+    const signerList: CryptoKeyPair[] = [sender.keyPair];
 
-  // async tryReopenAccount(
-  //   args: IRegistry.ReopenAccountArgs,
-  //   params: TxParams = {},
-  //   isDisplayed: boolean = false,
-  // ): Promise<anchor.web3.TransactionSignature> {
-  //   const ix = await this.program.methods
-  //     .reopenAccount(...IARegistry.convertReopenAccountArgs(args))
-  //     .accounts({
-  //       sender: this.sender,
-  //     })
-  //     .instruction();
+    const { id } = await this.query.userId(sender.address);
 
-  //   return this.handleTx([ix], params, isDisplayed);
-  // }
+    const [[userId], [userAccount], [userRotationState]] = await Promise.all([
+      pda.userId(sender.address),
+      pda.userAccount(id),
+      pda.userRotationState(id),
+    ]);
 
-  // async tryActivateAccount(
-  //   args: IRegistry.ActivateAccountArgs,
-  //   revenueMint: PublicKey,
-  //   params: TxParams = {},
-  //   isDisplayed: boolean = false,
-  // ): Promise<anchor.web3.TransactionSignature> {
-  //   const ix = await this.program.methods
-  //     .activateAccount(args.user || this.sender)
-  //     .accounts({
-  //       tokenProgram: await this.getTokenProgram(revenueMint),
-  //       sender: this.sender,
-  //       revenueMint,
-  //     })
-  //     .instruction();
+    const ixAccs: XOR<CloseAccountInput, CloseAccountInstructionDataArgs> = {
+      systemProgram,
+      sender,
+      userId,
+      userAccount,
+      userRotationState,
+    };
 
-  //   return this.handleTx([ix], params, isDisplayed);
-  // }
+    const ixs = [
+      getCloseAccountInstruction({
+        ...ixAccs,
+        ...encCloseAccountInstructionDataArgs({}),
+      }),
+    ];
 
-  // async tryWriteData(
-  //   wallet: MessageSigningWallet,
-  //   data: DataRecord[],
-  //   params: TxParams = {},
-  //   isDisplayed: boolean = false,
-  // ): Promise<anchor.web3.TransactionSignature> {
-  //   const encKey = await generateEncryptionKey(wallet);
-  //   const timestamp = getTimestamp();
-  //   const { value } = serializeEncrypt(encKey, timestamp, data);
+    return this.handleTx(signerList, ixs, computeConfig, isDisplayed);
+  }
 
-  //   const ix = await this.program.methods
-  //     .writeData(value, new BN(timestamp))
-  //     .accounts({
-  //       sender: this.sender,
-  //     })
-  //     .instruction();
+  async reopenAccount(
+    args: IReopenAccountInstructionDataArgs,
+    computeConfig: ComputeConfig = {},
+    isDisplayed: boolean = false,
+  ): Promise<TxResponse> {
+    const { sender, pda, systemProgram } = this;
+    const signerList: CryptoKeyPair[] = [sender.keyPair];
 
-  //   return this.handleTx([ix], params, isDisplayed);
-  // }
+    const { id } = await this.query.userId(sender.address);
 
-  // async tryRequestAccountRotation(
-  //   args: IRegistry.RequestAccountRotationArgs,
-  //   params: TxParams = {},
-  //   isDisplayed: boolean = false,
-  // ): Promise<anchor.web3.TransactionSignature> {
-  //   const ix = await this.program.methods
-  //     .requestAccountRotation(
-  //       ...IARegistry.convertRequestAccountRotationArgs(args),
-  //     )
-  //     .accounts({
-  //       sender: this.sender,
-  //     })
-  //     .instruction();
+    const [[bump], [config], [userId], [userAccount], [userRotationState]] =
+      await Promise.all([
+        pda.bump(),
+        pda.config(),
+        pda.userId(sender.address),
+        pda.userAccount(id),
+        pda.userRotationState(id),
+      ]);
 
-  //   return this.handleTx([ix], params, isDisplayed);
-  // }
+    const ixAccs: XOR<ReopenAccountInput, ReopenAccountInstructionDataArgs> = {
+      systemProgram,
+      sender,
+      bump,
+      config,
+      userId,
+      userAccount,
+      userRotationState,
+    };
 
-  // async tryConfirmAccountRotation(
-  //   prevOwner: PublicKey,
-  //   params: TxParams = {},
-  //   isDisplayed: boolean = false,
-  // ): Promise<anchor.web3.TransactionSignature> {
-  //   const [userIdPrePda] = this.getUserIdPda(prevOwner);
-  //   const [userIdPda] = this.getUserIdPda(this.sender);
-  //   const { id: userIdValuePre } = await this.queryUserId(prevOwner);
-  //   const [userRotationStatePda] = this.getUserRotationStatePda(userIdValuePre);
+    const ixs = [
+      getReopenAccountInstruction({
+        ...ixAccs,
+        ...encReopenAccountInstructionDataArgs(args),
+      }),
+    ];
 
-  //   const ix = await this.program.methods
-  //     .confirmAccountRotation()
-  //     .accountsPartial({
-  //       sender: this.sender,
-  //       userIdPre: userIdPrePda,
-  //       userId: userIdPda,
-  //       userRotationState: userRotationStatePda,
-  //     })
-  //     .instruction();
+    return this.handleTx(signerList, ixs, computeConfig, isDisplayed);
+  }
 
-  //   return this.handleTx([ix], params, isDisplayed);
-  // }
+  async activateAccount(
+    revenueMint: Address,
+    computeConfig: ComputeConfig = {},
+    isDisplayed: boolean = false,
+  ): Promise<TxResponse> {
+    const { sender, pda, systemProgram, associatedTokenProgram } = this;
+    const signerList: CryptoKeyPair[] = [sender.keyPair];
+
+    const [[bump], [config], [userId]] = await Promise.all([
+      pda.bump(),
+      pda.config(),
+      pda.userId(sender.address),
+    ]);
+
+    const tokenProgram = await this.tokenProgram(revenueMint);
+    const [revenueSenderAta, revenueAppAta] = await Promise.all([
+      getAssociatedTokenAccountAddress(
+        revenueMint,
+        sender.address,
+        tokenProgram,
+      ),
+      getAssociatedTokenAccountAddress(revenueMint, config, tokenProgram),
+    ]);
+
+    const ixAccs: XOR<
+      ActivateAccountInput,
+      ActivateAccountInstructionDataArgs
+    > = {
+      systemProgram,
+      tokenProgram,
+      associatedTokenProgram,
+      sender,
+      bump,
+      config,
+      userId,
+      revenueMint,
+      revenueSenderAta,
+      revenueAppAta,
+    };
+
+    const ixs = [
+      getActivateAccountInstruction({
+        ...ixAccs,
+        ...encActivateAccountInstructionDataArgs({}),
+      }),
+    ];
+
+    return this.handleTx(signerList, ixs, computeConfig, isDisplayed);
+  }
+
+  async writeData(
+    wallet: MessageSigningWallet,
+    data: DataRecord[],
+    computeConfig: ComputeConfig = {},
+    isDisplayed: boolean = false,
+  ): Promise<TxResponse> {
+    const { sender, pda } = this;
+    const signerList: CryptoKeyPair[] = [sender.keyPair];
+
+    const { id } = await this.query.userId(sender.address);
+    const encKey = await generateEncryptionKey(wallet);
+    const timestamp = getTimestamp();
+    const { value } = serializeEncrypt(encKey, timestamp, data);
+    const args: IWriteDataInstructionDataArgs = {
+      data: value,
+      nonce: BigInt(timestamp),
+    };
+
+    const [[userId], [userAccount]] = await Promise.all([
+      pda.userId(sender.address),
+      pda.userAccount(id),
+    ]);
+
+    const ixAccs: XOR<WriteDataInput, WriteDataInstructionDataArgs> = {
+      sender,
+      userId,
+      userAccount,
+    };
+
+    const ixs = [
+      getWriteDataInstruction({
+        ...ixAccs,
+        ...encWriteDataInstructionDataArgs(args),
+      }),
+    ];
+
+    return this.handleTx(signerList, ixs, computeConfig, isDisplayed);
+  }
+
+  async requestAccountRotation(
+    args: IRequestAccountRotationInstructionDataArgs,
+    computeConfig: ComputeConfig = {},
+    isDisplayed: boolean = false,
+  ): Promise<TxResponse> {
+    const { sender, pda } = this;
+    const signerList: CryptoKeyPair[] = [sender.keyPair];
+
+    const { id } = await this.query.userId(sender.address);
+
+    const [[bump], [config], [userId], [userRotationState]] = await Promise.all(
+      [
+        pda.bump(),
+        pda.config(),
+        pda.userId(sender.address),
+        pda.userRotationState(id),
+      ],
+    );
+
+    const ixAccs: XOR<
+      RequestAccountRotationInput,
+      RequestAccountRotationInstructionDataArgs
+    > = {
+      sender,
+      bump,
+      config,
+      userId,
+      userRotationState,
+    };
+
+    const ixs = [
+      getRequestAccountRotationInstruction({
+        ...ixAccs,
+        ...encRequestAccountRotationInstructionDataArgs(args),
+      }),
+    ];
+
+    return this.handleTx(signerList, ixs, computeConfig, isDisplayed);
+  }
+
+  async confirmAccountRotation(
+    prevOwner: Address,
+    computeConfig: ComputeConfig = {},
+    isDisplayed: boolean = false,
+  ): Promise<TxResponse> {
+    const { sender, pda, systemProgram } = this;
+    const signerList: CryptoKeyPair[] = [sender.keyPair];
+
+    const { id: userIdValuePre } = await this.query.userId(prevOwner);
+
+    const [[userIdPre], [userId], [userRotationState]] = await Promise.all([
+      pda.userId(prevOwner),
+      pda.userId(sender.address),
+      pda.userRotationState(userIdValuePre),
+    ]);
+
+    const ixAccs: XOR<
+      ConfirmAccountRotationInput,
+      ConfirmAccountRotationInstructionDataArgs
+    > = {
+      systemProgram,
+      sender,
+      userIdPre,
+      userId,
+      userRotationState,
+    };
+
+    const ixs = [
+      getConfirmAccountRotationInstruction({
+        ...ixAccs,
+        ...encConfirmAccountRotationInstructionDataArgs({}),
+      }),
+    ];
+
+    return this.handleTx(signerList, ixs, computeConfig, isDisplayed);
+  }
 }
 
 export class ChainHelpers {
