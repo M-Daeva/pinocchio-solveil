@@ -6,29 +6,29 @@ import { TAddress, TBitField, TBitFieldBuilder, TString4096, TUint32, TUint64, T
 
 export function encAssetItem(x?: IAssetItem): AssetItem {
   return {
-    amount: new TUint64(x.amount).getRaw(),
-    asset: new TAddress(x.asset).getRaw(),
+    amount: new TUint64(x?.amount).getRaw(),
+    asset: new TAddress(x?.asset).getRaw(),
   };
 }
 
-export function decAssetItem(x: AssetItem): IAssetItem {
+export function decAssetItem(x?: AssetItem): IAssetItem {
   return {
-    amount: new TUint64(x.amount).get(),
-    asset: new TAddress(x.asset).get(),
+    amount: new TUint64(x?.amount).get(),
+    asset: new TAddress(x?.asset).get(),
   };
 }
 
 export function encRange(x?: IRange): Range {
   return {
-    min: new TUint32(x.min).getRaw(),
-    max: new TUint32(x.max).getRaw(),
+    min: new TUint32(x?.min).getRaw(),
+    max: new TUint32(x?.max).getRaw(),
   };
 }
 
-export function decRange(x: Range): IRange {
+export function decRange(x?: Range): IRange {
   return {
-    min: new TUint32(x.min).get(),
-    max: new TUint32(x.max).get(),
+    min: new TUint32(x?.min).get(),
+    max: new TUint32(x?.max).get(),
   };
 }
 

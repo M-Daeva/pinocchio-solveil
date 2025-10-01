@@ -319,7 +319,9 @@ function main() {
             if (isBool && !isOpt) method = "withBool";
             else if (isBool && isOpt) method = "withOptBool";
             else method = "withOptNonBool";
-            bodyLines.push(`      .${method}(x.${fName})`);
+            bodyLines.push(
+              `      .${method}(${pair.category === "types" ? `x?.${fName}` : `x.${fName}`})`,
+            );
           });
           bodyLines.push(`      .build().getRaw(),`);
         } else {
@@ -327,9 +329,10 @@ function main() {
           if (trans) {
             primitiveTsSet.add(trans);
             bodyLines[bodyLines.length - 1] +=
-              `new ${trans}(x.${cName}).getRaw(),`;
+              `new ${trans}(${pair.category === "types" ? `x?.${cName}` : `x.${cName}`}).getRaw(),`;
           } else {
-            bodyLines[bodyLines.length - 1] += `enc${baseType}(x.${cName}),`;
+            bodyLines[bodyLines.length - 1] +=
+              `enc${baseType}(${pair.category === "types" ? `x?.${cName}` : `x.${cName}`}),`;
           }
         }
       });
@@ -342,7 +345,10 @@ function main() {
       if (pair.category !== "instructions") {
         // dec
         const decName = `dec${pair.codamaName}`;
-        const decArg = `x: ${pair.codamaName}`;
+        const decArg =
+          pair.category === "types"
+            ? `x?: ${pair.codamaName}`
+            : `x: ${pair.codamaName}`;
         const decReturn = pair.intName;
         lines.push(`export function ${decName}(${decArg}): ${decReturn} {`);
         const decBody: string[] = ["  return {"];
@@ -364,7 +370,7 @@ function main() {
           if (isBool || (isOpt && !isBool)) {
             primitiveTsSet.add("TBitField");
             decBody[decBody.length - 1] +=
-              `new TBitField(x.flags).get(${flagIndex}),`;
+              `new TBitField(${pair.category === "types" ? `x?.flags` : `x.flags`}).get(${flagIndex}),`;
             flagIndex++;
           } else {
             const cField = pair.codamaMembers.find(
@@ -383,9 +389,11 @@ function main() {
             const trans = primitiveMap[baseType];
             if (trans) {
               primitiveTsSet.add(trans);
-              decBody[decBody.length - 1] += `new ${trans}(x.${iName}).get(),`;
+              decBody[decBody.length - 1] +=
+                `new ${trans}(${pair.category === "types" ? `x?.${iName}` : `x.${iName}`}).get(),`;
             } else {
-              decBody[decBody.length - 1] += `dec${baseType}(x.${iName}),`;
+              decBody[decBody.length - 1] +=
+                `dec${baseType}(${pair.category === "types" ? `x?.${iName}` : `x.${iName}`}),`;
             }
           }
         });
