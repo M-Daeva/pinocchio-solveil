@@ -22,11 +22,6 @@ import {
   pdaFactory,
 } from "../utils";
 import {
-  getInitInstruction,
-  InitInput,
-  InitInstructionDataArgs,
-} from "../schema/codama/instructions/init";
-import {
   address,
   Address,
   KeyPairSigner,
@@ -71,6 +66,9 @@ import {
   WithdrawRevenueInstructionDataArgs,
   WriteDataInput,
   WriteDataInstructionDataArgs,
+  getInitInstruction,
+  InitInput,
+  InitInstructionDataArgs,
 } from "../schema/codama";
 import {
   ICreateAccountInstructionDataArgs,
@@ -92,6 +90,7 @@ import {
   encConfirmAccountRotationInstructionDataArgs,
   encConfirmAdminRotationInstructionDataArgs,
   encCreateAccountInstructionDataArgs,
+  encInitInstructionDataArgs,
   encReopenAccountInstructionDataArgs,
   encRequestAccountRotationInstructionDataArgs,
   encUpdateConfigInstructionDataArgs,
@@ -407,7 +406,6 @@ export class RegistryExec {
 
   async init(
     args: IInitInstructionDataArgs,
-    revenueMint: Address,
     computeConfig: ComputeConfig = {},
     isDisplayed: boolean = false,
   ): Promise<TxResponse> {
@@ -421,6 +419,9 @@ export class RegistryExec {
         pda.userCounter(),
         pda.adminRotationState(),
       ]);
+
+    const revenueMint = args.accountRegistrationFee?.asset;
+    if (!revenueMint) throw new Error("revenueMint isn't specified!");
 
     const tokenProgram = await this.tokenProgram(revenueMint);
     const revenueAppAta = await getAssociatedTokenAccountAddress(
@@ -443,9 +444,9 @@ export class RegistryExec {
     };
 
     const ixs = [
-      getUpdateConfigInstruction({
+      getInitInstruction({
         ...ixAccs,
-        ...encUpdateConfigInstructionDataArgs(args),
+        ...encInitInstructionDataArgs(args),
       }),
     ];
 

@@ -72,7 +72,7 @@ pub fn init(accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult 
     StorageW::update(config, |x| {
         *x = Config::default();
         x.admin = *sender.key();
-        x.rotation_timeout.set(ROTATION_TIMEOUT);
+        x.rotation_timeout = ix.get_rotation_timeout().unwrap_or(ROTATION_TIMEOUT.into());
         x.registration_fee = ix.get_account_registration_fee().unwrap_or({
             let mut x = AssetItem::default();
             x.amount.set(ACCOUNT_REGISTRATION_FEE_AMOUNT);

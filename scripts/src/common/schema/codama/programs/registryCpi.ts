@@ -27,7 +27,7 @@ import {
 } from "../instructions";
 
 export const REGISTRY_CPI_PROGRAM_ADDRESS =
-  "7fRVH4R3ij3K4UvE6uUPfF6FR7pfsD74qz9oBETaet6b" as Address<"7fRVH4R3ij3K4UvE6uUPfF6FR7pfsD74qz9oBETaet6b">;
+  "H8VgNWjW6rpwsxw3j32DjrguuFPr6SdEXnpMNDzPpebD" as Address<"H8VgNWjW6rpwsxw3j32DjrguuFPr6SdEXnpMNDzPpebD">;
 
 export enum RegistryCpiAccount {
   Bump,
@@ -95,7 +95,7 @@ export function identifyRegistryCpiInstruction(
 }
 
 export type ParsedRegistryCpiInstruction<
-  TProgram extends string = "7fRVH4R3ij3K4UvE6uUPfF6FR7pfsD74qz9oBETaet6b",
+  TProgram extends string = "H8VgNWjW6rpwsxw3j32DjrguuFPr6SdEXnpMNDzPpebD",
 > =
   | ({
       instructionType: RegistryCpiInstruction.Init;

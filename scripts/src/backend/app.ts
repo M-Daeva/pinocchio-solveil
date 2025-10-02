@@ -13,11 +13,15 @@ async function main() {
   // await h.exec.init(
   //   {
   //     rotationTimeout: 48 * 3_600,
+  //     accountRegistrationFee: {
+  //       amount: 1_000n,
+  //       asset: REVENUE_MINT.DEVNET,
+  //     },
   //   },
-  //   REVENUE_MINT.DEVNET,
   //   {},
   //   true,
   // );
+
   //
   // const str32 = new TString32("Hello World!").getRaw();
   // li({ str32 });
