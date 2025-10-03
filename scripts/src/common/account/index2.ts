@@ -171,7 +171,7 @@ class RegistryQuery {
 
   async userCounter(isDisplayed: boolean = false): Promise<IUserCounter> {
     const { rpc, pda } = this;
-    const [userCounter] = await pda.config();
+    const [userCounter] = await pda.userCounter();
     const { data } = await fetchUserCounter(rpc, userCounter);
     return logAndReturn(decUserCounter(data), isDisplayed);
   }

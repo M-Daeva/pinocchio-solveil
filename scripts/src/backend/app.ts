@@ -32,15 +32,12 @@ async function main() {
   //   Route,
   // }
   // const targetNumber = new TEnum(Target, Target.Proxy).getRaw();
-  // console.log({ targetNumber });
-  // console.log({ targetEnum: new TEnum(Target, targetNumber).get() });
+  // l({ targetNumber });
+  // l({ targetEnum: new TEnum(Target, targetNumber).get() });
   //
 
-  // TODO: find out why the program set default value of revenue mint on init
-  // instead of fPcP9vGoowPikgu7oTRCJKHUvSNn9N5WZhYshR4UXyo
-
   await h.query.config(true);
-  await h.query.userCounter(true); // TODO: check why default lastUserId: 3738929409
+  await h.query.userCounter(true);
   await h.query.adminRotationState(true);
   await h.query.revenue(true);
   // await h.exec.updateConfig(
