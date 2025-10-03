@@ -10,7 +10,6 @@ import {
   XOR,
 } from "../interfaces";
 import { decryptDeserialize, serializeEncrypt } from "./converters";
-import { generateEncryptionKey, MessageSigningWallet } from "./encryption";
 import {
   getOrCreateAtaInstructions,
   getTimestamp,

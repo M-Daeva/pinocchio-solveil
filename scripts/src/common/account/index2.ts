@@ -3,16 +3,14 @@ import {
   ComputeConfig,
   ClientAny,
   Ix,
-  RpcDev,
   Seed,
   PdaResp,
   RpcAny,
   XOR,
 } from "../interfaces";
 import { decryptDeserialize, serializeEncrypt } from "./converters";
-// import { generateEncryptionKey, MessageSigningWallet } from "./encryption";
+import { generateEncryptionKey } from "./encryption";
 import {
-  getOrCreateAtaInstructions,
   getTimestamp,
   tokenProgramFactory,
   handleTxFactory,
@@ -21,13 +19,7 @@ import {
   numberToRustBuffer,
   pdaFactory,
 } from "../utils";
-import {
-  address,
-  Address,
-  KeyPairSigner,
-  lamports,
-  LAMPORTS_PER_SOL,
-} from "gill";
+import { Address, KeyPairSigner } from "gill";
 import { TxResponse } from "../interfaces/tx";
 import {
   ActivateAccountInput,
@@ -110,8 +102,6 @@ import {
   IUserId,
 } from "../schema/codegen/registry-cpi/accounts";
 import { ChainHelpers } from "./chain";
-
-// TODO: use 1 file per contract
 
 export class RegistryHelpers {
   programId: Address;
@@ -338,20 +328,20 @@ class RegistryQuery {
     };
   }
 
-  // async readUserData(
-  //   wallet: MessageSigningWallet,
-  //   dataEncrypted: string,
-  //   nonce: bigint,
-  //   isDisplayed: boolean = false,
-  // ) {
-  //   const encKey = await generateEncryptionKey(wallet);
-  //   const res: DataRecord[] = decryptDeserialize(
-  //     encKey,
-  //     nonce.toString(),
-  //     dataEncrypted,
-  //   );
-  //   return logAndReturn(res, isDisplayed);
-  // }
+  async readUserData(
+    signer: KeyPairSigner,
+    dataEncrypted: string,
+    nonce: bigint,
+    isDisplayed: boolean = false,
+  ) {
+    const encKey = await generateEncryptionKey(signer);
+    const res: DataRecord[] = decryptDeserialize(
+      encKey,
+      nonce.toString(),
+      dataEncrypted,
+    );
+    return logAndReturn(res, isDisplayed);
+  }
 
   async userRotationState(
     user: Address,
@@ -808,44 +798,43 @@ export class RegistryExec {
     return this.handleTx(signerList, ixs, computeConfig, isDisplayed);
   }
 
-  // async writeData(
-  //   wallet: MessageSigningWallet,
-  //   data: DataRecord[],
-  //   computeConfig: ComputeConfig = {},
-  //   isDisplayed: boolean = false,
-  // ): Promise<TxResponse> {
-  //   const { sender, pda } = this;
-  //   const signerList: CryptoKeyPair[] = [sender.keyPair];
+  async writeData(
+    data: DataRecord[],
+    computeConfig: ComputeConfig = {},
+    isDisplayed: boolean = false,
+  ): Promise<TxResponse> {
+    const { sender, pda } = this;
+    const signerList: CryptoKeyPair[] = [sender.keyPair];
 
-  //   const { id } = await this.query.userId(sender.address);
-  //   const encKey = await generateEncryptionKey(wallet);
-  //   const timestamp = getTimestamp();
-  //   const { value } = serializeEncrypt(encKey, timestamp, data);
-  //   const args: IWriteDataInstructionDataArgs = {
-  //     data: value,
-  //     nonce: BigInt(timestamp),
-  //   };
+    const { id } = await this.query.userId(sender.address);
+    const encKey = await generateEncryptionKey(sender);
+    const timestamp = getTimestamp();
+    const { value } = serializeEncrypt(encKey, timestamp, data);
+    const args: IWriteDataInstructionDataArgs = {
+      data: value,
+      nonce: BigInt(timestamp),
+    };
 
-  //   const [[userId], [userAccount]] = await Promise.all([
-  //     pda.userId(sender.address),
-  //     pda.userAccount(id),
-  //   ]);
+    const [[userId], [userAccount]] = await Promise.all([
+      pda.userId(sender.address),
+      pda.userAccount(id),
+    ]);
 
-  //   const ixAccs: XOR<WriteDataInput, WriteDataInstructionDataArgs> = {
-  //     sender,
-  //     userId,
-  //     userAccount,
-  //   };
+    const ixAccs: XOR<WriteDataInput, WriteDataInstructionDataArgs> = {
+      sender,
+      userId,
+      userAccount,
+    };
 
-  //   const ixs = [
-  //     getWriteDataInstruction({
-  //       ...ixAccs,
-  //       ...encWriteDataInstructionDataArgs(args),
-  //     }),
-  //   ];
+    const ixs = [
+      getWriteDataInstruction({
+        ...ixAccs,
+        ...encWriteDataInstructionDataArgs(args),
+      }),
+    ];
 
-  //   return this.handleTx(signerList, ixs, computeConfig, isDisplayed);
-  // }
+    return this.handleTx(signerList, ixs, computeConfig, isDisplayed);
+  }
 
   async requestAccountRotation(
     args: IRequestAccountRotationInstructionDataArgs,

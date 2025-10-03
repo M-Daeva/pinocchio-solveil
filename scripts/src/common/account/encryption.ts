@@ -1,55 +1,41 @@
-import { PublicKey, Keypair } from "@solana/web3.js";
-import * as anchor from "@coral-xyz/anchor";
-import nacl from "tweetnacl";
+import { Address, createSignableMessage, KeyPairSigner } from "gill";
 import { hkdf } from "@noble/hashes/hkdf";
 import { sha256 } from "@noble/hashes/sha2";
 import { toHex } from "./converters";
 
-// anchor.Wallet can't sign messages, that's why we need extended class for Nodejs (FE wallets should be fine)
-export class MessageSigningWallet extends anchor.Wallet {
-  constructor(readonly payer: Keypair) {
-    super(payer);
-  }
-
-  async signMessage(message: Uint8Array): Promise<Uint8Array> {
-    const signature = nacl.sign.detached(message, this.payer.secretKey);
-    return new Uint8Array(signature);
-  }
-
-  get publicKey(): PublicKey {
-    return this.payer.publicKey;
-  }
-}
-
-export function getSigningWallet(
-  ownerKeypair: anchor.web3.Keypair
-): MessageSigningWallet {
-  return new MessageSigningWallet(ownerKeypair);
-}
-
 // Step 1: Create a deterministic message for signing
 export function createDeterministicMessage(
-  publicKey: PublicKey,
-  context: string = "password-manager"
+  publicKey: Address,
+  context: string = "password-manager",
 ): Uint8Array {
   const message = `${context}:${publicKey.toString()}`;
   return new TextEncoder().encode(message);
 }
 
-// Step 2: Request signature from wallet (using wallet adapter)
+// Step 2: Request signature from wallet (using KeyPairSigner)
 export async function requestSignature(
-  wallet: MessageSigningWallet,
-  message: Uint8Array
+  signer: KeyPairSigner,
+  message: Uint8Array,
 ): Promise<Uint8Array> {
-  // This will prompt the user to sign with their wallet
-  const signature = await wallet.signMessage(message);
+  // KeyPairSigner has built-in message signing
+  const [signatureDictionary] = await signer.signMessages([
+    createSignableMessage(message),
+  ]);
+
+  // Extract the signature for this signer's address from the dictionary
+  const signature = signatureDictionary?.[signer.address];
+
+  if (!signature) {
+    throw new Error("Failed to get signature from signer");
+  }
+
   return signature;
 }
 
 // Step 3: Derive encryption key from signature
 export function deriveEncryptionKey(
   signature: Uint8Array,
-  publicKey: PublicKey
+  publicKey: Address,
 ): Uint8Array {
   const CONTEXT = "solana-password-manager";
 
@@ -63,7 +49,7 @@ export function deriveEncryptionKey(
     signature, // High-entropy input from wallet signature
     salt, // Unique per user
     CONTEXT, // Application context
-    32 // AES-256 key length
+    32, // AES-256 key length
   );
 
   return encryptionKey;
@@ -71,20 +57,18 @@ export function deriveEncryptionKey(
 
 // Complete flow
 export async function generateEncryptionKey(
-  wallet: MessageSigningWallet
+  signer: KeyPairSigner,
 ): Promise<string> {
-  const message = createDeterministicMessage(wallet.publicKey);
-  const signature = await requestSignature(wallet, message);
-  const encryptionKey = deriveEncryptionKey(signature, wallet.publicKey);
+  const message = createDeterministicMessage(signer.address);
+  const signature = await requestSignature(signer, message);
+  const encryptionKey = deriveEncryptionKey(signature, signer.address);
 
   return toHex(encryptionKey);
 }
 
 // async function main() {
-//   const ownerKeypair = await readKeypair(rootPath(PATH.OWNER_KEYPAIR));
-//   const wallet = getSigningWallet(ownerKeypair);
-
-//   const encryptionKey = await generateEncryptionKey(wallet);
+//   const sender = await readKeypairSigner(PATH.OWNER_KEYPAIR);
+//   const encryptionKey = await generateEncryptionKey(sender);
 // }
 
 // main();
