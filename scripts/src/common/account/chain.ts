@@ -1,3 +1,5 @@
+import { TxResponse } from "../interfaces/tx";
+import * as spl from "@solana/spl-token";
 import {
   DataRecord,
   ComputeConfig,
@@ -19,6 +21,7 @@ import {
   logAndReturn,
   numberToRustBuffer,
   pdaFactory,
+  numberFrom,
 } from "../utils";
 import {
   getInitInstruction,
@@ -28,15 +31,16 @@ import {
 import {
   address,
   Address,
+  getPublicKeyFromAddress,
   KeyPairSigner,
   lamports,
   LAMPORTS_PER_SOL,
 } from "gill";
-import { TxResponse } from "../interfaces/tx";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ADDRESS,
   getAssociatedTokenAccountAddress,
   SYSTEM_PROGRAM_ADDRESS,
+  getTransferCheckedInstruction,
 } from "gill/programs";
 
 export class ChainHelpers {
@@ -48,6 +52,7 @@ export class ChainHelpers {
   ) => Promise<TxResponse>;
 
   constructor(
+    private tokenProgram: (mint: Address) => Promise<Address>,
     private client: ClientAny,
     private sender: KeyPairSigner,
   ) {
@@ -109,28 +114,29 @@ export class ChainHelpers {
   //   return this.handleTx(instructions, updatedParams, isDisplayed);
   // }
 
-  // async getOrCreateAta(
-  //   mintPubkey: PublicKey,
-  //   ownerPubkey: PublicKey,
-  //   allowOwnerOffCurve = false,
-  //   params: TxParams = {},
-  //   isDisplayed: boolean = false,
-  // ) {
-  //   const { ata, ixs } = await getOrCreateAtaInstructions(
-  //     this.provider.connection,
-  //     this.provider.wallet.publicKey,
-  //     mintPubkey,
-  //     ownerPubkey,
-  //     allowOwnerOffCurve,
-  //   );
+  async getOrCreateAta(
+    mintPubkey: Address,
+    ownerPubkey: Address,
+    computeConfig: ComputeConfig = {},
+    isDisplayed: boolean = false,
+  ) {
+    const signerList: CryptoKeyPair[] = [this.sender.keyPair];
 
-  //   if (ixs.length) {
-  //     const sig = await this.handleTx(ixs, params, isDisplayed);
-  //     li({ createAta: sig });
-  //   }
+    const tokenProgram = await this.tokenProgram(mintPubkey);
+    const { ata, ixs } = await getOrCreateAtaInstructions(
+      this.client.rpc,
+      this.sender,
+      mintPubkey,
+      ownerPubkey,
+      tokenProgram,
+    );
 
-  //   return logAndReturn(ata, isDisplayed);
-  // }
+    if (ixs.length) {
+      await this.handleTx(signerList, ixs, computeConfig, isDisplayed);
+    }
+
+    return logAndReturn(ata, isDisplayed);
+  }
 
   // async mintTokens(
   //   amount: number,
@@ -168,70 +174,64 @@ export class ChainHelpers {
 
   // async transferTokens(
   //   amount: number,
-  //   mint: PublicKey | string,
-  //   to: PublicKey | string,
-  //   params: TxParams = {},
+  //   mint: Address,
+  //   to: Address,
+  //   computeConfig: ComputeConfig = {},
   //   isDisplayed: boolean = false,
   // ) {
-  //   const pkFrom = this.provider.wallet.publicKey;
-  //   const pkTo = publicKeyFromString(to);
-  //   const pkMint = publicKeyFromString(mint);
+  //   const from = this.sender.address;
+  //   const signerList: CryptoKeyPair[] = [this.sender.keyPair];
 
+  //   const tokenProgram = await this.tokenProgram(mint);
   //   const [infoFrom, infoTo] = await Promise.all(
-  //     [pkFrom, pkTo].map((owner) =>
+  //     [from, to].map((owner) =>
   //       getOrCreateAtaInstructions(
-  //         this.provider.connection,
-  //         this.provider.wallet.publicKey,
-  //         pkMint,
+  //         this.client.rpc,
+  //         this.sender,
+  //         mint,
   //         owner,
-  //         true,
+  //         tokenProgram,
   //       ),
   //     ),
   //   );
 
-  //   const { decimals } = await spl.getMint(this.provider.connection, pkMint);
+  //   if (!infoFrom || !infoTo) throw new Error("ATA aren't found!");
 
-  //   const instructions: anchor.web3.TransactionInstruction[] = [
+  //   const { value } = await this.client.rpc.getAccountInfo(mint).send();
+  //   const data = value?.data;
+
+  //   if (!data) throw new Error("");
+
+  //   const { decimals } = spl.unpackMint(mint as any, data);
+
+  //   const ixs: Ix[] = [
   //     ...infoFrom.ixs,
   //     ...infoTo.ixs,
-  //     spl.createTransferCheckedInstruction(
-  //       infoFrom.ata,
-  //       pkMint,
-  //       infoTo.ata,
-  //       this.provider.wallet.publicKey,
-  //       amount * 10 ** decimals,
+  //     getTransferCheckedInstruction({
+  //       source: infoFrom.ata,
+  //       mint,
+  //       destination: infoTo.ata,
+  //       authority: this.sender,
+  //       amount: amount * 10 ** decimals,
   //       decimals,
-  //     ),
+  //     }),
   //   ];
 
-  //   return this.handleTx(instructions, params, isDisplayed);
+  //   return this.handleTx(signerList, ixs, computeConfig, isDisplayed);
   // }
 
-  // async getBalance(
-  //   publicKey: PublicKey | string,
-  //   isDisplayed: boolean = false,
-  // ): Promise<number> {
-  //   const balance = await this.provider.connection.getBalance(
-  //     publicKeyFromString(publicKey),
-  //   );
+  async getBalance(
+    publicKey: Address,
+    isDisplayed: boolean = false,
+  ): Promise<number> {
+    const { value } = await this.client.rpc.getBalance(publicKey).send();
+    const res = numberFrom(value.toString())
+      .div(LAMPORTS_PER_SOL)
+      .toDecimalPlaces(9)
+      .toNumber();
 
-  //   return logAndReturn(balance / anchor.web3.LAMPORTS_PER_SOL, isDisplayed);
-  // }
-
-  // static async getAtaTokenBalance(
-  //   connection: anchor.web3.Connection,
-  //   ownerAta: PublicKey,
-  // ): Promise<number> {
-  //   let uiAmount: number | null = 0;
-
-  //   try {
-  //     ({
-  //       value: { uiAmount },
-  //     } = await connection.getTokenAccountBalance(ownerAta));
-  //   } catch (_) {}
-
-  //   return uiAmount || 0;
-  // }
+    return logAndReturn(res, isDisplayed);
+  }
 
   // TODO: test
   static async getAtaTokenBalance(
@@ -249,29 +249,25 @@ export class ChainHelpers {
     return Number(uiAmountString);
   }
 
-  // async getTokenBalance(
-  //   mint: PublicKey | string,
-  //   owner: PublicKey | string,
-  //   isDisplayed: boolean = false,
-  // ): Promise<number> {
-  //   const pkMint = publicKeyFromString(mint);
-  //   const pkOwner = publicKeyFromString(owner);
+  async getTokenBalance(
+    mint: Address,
+    owner: Address,
+    isDisplayed: boolean = false,
+  ): Promise<number> {
+    const tokenProgram = await this.tokenProgram(mint);
+    const ata = await getAssociatedTokenAccountAddress(
+      mint,
+      owner,
+      tokenProgram,
+    );
 
-  //   const ata = await spl.getAssociatedTokenAddress(
-  //     pkMint,
-  //     pkOwner,
-  //     true,
-  //     spl.TOKEN_PROGRAM_ID,
-  //     spl.ASSOCIATED_TOKEN_PROGRAM_ID,
-  //   );
+    const uiAmount = await ChainHelpers.getAtaTokenBalance(
+      this.client.rpc,
+      ata,
+    );
 
-  //   const uiAmount = await ChainHelpers.getAtaTokenBalance(
-  //     this.provider.connection,
-  //     ata,
-  //   );
-
-  //   return logAndReturn(uiAmount, isDisplayed);
-  // }
+    return logAndReturn(uiAmount, isDisplayed);
+  }
 
   // async getTx(signature: string, isDisplayed: boolean = false) {
   //   const tx = await this.provider.connection.getParsedTransaction(signature);

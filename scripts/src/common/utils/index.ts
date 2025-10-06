@@ -1,6 +1,6 @@
 import { AES, enc } from "crypto-js";
 import util from "util";
-import { all, create } from "mathjs";
+import { all, create, FactoryFunctionMap } from "mathjs";
 import { COMMITMENT, NETWORK_CONFIG } from "../config";
 import { BN } from "bn.js";
 import { TxResponse } from "../interfaces/tx";
@@ -156,7 +156,7 @@ export function getPaginationAmount(
 }
 
 // configure the default type of numbers as BigNumbers
-const math = create(all, {
+const math = create(all as FactoryFunctionMap, {
   // Default type of number
   // Available options: 'number' (default), 'BigNumber', or 'Fraction'
   number: "BigNumber",

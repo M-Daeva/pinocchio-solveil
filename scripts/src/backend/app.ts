@@ -1,7 +1,8 @@
 import { readKeypairSigner } from "./utils";
 import { PATH, REVENUE_MINT } from "../common/config";
-import { getClient, l, li } from "../common/utils";
+import { getClient, l, li, tokenProgramFactory } from "../common/utils";
 import { RegistryHelpers } from "../common/account/index2";
+import { ChainHelpers } from "../common/account/chain";
 
 // const addr = getAddressEncoder();
 
@@ -9,6 +10,11 @@ async function main() {
   const client = getClient("DEVNET");
   const sender = await readKeypairSigner(PATH.OWNER_KEYPAIR);
   const h = new RegistryHelpers(client, sender);
+
+  const tokenProgram = tokenProgramFactory(client.rpc);
+  const c = new ChainHelpers(tokenProgram, client, sender);
+
+  await c.getBalance(sender.address, true);
 
   // await h.exec.init(
   //   {
