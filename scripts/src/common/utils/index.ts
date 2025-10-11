@@ -437,17 +437,17 @@ export async function getOrCreateAtaInstructions(
 
   // check if the account exists and is properly initialized
   try {
-    const accountInfo = await rpc.getAccountInfo(ata).send();
+    const accountInfo = await getAccInfo(rpc, ata);
 
     // Check if account actually exists
-    if (accountInfo.value) {
+    if (accountInfo.value !== null) {
       return {
         ata,
         ixs: [],
       };
     }
   } catch (_) {
-    // Account doesn't exist, continue to create
+    // RPC error, assume account doesn't exist
   }
 
   // create the ATA creation instruction
@@ -460,34 +460,9 @@ export async function getOrCreateAtaInstructions(
     systemProgram: SYSTEM_PROGRAM_ADDRESS,
   });
 
-  // Instead of using getCreateAssociatedTokenInstruction, build it manually:
-  // const ix = getCreateAtaIx(payer, mintPubkey, ownerPubkey, tokenProgram, ata);
-
   return {
     ata,
     ixs: [ix],
-  };
-}
-
-// TODO
-export function getCreateAtaIx(
-  payer: KeyPairSigner,
-  mintPubkey: Address,
-  ownerPubkey: Address,
-  tokenProgram: Address,
-  ata: Address,
-): Ix {
-  return {
-    programAddress: address("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"),
-    accounts: [
-      { address: payer.address, role: AccountRole.WRITABLE_SIGNER },
-      { address: ata, role: AccountRole.WRITABLE },
-      { address: ownerPubkey, role: AccountRole.WRITABLE }, // ← Changed from READONLY
-      { address: mintPubkey, role: AccountRole.READONLY },
-      { address: SYSTEM_PROGRAM_ADDRESS, role: AccountRole.READONLY },
-      { address: tokenProgram, role: AccountRole.READONLY },
-    ],
-    data: new Uint8Array([0]), // Create instruction
   };
 }
 
@@ -499,7 +474,7 @@ export function tokenProgramFactory(rpc: RpcAny) {
     }
 
     // it's a token, so get the mint account to determine which token program owns it
-    const mintAccount = await rpc.getAccountInfo(mint).send();
+    const mintAccount = await getAccInfo(rpc, mint);
 
     if (!mintAccount?.value) {
       throw new Error(
@@ -618,4 +593,13 @@ export function numberToRustBuffer(
   }
 
   throw new Error(`Unsupported Rust type: ${rustType}`);
+}
+
+export function getAccInfo(rpc: RpcAny, address: Address) {
+  return rpc
+    .getAccountInfo(address, {
+      encoding: "base64",
+      commitment: "confirmed",
+    })
+    .send();
 }

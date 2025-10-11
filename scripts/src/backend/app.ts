@@ -2,7 +2,7 @@ import { readKeypairSigner } from "./utils";
 import { PATH, REVENUE_MINT } from "../common/config";
 import { getClient, l, li, tokenProgramFactory } from "../common/utils";
 import { RegistryHelpers } from "../common/account/index2";
-import { ChainHelpers } from "../common/account/chain";
+import { ChainHelpers, WSOL_MINT } from "../common/account/chain";
 
 // const addr = getAddressEncoder();
 
@@ -15,9 +15,12 @@ async function main() {
   const c = new ChainHelpers(tokenProgram, client, sender);
 
   await c.getBalance(sender.address, true);
+  await c.getTokenBalance(WSOL_MINT, sender.address, true);
 
-  await c.wrapSol(1, { cuMultiplier: 1.3 });
+  await c.wrapSol(0.001);
+
   await c.getBalance(sender.address, true);
+  await c.getTokenBalance(WSOL_MINT, sender.address, true);
   return;
 
   // await h.exec.init(

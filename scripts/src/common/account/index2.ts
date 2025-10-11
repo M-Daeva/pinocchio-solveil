@@ -18,6 +18,7 @@ import {
   logAndReturn,
   numberToRustBuffer,
   pdaFactory,
+  getAccInfo,
 } from "../utils";
 import { Address, KeyPairSigner } from "gill";
 import { TxResponse } from "../interfaces/tx";
@@ -264,12 +265,7 @@ class RegistryQuery {
         // Fallback to individual fetches for this batch
         for (const { id, pda } of batch) {
           try {
-            const response = await rpc
-              .getAccountInfo(pda, {
-                encoding: "base64",
-                commitment: "confirmed",
-              })
-              .send();
+            const response = await getAccInfo(rpc, pda);
 
             if (response.value && response.value.data) {
               const decodedAccount = this.deserializeUserAccount(
