@@ -28,6 +28,8 @@ import {
   TOKEN_PROGRAM_ADDRESS,
 } from "gill/programs";
 import {
+  AccountRole,
+  address,
   Address,
   compileTransaction,
   createSolanaClient,
@@ -435,29 +437,58 @@ export async function getOrCreateAtaInstructions(
 
   // check if the account exists and is properly initialized
   try {
-    await rpc.getAccountInfo(ata).send();
+    const accountInfo = await rpc.getAccountInfo(ata).send();
 
-    // account exists and is properly initialized
-    return {
-      ata,
-      ixs: [],
-    };
+    // Check if account actually exists
+    if (accountInfo.value) {
+      return {
+        ata,
+        ixs: [],
+      };
+    }
   } catch (_) {
-    // create the ATA creation instruction
-    const ix = getCreateAssociatedTokenInstruction({
-      payer,
-      ata,
-      owner: ownerPubkey,
-      mint: mintPubkey,
-      tokenProgram,
-      systemProgram: SYSTEM_PROGRAM_ADDRESS,
-    });
-
-    return {
-      ata,
-      ixs: [ix],
-    };
+    // Account doesn't exist, continue to create
   }
+
+  // create the ATA creation instruction
+  const ix = getCreateAssociatedTokenInstruction({
+    payer,
+    ata,
+    owner: ownerPubkey,
+    mint: mintPubkey,
+    tokenProgram,
+    systemProgram: SYSTEM_PROGRAM_ADDRESS,
+  });
+
+  // Instead of using getCreateAssociatedTokenInstruction, build it manually:
+  // const ix = getCreateAtaIx(payer, mintPubkey, ownerPubkey, tokenProgram, ata);
+
+  return {
+    ata,
+    ixs: [ix],
+  };
+}
+
+// TODO
+export function getCreateAtaIx(
+  payer: KeyPairSigner,
+  mintPubkey: Address,
+  ownerPubkey: Address,
+  tokenProgram: Address,
+  ata: Address,
+): Ix {
+  return {
+    programAddress: address("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"),
+    accounts: [
+      { address: payer.address, role: AccountRole.WRITABLE_SIGNER },
+      { address: ata, role: AccountRole.WRITABLE },
+      { address: ownerPubkey, role: AccountRole.WRITABLE }, // ← Changed from READONLY
+      { address: mintPubkey, role: AccountRole.READONLY },
+      { address: SYSTEM_PROGRAM_ADDRESS, role: AccountRole.READONLY },
+      { address: tokenProgram, role: AccountRole.READONLY },
+    ],
+    data: new Uint8Array([0]), // Create instruction
+  };
 }
 
 export function tokenProgramFactory(rpc: RpcAny) {

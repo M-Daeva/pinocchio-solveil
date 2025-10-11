@@ -22,6 +22,8 @@ import {
   numberToRustBuffer,
   pdaFactory,
   numberFrom,
+  l,
+  getCreateAtaIx,
 } from "../utils";
 import {
   getInitInstruction,
@@ -31,16 +33,27 @@ import {
 import {
   address,
   Address,
+  getMinimumBalanceForRentExemption,
   getPublicKeyFromAddress,
   KeyPairSigner,
   lamports,
   LAMPORTS_PER_SOL,
+  Signature,
+  generateKeyPair,
+  generateKeyPairSigner,
+  AccountRole,
 } from "gill";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ADDRESS,
   getAssociatedTokenAccountAddress,
   SYSTEM_PROGRAM_ADDRESS,
   getTransferCheckedInstruction,
+  getSyncNativeInstruction,
+  getTransferInstruction,
+  getCloseAccountInstruction,
+  getCreateAccountInstruction,
+  getInitializeAccountInstruction,
+  getCreateAssociatedTokenInstruction,
 } from "gill/programs";
 
 export class ChainHelpers {
@@ -61,12 +74,14 @@ export class ChainHelpers {
 
   async requestAirdrop(
     recipient: Address,
-    amount: number,
+    amountInSol: number,
     isDisplayed: boolean = false,
   ): Promise<TxResponse> {
     const rpc = this.client.rpc as RpcDev;
 
-    let lamportsAmount = lamports(BigInt(amount) * BigInt(LAMPORTS_PER_SOL));
+    let lamportsAmount = lamports(
+      BigInt(amountInSol) * BigInt(LAMPORTS_PER_SOL),
+    );
     const signature = await rpc
       .requestAirdrop(recipient, lamportsAmount)
       .send();
@@ -269,138 +284,368 @@ export class ChainHelpers {
     return logAndReturn(uiAmount, isDisplayed);
   }
 
-  // async getTx(signature: string, isDisplayed: boolean = false) {
-  //   const tx = await this.provider.connection.getParsedTransaction(signature);
+  async getTx(signature: Signature, isDisplayed: boolean = false) {
+    const tx = await this.client.rpc.getTransaction(signature).send();
 
-  //   return logAndReturn(tx, isDisplayed);
-  // }
+    return logAndReturn(tx, isDisplayed);
+  }
 
-  // // https://www.quicknode.com/guides/solana-development/transactions/how-to-use-priority-fees
-  // // https://www.quicknode.com/docs/solana/qn_estimatePriorityFees
-  // // https://dashboard.quicknode.com/endpoints
-  // async getCuPrice(
-  //   endpoint: string,
-  //   programId: PublicKey | undefined = undefined,
+  async wrapSol(
+    amountInSol: number,
+    computeConfig: ComputeConfig = {},
+    isDisplayed: boolean = false,
+  ): Promise<TxResponse> {
+    const { sender, client } = this;
+    const signerList: CryptoKeyPair[] = [sender.keyPair];
+
+    const wsolMint = address(spl.NATIVE_MINT.toString());
+    const amountInLamports = amountInSol * LAMPORTS_PER_SOL;
+
+    // Get or create ATA for WSOL
+    const tokenProgram = await this.tokenProgram(wsolMint);
+    const { ata: wsolAta, ixs: createAtaIxs } =
+      await getOrCreateAtaInstructions(
+        client.rpc,
+        sender,
+        wsolMint,
+        sender.address,
+        tokenProgram,
+      );
+
+    const ixs: Ix[] = [
+      ...createAtaIxs,
+      // // Transfer SOL to the WSOL token account
+      // getTransferInstruction({
+      //   authority: sender,
+      //   source: sender.address,
+      //   destination: wsolAta,
+      //   amount: amountInLamports,
+      // }),
+      // // Sync native instruction to convert SOL to WSOL tokens
+      // getSyncNativeInstruction({ account: wsolAta }),
+    ];
+
+    return this.handleTx(signerList, ixs, computeConfig, isDisplayed);
+  }
+
+  // async wrapSol(
+  //   amountInSol: number,
+  //   computeConfig: ComputeConfig = {},
   //   isDisplayed: boolean = false,
-  // ) {
-  //   const myHeaders = new Headers();
-  //   myHeaders.append("Content-Type", "application/json");
+  // ): Promise<TxResponse> {
+  //   const { sender, client } = this;
+  //   const signerList: CryptoKeyPair[] = [sender.keyPair];
 
-  //   const raw = JSON.stringify({
-  //     jsonrpc: "2.0",
-  //     id: 1,
-  //     method: "qn_estimatePriorityFees",
-  //     params: {
-  //       last_n_blocks: 100,
-  //       api_version: 2,
-  //       ...(programId ? { account: programId } : {}),
-  //     },
-  //   });
+  //   const wsolMint = address(spl.NATIVE_MINT.toString());
+  //   const amountInLamports = amountInSol * LAMPORTS_PER_SOL;
 
-  //   const requestOptions = {
-  //     method: "POST",
-  //     headers: myHeaders,
-  //     body: raw,
-  //     redirect: "follow",
-  //   };
+  //   const tokenProgram = address("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
 
-  //   const res = await fetch(endpoint, {
-  //     method: requestOptions.method,
-  //     headers: requestOptions.headers,
-  //     body: requestOptions.body,
-  //     redirect: "follow",
-  //   }).then((response) => response.text());
+  //   // Calculate ATA address
+  //   const wsolAta = await getAssociatedTokenAccountAddress(
+  //     wsolMint,
+  //     sender.address,
+  //     tokenProgram,
+  //   );
 
-  //   const lamportsPerCu =
-  //     Number(JSON.parse(res)?.result?.per_compute_unit?.medium) || 0;
+  //   // Check if ATA exists
+  //   const ataAccountInfo = await client.rpc
+  //     .getAccountInfo(wsolAta, {
+  //       encoding: "base64",
+  //     })
+  //     .send();
 
-  //   return logAndReturn(lamportsPerCu, isDisplayed);
+  //   const ixs = [];
+
+  //   // Only create if it doesn't exist
+  //   if (!ataAccountInfo.value) {
+  //     const createIx = getCreateAssociatedTokenInstruction({
+  //       payer: sender,
+  //       ata: wsolAta,
+  //       owner: sender.address,
+  //       mint: wsolMint,
+  //       tokenProgram,
+  //       systemProgram: SYSTEM_PROGRAM_ADDRESS,
+  //     });
+
+  //     // const createIx = getCreateAtaIx(
+  //     //   sender,
+  //     //   wsolMint,
+  //     //   sender.address,
+  //     //   tokenProgram,
+  //     //   wsolAta,
+  //     // );
+  //     ixs.push(createIx);
+  //   }
+
+  //   // Transfer SOL to the WSOL token account
+  //   ixs.push(
+  //     getTransferInstruction({
+  //       authority: sender,
+  //       source: sender.address,
+  //       destination: wsolAta,
+  //       amount: amountInLamports,
+  //     }),
+  //   );
+
+  //   // Sync native instruction
+  //   ixs.push(getSyncNativeInstruction({ account: wsolAta }));
+
+  //   return this.handleTx(signerList, ixs, computeConfig, isDisplayed);
   // }
 
   // async wrapSol(
-  //   amount: number,
-  //   params: TxParams = {},
+  //   amountInSol: number,
+  //   computeConfig: ComputeConfig = {},
   //   isDisplayed: boolean = false,
-  // ): Promise<anchor.web3.TransactionSignature> {
-  //   const owner = this.provider.wallet.publicKey;
-  //   const amountInLamports = amount * anchor.web3.LAMPORTS_PER_SOL;
+  // ): Promise<TxResponse> {
+  //   const { sender, client } = this;
+  //   const signerList: CryptoKeyPair[] = [sender.keyPair];
 
-  //   // Get or create ATA for WSOL (native mint)
-  //   const { ata: wsolAta, ixs: createAtaIxs } =
-  //     await getOrCreateAtaInstructions(
-  //       this.provider.connection,
-  //       owner,
-  //       spl.NATIVE_MINT, // WSOL mint address
-  //       owner,
-  //       false,
+  //   const wsolMint = address(spl.NATIVE_MINT.toString());
+  //   const amountInLamports = amountInSol * LAMPORTS_PER_SOL;
+
+  //   const tokenProgram = address("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb");
+
+  //   // Calculate ATA address
+  //   const wsolAta = await getAssociatedTokenAccountAddress(
+  //     wsolMint,
+  //     sender.address,
+  //     tokenProgram,
+  //   );
+
+  //   // Check if ATA exists
+  //   const ataAccountInfo = await client.rpc
+  //     .getAccountInfo(wsolAta, {
+  //       encoding: "base64",
+  //     })
+  //     .send();
+
+  //   const ixs = [];
+
+  //   // Only create ATA if it doesn't exist
+  //   if (!ataAccountInfo.value) {
+  //     const createIx = spl.createAssociatedTokenAccountInstruction(
+  //       sender.address as any, // payer
+  //       wsolAta as any, // ATA address
+  //       sender.address as any, // owner
+  //       wsolMint as any, // mint
+  //       tokenProgram as any, // token program
   //     );
 
-  //   const instructions: anchor.web3.TransactionInstruction[] = [
-  //     ...createAtaIxs,
-  //     // Transfer SOL to the WSOL token account
-  //     SystemProgram.transfer({
-  //       fromPubkey: owner,
-  //       toPubkey: wsolAta,
-  //       lamports: amountInLamports,
+  //     const newIx: Ix = {
+  //       programAddress: address(createIx.programId.toString()),
+  //       data: createIx.data,
+  //       accounts: createIx.keys.map((x) => {
+  //         let role: AccountRole;
+
+  //         if (x.isSigner) {
+  //           role = x.isWritable
+  //             ? AccountRole.WRITABLE_SIGNER
+  //             : AccountRole.READONLY_SIGNER;
+  //         } else {
+  //           role = x.isWritable ? AccountRole.WRITABLE : AccountRole.READONLY;
+  //         }
+
+  //         return {
+  //           address: address(x.pubkey.toString()),
+  //           role,
+  //         };
+  //       }),
+  //     };
+
+  //     // const createIx = getCreateAssociatedTokenInstruction({
+  //     //   payer: sender,
+  //     //   ata: wsolAta,
+  //     //   owner: sender.address,
+  //     //   mint: wsolMint,
+  //     //   tokenProgram,
+  //     //   systemProgram: SYSTEM_PROGRAM_ADDRESS,
+  //     // });
+
+  //     ixs.push(newIx);
+  //   }
+
+  //   // Transfer SOL to the WSOL token account
+  //   ixs.push(
+  //     // SystemProgram.transfer({
+  //     //   fromPubkey: sender.address,
+  //     //   toPubkey: wsolAta,
+  //     //   lamports: amountInLamports,
+  //     // }),
+
+  //     getTransferInstruction({
+  //       authority: sender,
+  //       source: sender.address,
+  //       destination: wsolAta,
+  //       amount: amountInLamports,
   //     }),
-  //     // Sync native instruction to convert SOL to WSOL tokens
-  //     spl.createSyncNativeInstruction(wsolAta),
-  //   ];
+  //   );
 
-  //   return this.handleTx(instructions, params, isDisplayed);
+  //   // Sync native instruction
+  //   ixs.push(getSyncNativeInstruction({ account: wsolAta }));
+
+  //   return this.handleTx(signerList, ixs, computeConfig, isDisplayed);
   // }
 
-  // async unwrapSol(
-  //   amount?: number,
-  //   params: TxParams = {},
+  // async wrapSol(
+  //   amountInSol: number,
+  //   computeConfig: ComputeConfig = {},
   //   isDisplayed: boolean = false,
-  // ): Promise<anchor.web3.TransactionSignature> {
-  //   const owner = this.provider.wallet.publicKey;
+  // ): Promise<TxResponse> {
+  //   const { sender, client } = this;
+  //   const signerList: CryptoKeyPair[] = [sender.keyPair];
 
-  //   const wsolAta = await spl.getAssociatedTokenAddress(
-  //     spl.NATIVE_MINT,
-  //     owner,
-  //     false,
+  //   const wsolMint = address(spl.NATIVE_MINT.toString());
+  //   const amountInLamports = amountInSol * LAMPORTS_PER_SOL;
+
+  //   const tokenProgram = address("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"); // SPL Token Program 2022
+  //   const ataProgram = address("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"); // Associated Token Account Program
+  //   const systemProgram = address("11111111111111111111111111111111"); // System Program
+
+  //   // Calculate ATA address
+  //   const wsolAta = await getAssociatedTokenAccountAddress(
+  //     wsolMint,
+  //     sender.address,
+  //     tokenProgram,
   //   );
 
-  //   // Get current WSOL balance if amount not specified
-  //   let amountToUnwrap = amount;
-  //   if (!amountToUnwrap) {
-  //     const balance = await this.getTokenBalance(spl.NATIVE_MINT, owner, false);
-  //     amountToUnwrap = balance;
+  //   // Check if ATA exists
+  //   const ataAccountInfo = await client.rpc
+  //     .getAccountInfo(wsolAta, {
+  //       encoding: "base64",
+  //     })
+  //     .send();
+
+  //   const ixs: Ix[] = [];
+
+  //   // Only create ATA if it doesn't exist
+  //   if (!ataAccountInfo.value) {
+  //     const createIx = spl.createAssociatedTokenAccountInstruction(
+  //       sender.address as any, // payer
+  //       wsolAta as any, // ATA address
+  //       sender.address as any, // owner
+  //       wsolMint as any, // mint
+  //       tokenProgram as any, // token program
+  //       systemProgram as any, // system program
+  //     );
+
+  //     const newIx: Ix = {
+  //       programAddress: ataProgram, // Explicitly set to ATA program
+  //       data: createIx.data,
+  //       accounts: [
+  //         { address: sender.address, role: AccountRole.WRITABLE_SIGNER }, // payer
+  //         { address: wsolAta, role: AccountRole.WRITABLE }, // ATA
+  //         { address: sender.address, role: AccountRole.READONLY }, // owner
+  //         { address: wsolMint, role: AccountRole.READONLY }, // mint
+  //         { address: systemProgram, role: AccountRole.READONLY }, // system program
+  //         { address: tokenProgram, role: AccountRole.READONLY }, // token program
+  //       ],
+  //     };
+
+  //     ixs.push(newIx);
   //   }
 
-  //   if (amountToUnwrap <= 0) {
-  //     throw new Error("No WSOL balance to unwrap");
-  //   }
+  //   // Transfer SOL to the WSOL token account
+  //   // ixs.push({
+  //   //   programAddress: systemProgram,
+  //   //   data: Buffer.from([
+  //   //     0x02,
+  //   //     ...Buffer.alloc(8).writeBigUInt64LE(BigInt(amountInLamports)),
+  //   //   ]), // SystemProgram.transfer
+  //   //   accounts: [
+  //   //     { address: sender.address, role: AccountRole.WRITABLE_SIGNER }, // from
+  //   //     { address: wsolAta, role: AccountRole.WRITABLE }, // to
+  //   //   ],
+  //   // });
 
-  //   const { decimals } = await spl.getMint(
-  //     this.provider.connection,
-  //     spl.NATIVE_MINT,
+  //   ixs.push(
+  //     getTransferInstruction({
+  //       authority: sender,
+  //       source: sender.address,
+  //       destination: wsolAta,
+  //       amount: amountInLamports,
+  //     }),
   //   );
-  //   const amountInTokens = amountToUnwrap * 10 ** decimals;
 
-  //   const instructions: anchor.web3.TransactionInstruction[] = [
-  //     // Close the WSOL token account to unwrap all, or transfer specific amount first
-  //     ...(amount
-  //       ? [
-  //           spl.createTransferCheckedInstruction(
-  //             wsolAta,
-  //             spl.NATIVE_MINT,
-  //             wsolAta, // Transfer to self to adjust balance
-  //             owner,
-  //             amountInTokens,
-  //             decimals,
-  //           ),
-  //         ]
-  //       : []),
-  //     spl.createCloseAccountInstruction(
-  //       wsolAta,
-  //       owner, // Destination for remaining SOL
-  //       owner, // Owner
-  //     ),
-  //   ];
+  //   // Sync native instruction
+  //   ixs.push({
+  //     programAddress: tokenProgram,
+  //     data: Buffer.from([0x11]), // SyncNative instruction (ID 17)
+  //     accounts: [
+  //       { address: wsolAta, role: AccountRole.WRITABLE }, // account
+  //     ],
+  //   });
 
-  //   return this.handleTx(instructions, params, isDisplayed);
+  //   return this.handleTx(signerList, ixs, computeConfig, isDisplayed);
   // }
+
+  async unwrapSol(
+    amountInSol?: number,
+    computeConfig: ComputeConfig = {},
+    isDisplayed: boolean = false,
+  ): Promise<TxResponse> {
+    const { sender } = this;
+    const signerList: CryptoKeyPair[] = [sender.keyPair];
+
+    const wsolMint = address(spl.NATIVE_MINT.toString());
+    const tokenProgram = await this.tokenProgram(wsolMint);
+    const wsolAta = await getAssociatedTokenAccountAddress(
+      wsolMint,
+      sender.address,
+      tokenProgram,
+    );
+
+    let ixs: Ix[] = [];
+
+    if (amountInSol) {
+      // Unwrap specific amount: create temp account, transfer, close temp
+      const amountInLamports = amountInSol * LAMPORTS_PER_SOL;
+
+      // Create temporary WSOL account
+      const tempAccount = await generateKeyPairSigner();
+      signerList.push(tempAccount.keyPair);
+
+      ixs = [
+        // Create temporary token account
+        getCreateAccountInstruction({
+          payer: sender,
+          newAccount: tempAccount,
+          space: spl.ACCOUNT_SIZE,
+          lamports: getMinimumBalanceForRentExemption(spl.ACCOUNT_SIZE),
+          programAddress: tokenProgram,
+        }),
+        // Initialize it as a token account
+        getInitializeAccountInstruction({
+          account: tempAccount.address,
+          mint: wsolMint,
+          owner: sender.address,
+        }),
+        // Transfer specific amount to temp account
+        getTransferInstruction({
+          authority: sender,
+          source: wsolAta,
+          destination: tempAccount.address,
+          amount: amountInLamports,
+        }),
+        // Close temp account to unwrap
+        getCloseAccountInstruction({
+          account: tempAccount.address,
+          destination: sender.address,
+          owner: sender,
+        }),
+      ];
+    } else {
+      // Unwrap all: just close the main account
+      ixs = [
+        getCloseAccountInstruction({
+          account: wsolAta,
+          destination: sender.address,
+          owner: sender,
+        }),
+      ];
+    }
+
+    return this.handleTx(signerList, ixs, computeConfig, isDisplayed);
+  }
 }

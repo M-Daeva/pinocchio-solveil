@@ -16,6 +16,10 @@ async function main() {
 
   await c.getBalance(sender.address, true);
 
+  await c.wrapSol(1, { cuMultiplier: 1.3 });
+  await c.getBalance(sender.address, true);
+  return;
+
   // await h.exec.init(
   //   {
   //     rotationTimeout: 48 * 3_600,
