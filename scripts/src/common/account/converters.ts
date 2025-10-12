@@ -50,7 +50,7 @@ export function addressToSalt(address: string): string {
 
 export function generateBindingHashPassword(
   timestamp: string,
-  account: string
+  account: string,
 ): string {
   const randomDecimal = Math.random();
   return `${timestamp}${randomDecimal}${account}`;
@@ -96,7 +96,7 @@ function deserialize<T>(data: string): T {
 export function serializeEncrypt<T>(
   encKey: string, // hex string
   timestamp: string,
-  value: T
+  value: T,
 ): EncryptedResponse {
   const key = fromHex(encKey);
 
@@ -118,7 +118,7 @@ export function serializeEncrypt<T>(
 export function decryptDeserialize<T>(
   encKey: string, // hex string
   timestamp: string,
-  value: string
+  value: string,
 ): T {
   const key = fromHex(encKey);
 

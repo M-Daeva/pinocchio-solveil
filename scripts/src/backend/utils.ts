@@ -5,7 +5,7 @@ import { Network } from "../common/interfaces";
 import { loadKeypairSignerFromFile, saveKeypairToFile } from "gill/node";
 import { KeyPairSigner } from "gill";
 
-const { ENCODING, MS_PER_SECOND } = UTILS;
+const { MS_PER_SECOND } = UTILS;
 
 export function rootPath(dir: string): string {
   return path.resolve(__dirname, "../../", dir);
@@ -51,8 +51,25 @@ export function epochToDateString(unixTimestamp: number): string {
  */
 export function dateStringToEpoch(dateString: string): number {
   const [date, time] = dateString.split(" ");
+
+  if (date === undefined || time === undefined) {
+    throw new Error(`Invalid date string format: "${dateString}"`);
+  }
+
   const [day, month, year] = date.split(".");
   const [hours, minutes, seconds] = time.split(":");
+
+  if (
+    day === undefined ||
+    month === undefined ||
+    year === undefined ||
+    hours === undefined ||
+    minutes === undefined ||
+    seconds === undefined
+  ) {
+    throw new Error(`Invalid date or time parts in: "${dateString}"`);
+  }
+
   const timestamp = new Date(
     parseInt(year),
     parseInt(month) - 1,
@@ -89,8 +106,25 @@ export function epochToDateStringUTC(unixTimestamp: number): string {
  */
 export function dateStringToEpochUTC(dateString: string): number {
   const [date, time] = dateString.split(" ");
+
+  if (date === undefined || time === undefined) {
+    throw new Error(`Invalid date string format: "${dateString}"`);
+  }
+
   const [day, month, year] = date.split(".");
   const [hours, minutes, seconds] = time.split(":");
+
+  if (
+    day === undefined ||
+    month === undefined ||
+    year === undefined ||
+    hours === undefined ||
+    minutes === undefined ||
+    seconds === undefined
+  ) {
+    throw new Error(`Invalid date or time parts in: "${dateString}"`);
+  }
+
   const timestamp = new Date(
     Date.UTC(
       parseInt(year),
@@ -148,10 +182,6 @@ export function getKeypairPath(program: ProgramName): string {
     `./target/deploy/${program.toLowerCase()}-data-account-keypair.json`,
   );
 }
-
-// export function getWallet(ownerKeypair: CryptoKeyPair): anchor.Wallet {
-//   return new anchor.Wallet(ownerKeypair);
-// }
 
 // export async function updateAddresses(
 //   keypairList: [ProgramName, CryptoKeyPair][],

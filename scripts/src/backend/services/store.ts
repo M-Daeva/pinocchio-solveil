@@ -23,6 +23,8 @@ import {
   TransactionMessageBytes,
 } from "gill";
 
+// TODO: use CLI istead of this code
+
 // BPF Loader Upgradeable program ID
 const BPF_LOADER_UPGRADEABLE_PROGRAM_ID =
   "BPFLoaderUpgradeab1e11111111111111111111111" as Address;

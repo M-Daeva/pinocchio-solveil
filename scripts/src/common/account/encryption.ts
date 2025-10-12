@@ -1,6 +1,6 @@
 import { Address, createSignableMessage, KeyPairSigner } from "gill";
-import { hkdf } from "@noble/hashes/hkdf";
-import { sha256 } from "@noble/hashes/sha2";
+import { hkdf } from "@noble/hashes/hkdf.js";
+import { sha256 } from "@noble/hashes/sha2.js";
 import { toHex } from "./converters";
 
 // Step 1: Create a deterministic message for signing
@@ -42,13 +42,14 @@ export function deriveEncryptionKey(
   // Create deterministic but unique salt per user
   const saltInput = `${CONTEXT}:salt:${publicKey.toString()}`;
   const salt = sha256(new TextEncoder().encode(saltInput));
+  const info = new TextEncoder().encode(CONTEXT);
 
   // Use HKDF for proper key derivation
   const encryptionKey = hkdf(
     sha256,
     signature, // High-entropy input from wallet signature
     salt, // Unique per user
-    CONTEXT, // Application context
+    info, // Application context
     32, // AES-256 key length
   );
 
