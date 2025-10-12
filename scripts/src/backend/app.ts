@@ -21,7 +21,7 @@ async function main() {
   // (async () => {
   //   const [sol, wsol] = await Promise.all([
   //     c.getBalance(sender.address),
-  //     c.getTokenBalance(WSOL_MINT, sender.address),
+  //     c.query.getTokenBalance(WSOL_MINT, sender.address),
   //   ]);
   //   li({ sol, wsol });
   // })();
@@ -32,7 +32,7 @@ async function main() {
   // (async () => {
   //   const [sol, wsol] = await Promise.all([
   //     c.getBalance(sender.address),
-  //     c.getTokenBalance(WSOL_MINT, sender.address),
+  //     c.query.getTokenBalance(WSOL_MINT, sender.address),
   //   ]);
   //   li({ sol, wsol });
   // })();
@@ -40,19 +40,19 @@ async function main() {
 
   // (async () => {
   //   const [from, to] = await Promise.all([
-  //     c.getTokenBalance(awsm, sender.address),
-  //     c.getTokenBalance(awsm, recipient),
+  //     c.query.getTokenBalance(awsm, sender.address),
+  //     c.query.getTokenBalance(awsm, recipient),
   //   ]);
   //   li({ from, to });
   // })();
 
   // // await c.wrapSol(1);
-  // await c.mintTokens(1, awsm, sender.address);
+  // await c.exec.mintTokens(1, awsm, sender.address);
 
   // (async () => {
   //   const [from, to] = await Promise.all([
-  //     c.getTokenBalance(awsm, sender.address),
-  //     c.getTokenBalance(awsm, recipient),
+  //     c.query.getTokenBalance(awsm, sender.address),
+  //     c.query.getTokenBalance(awsm, recipient),
   //   ]);
   //   li({ from, to });
   // })();

@@ -1,6 +1,6 @@
 import path from "path";
 import { floor, getLast } from "../common/utils";
-import { networks, ProgramName, UTILS, PATH } from "../common/config";
+import { networks, ProgramName, UTILS } from "../common/config";
 import { Network } from "../common/interfaces";
 import { loadKeypairSignerFromFile, saveKeypairToFile } from "gill/node";
 import { KeyPairSigner } from "gill";

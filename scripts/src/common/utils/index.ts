@@ -28,8 +28,6 @@ import {
   TOKEN_PROGRAM_ADDRESS,
 } from "gill/programs";
 import {
-  AccountRole,
-  address,
   Address,
   compileTransaction,
   createSolanaClient,

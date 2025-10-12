@@ -1,4 +1,4 @@
-import { gcmsiv } from "@noble/ciphers/aes";
+import { gcmsiv } from "@noble/ciphers/aes.js";
 import * as base64js from "base64-js";
 
 const ENC_KEY_LEN = 32;

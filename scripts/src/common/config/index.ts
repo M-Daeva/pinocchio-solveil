@@ -1,7 +1,7 @@
 import { address, Commitment } from "gill";
-import { NetworkConfig, ProgramAddress } from "../interfaces";
+import { NetworkConfig } from "../interfaces";
 
-export type ProgramName = "REGISTRY" | "DEX_ADAPTER";
+export type ProgramName = "REGISTRY";
 export const networks = ["LOCALNET", "DEVNET", "MAINNET"] as const;
 
 export const NETWORK_CONFIG: NetworkConfig = {
