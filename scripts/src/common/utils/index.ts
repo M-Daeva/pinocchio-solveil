@@ -381,7 +381,7 @@ async function getOptimalComputeUnits(
   transaction: any,
   config: ComputeConfig = {},
 ): Promise<number | null> {
-  const CU_MULTIPLIER = 1.1;
+  const CU_MULTIPLIER = 1.15;
   const CU_BASE = 0;
 
   try {

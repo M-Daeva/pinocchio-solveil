@@ -336,7 +336,7 @@ export class ChainHelpers {
     computeConfig: ComputeConfig = {},
     isDisplayed: boolean = false,
   ): Promise<TxResponse> {
-    const { sender } = this;
+    const { sender, client } = this;
     const signerList: CryptoKeyPair[] = [sender.keyPair];
 
     const tokenProgram = await this.tokenProgram(WSOL_MINT);
@@ -349,50 +349,67 @@ export class ChainHelpers {
     let ixs: Ix[] = [];
 
     if (amountInSol) {
-      // Unwrap specific amount: create temp account, transfer, close temp
+      // Unwrap specific amount: transfer to temp account, then close it
       const amountInLamports = amountInSol * LAMPORTS_PER_SOL;
 
-      // Create temporary WSOL account
+      // Create temporary token account
       const tempAccount = await generateKeyPairSigner();
       signerList.push(tempAccount.keyPair);
 
+      const space = 165; // Token account size
+      const rentExemption = await client.rpc
+        .getMinimumBalanceForRentExemption(BigInt(space))
+        .send();
+
       ixs = [
-        // Create temporary token account
+        // Create account
         getCreateAccountInstruction({
           payer: sender,
           newAccount: tempAccount,
-          space: spl.ACCOUNT_SIZE,
-          lamports: getMinimumBalanceForRentExemption(spl.ACCOUNT_SIZE),
+          space,
+          lamports: rentExemption,
           programAddress: tokenProgram,
         }),
-        // Initialize it as a token account
-        getInitializeAccountInstruction({
-          account: tempAccount.address,
-          mint: WSOL_MINT,
-          owner: sender.address,
-        }),
+        // Initialize token account
+        getInitializeAccountInstruction(
+          {
+            account: tempAccount.address,
+            mint: WSOL_MINT,
+            owner: sender.address,
+          },
+          { programAddress: tokenProgram },
+        ),
         // Transfer specific amount to temp account
-        getTransferInstruction({
-          authority: sender,
-          source: wsolAta,
-          destination: tempAccount.address,
-          amount: amountInLamports,
-        }),
+        getTransferInstruction(
+          {
+            authority: sender,
+            source: wsolAta,
+            destination: tempAccount.address,
+            amount: amountInLamports,
+          },
+          { programAddress: tokenProgram },
+        ),
         // Close temp account to unwrap
-        getCloseAccountInstruction({
-          account: tempAccount.address,
-          destination: sender.address,
-          owner: sender,
-        }),
+        getCloseAccountInstruction(
+          {
+            account: tempAccount.address,
+            destination: sender.address,
+            owner: sender,
+          },
+          { programAddress: tokenProgram },
+        ),
       ];
     } else {
-      // Unwrap all: just close the main account
+      // Unwrap all: just close the main ATA
       ixs = [
-        getCloseAccountInstruction({
-          account: wsolAta,
-          destination: sender.address,
-          owner: sender,
-        }),
+        getCloseAccountInstruction(
+          {
+            account: wsolAta,
+            destination: sender.address,
+            owner: sender,
+          },
+          { programAddress: tokenProgram },
+        ),
       ];
     }
 

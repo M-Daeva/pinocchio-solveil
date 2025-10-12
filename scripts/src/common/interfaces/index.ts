@@ -60,9 +60,9 @@ export type PdaResp = readonly [Address<string>, ProgramDerivedAddressBump];
 
 // Configuration for compute units and priority fees
 export interface ComputeConfig {
-  priorityFeeMultiplier?: number; // multiplier for base priority fee (default: 1.2)
+  priorityFeeMultiplier?: number; // multiplier for base priority fee (default: 1.0)
   priorityFeeBase?: number; // base fee in microlamports to add (default: 0)
-  cuMultiplier?: number; // multiplier for simulated CU usage (default: 1.2)
+  cuMultiplier?: number; // multiplier for simulated CU usage (default: 1.15)
   cuBase?: number; // base CU to add (default: 0)
   maxPriorityFee?: number; // max priority fee cap in microlamports
   minPriorityFee?: number; // min priority fee floor in microlamports

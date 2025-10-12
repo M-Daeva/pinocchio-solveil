@@ -14,14 +14,25 @@ async function main() {
   const tokenProgram = tokenProgramFactory(client.rpc);
   const c = new ChainHelpers(tokenProgram, client, sender);
 
-  await c.getBalance(sender.address, true);
-  await c.getTokenBalance(WSOL_MINT, sender.address, true);
+  // (async () => {
+  //   const [sol, wsol] = await Promise.all([
+  //     c.getBalance(sender.address),
+  //     c.getTokenBalance(WSOL_MINT, sender.address),
+  //   ]);
+  //   li({ sol, wsol });
+  // })();
 
-  await c.wrapSol(0.001);
+  // // await c.wrapSol(1);
+  // await c.unwrapSol();
 
-  await c.getBalance(sender.address, true);
-  await c.getTokenBalance(WSOL_MINT, sender.address, true);
-  return;
+  // (async () => {
+  //   const [sol, wsol] = await Promise.all([
+  //     c.getBalance(sender.address),
+  //     c.getTokenBalance(WSOL_MINT, sender.address),
+  //   ]);
+  //   li({ sol, wsol });
+  // })();
+  // return;
 
   // await h.exec.init(
   //   {
