@@ -3,7 +3,7 @@ import { PATH, REVENUE_MINT } from "../common/config";
 import { getClient, l, li, tokenProgramFactory } from "../common/utils";
 import { RegistryHelpers } from "../common/account/index2";
 import { ChainHelpers, WSOL_MINT } from "../common/account/chain";
-import { address } from "gill";
+import { address, generateKeyPairSigner } from "gill";
 
 // const addr = getAddressEncoder();
 const awsm = address("fPcP9vGoowPikgu7oTRCJKHUvSNn9N5WZhYshR4UXyo");
@@ -16,6 +16,9 @@ async function main() {
 
   const tokenProgram = tokenProgramFactory(client.rpc);
   const c = new ChainHelpers(tokenProgram, client, sender);
+
+  // const mintSigner = await generateKeyPairSigner();
+  // await c.createMint(6, mintSigner);
 
   // (async () => {
   //   const [sol, wsol] = await Promise.all([

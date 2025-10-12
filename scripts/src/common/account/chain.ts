@@ -1,62 +1,32 @@
 import { TxResponse } from "../interfaces/tx";
-// import * as spl from "@solana/spl-token";
-import {
-  DataRecord,
-  ComputeConfig,
-  ClientAny,
-  Ix,
-  RpcDev,
-  Seed,
-  PdaResp,
-  RpcAny,
-  XOR,
-} from "../interfaces";
-import { decryptDeserialize, serializeEncrypt } from "./converters";
+import { ComputeConfig, ClientAny, Ix, RpcDev, RpcAny } from "../interfaces";
 import {
   getOrCreateAtaInstructions,
-  getTimestamp,
-  tokenProgramFactory,
   handleTxFactory,
-  li,
   logAndReturn,
-  numberToRustBuffer,
-  pdaFactory,
   numberFrom,
-  l,
   getAccInfo,
 } from "../utils";
 import {
-  getInitInstruction,
-  InitInput,
-  InitInstructionDataArgs,
-} from "../schema/codama/instructions/init";
-import {
   address,
   Address,
-  getMinimumBalanceForRentExemption,
-  getPublicKeyFromAddress,
   KeyPairSigner,
   lamports,
   LAMPORTS_PER_SOL,
   Signature,
-  generateKeyPair,
   generateKeyPairSigner,
-  AccountRole,
 } from "gill";
 import {
-  ASSOCIATED_TOKEN_PROGRAM_ADDRESS,
   getAssociatedTokenAccountAddress,
-  SYSTEM_PROGRAM_ADDRESS,
-  getTransferCheckedInstruction,
   getSyncNativeInstruction,
   getTransferInstruction,
   getCloseAccountInstruction,
   getCreateAccountInstruction,
   getInitializeAccountInstruction,
-  getCreateAssociatedTokenInstruction,
-  TOKEN_PROGRAM_ADDRESS,
   getTransferSolInstruction,
   getMintToInstruction,
+  getInitializeMintInstruction,
+  // getCreateMetadataAccountV3Instruction
 } from "gill/programs";
 
 export const WSOL_MINT = address("So11111111111111111111111111111111111111112");
@@ -96,50 +66,55 @@ export class ChainHelpers {
     return logAndReturn(txResponse as TxResponse, isDisplayed);
   }
 
-  // async createMint(
-  //   mintKeypair: anchor.web3.Keypair,
-  //   decimals: number,
-  //   params: TxParams = {},
-  //   isDisplayed: boolean = false,
-  // ): Promise<anchor.web3.TransactionSignature> {
-  //   // https://solanacookbook.com/references/token.html#how-to-create-a-new-token
-  //   const rent = await spl.getMinimumBalanceForRentExemptMint(
-  //     this.provider.connection,
-  //   );
+  // TODO: add metadata
+  async createMint(
+    decimals: number,
+    mintKeypairSigner: KeyPairSigner<string>,
+    computeConfig: ComputeConfig = {},
+    isDisplayed: boolean = false,
+  ): Promise<TxResponse> {
+    const { sender, client } = this;
+    const signerList: CryptoKeyPair[] = [
+      sender.keyPair,
+      mintKeypairSigner.keyPair,
+    ];
 
-  //   const instructions: anchor.web3.TransactionInstruction[] = [
-  //     // create mint account
-  //     SystemProgram.createAccount({
-  //       fromPubkey: this.provider.wallet.publicKey,
-  //       newAccountPubkey: mintKeypair.publicKey,
-  //       space: spl.MINT_SIZE,
-  //       lamports: rent,
-  //       programId: spl.TOKEN_PROGRAM_ID,
-  //     }),
-  //     // init mint account
-  //     spl.createInitializeMintInstruction(
-  //       mintKeypair.publicKey,
-  //       decimals,
-  //       this.provider.wallet.publicKey, // mint authority
-  //       this.provider.wallet.publicKey, // freeze authority (you can use `null` to disable it. when you disable it, you can't turn it on again)
-  //     ),
-  //   ];
+    const space = 165; // Token account size
+    const rentExemption = await client.rpc
+      .getMinimumBalanceForRentExemption(BigInt(space))
+      .send();
+    const tokenProgram = await this.tokenProgram(mintKeypairSigner.address);
 
-  //   // pass the mint keypair as a signer
-  //   const updatedParams = {
-  //     ...params,
-  //     signers: [...(params.signers || []), mintKeypair],
-  //   };
+    const ixs = [
+      // create mint account
+      getCreateAccountInstruction({
+        payer: sender,
+        newAccount: mintKeypairSigner,
+        space,
+        lamports: rentExemption,
+        programAddress: tokenProgram,
+      }),
+      // init mint account
+      getInitializeMintInstruction(
+        {
+          decimals,
+          mint: mintKeypairSigner.address,
+          mintAuthority: sender.address,
+          freezeAuthority: sender.address,
+        },
+        { programAddress: tokenProgram },
+      ),
+    ];
 
-  //   return this.handleTx(instructions, updatedParams, isDisplayed);
-  // }
+    return this.handleTx(signerList, ixs, computeConfig, isDisplayed);
+  }
 
   async getOrCreateAta(
     mintPubkey: Address,
     ownerPubkey: Address,
     computeConfig: ComputeConfig = {},
     isDisplayed: boolean = false,
-  ) {
+  ): Promise<Address> {
     const signerList: CryptoKeyPair[] = [this.sender.keyPair];
 
     const tokenProgram = await this.tokenProgram(mintPubkey);
@@ -293,7 +268,6 @@ export class ChainHelpers {
 
   async getTx(signature: Signature, isDisplayed: boolean = false) {
     const tx = await this.client.rpc.getTransaction(signature).send();
-
     return logAndReturn(tx, isDisplayed);
   }
 
