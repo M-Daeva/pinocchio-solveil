@@ -4,28 +4,25 @@
   "author": "M. Daeva",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/M-Daeva/Q3_25_Builder_MDaeva/tree/main/capstone-project"
+    "url": "git+https://github.com/M-Daeva/pinocchio-solveil"
   },
   "main": "./scripts/backend/app.ts",
   "module": "./scripts/backend/app.ts",
   "bugs": {
-    "url": "https://github.com/M-Daeva/Q3_25_Builder_MDaeva/tree/main/capstone-project/issues"
+    "url": "https://github.com/M-Daeva/pinocchio-solveil/issues"
   },
   "description": "",
-  "homepage": "https://github.com/M-Daeva/Q3_25_Builder_MDaeva/tree/main/capstone-project#readme",
+  "homepage": "https://github.com/M-Daeva/pinocchio-solveil#readme",
   "keywords": [],
   "license": "BSL-1.1",
   "private": true,
   "scripts": {
     "app": "ts-node ./src/backend/app.ts",
     "store": "ts-node ./src/backend/services/store.ts",
-    "codegen": "bun run ./src/backend/services/codegen.ts",
-    "codegen2": "bun run ./src/backend/services/codegen2.ts",
+    "codegen-types": "bun run ./src/backend/services/codegen-types.ts",
+    "codegen-codecs": "bun run ./src/backend/services/codegen-codecs.ts",
     "dev": "bun run --watch scripts/backend/app.ts",
     "capture-user-account": "bun run scripts/backend/capture/user-account.ts",
-    "test-rs": "./build.sh && cd tests-rs && clear && cargo show && cd ..",
-    "test-rs-l": "cd tests-rs && clear && cargo show && cd ..",
-    "test-local": "anchor test --provider.cluster localnet",
     "initialize": "bun run scripts/backend/initialize.ts",
     "set-node-version": "volta pin node@lts"
   },
