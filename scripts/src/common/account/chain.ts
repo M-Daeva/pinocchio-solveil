@@ -1,5 +1,5 @@
 import { TxResponse } from "../interfaces/tx";
-import * as spl from "@solana/spl-token";
+// import * as spl from "@solana/spl-token";
 import {
   DataRecord,
   ComputeConfig,
@@ -56,6 +56,7 @@ import {
   getCreateAssociatedTokenInstruction,
   TOKEN_PROGRAM_ADDRESS,
   getTransferSolInstruction,
+  getMintToInstruction,
 } from "gill/programs";
 
 export const WSOL_MINT = address("So11111111111111111111111111111111111111112");
@@ -157,39 +158,44 @@ export class ChainHelpers {
     return logAndReturn(ata, isDisplayed);
   }
 
-  // async mintTokens(
-  //   amount: number,
-  //   mint: PublicKey | string,
-  //   recipient: PublicKey | string,
-  //   params: TxParams = {},
-  //   isDisplayed: boolean = false,
-  // ): Promise<anchor.web3.TransactionSignature> {
-  //   const pkMint = publicKeyFromString(mint);
-  //   const pkRecipient = publicKeyFromString(recipient);
+  async mintTokens(
+    amount: number,
+    mint: Address,
+    recipient: Address,
+    computeConfig: ComputeConfig = {},
+    isDisplayed: boolean = false,
+  ): Promise<TxResponse> {
+    const { sender, client } = this;
+    const signerList: CryptoKeyPair[] = [sender.keyPair];
 
-  //   const { ata: ataRecipient, ixs } = await getOrCreateAtaInstructions(
-  //     this.provider.connection,
-  //     this.provider.wallet.publicKey,
-  //     pkMint,
-  //     pkRecipient,
-  //     true,
-  //   );
+    const decimals = await this.getDecimals(client.rpc, mint);
+    const amountInBaseUnits = amount * 10 ** decimals;
 
-  //   const { decimals } = await spl.getMint(this.provider.connection, pkMint);
+    const tokenProgram = await this.tokenProgram(mint);
+    const { ata: ataRecipient, ixs: createAtaIxs } =
+      await getOrCreateAtaInstructions(
+        client.rpc,
+        sender,
+        mint,
+        recipient,
+        tokenProgram,
+      );
 
-  //   const instructions: anchor.web3.TransactionInstruction[] = [
-  //     ...ixs,
-  //     spl.createMintToCheckedInstruction(
-  //       pkMint,
-  //       ataRecipient,
-  //       this.provider.wallet.publicKey,
-  //       amount * 10 ** decimals,
-  //       decimals,
-  //     ),
-  //   ];
+    const ixs = [
+      ...createAtaIxs,
+      getMintToInstruction(
+        {
+          amount: amountInBaseUnits,
+          mint,
+          mintAuthority: sender,
+          token: ataRecipient,
+        },
+        { programAddress: tokenProgram },
+      ),
+    ];
 
-  //   return this.handleTx(instructions, params, isDisplayed);
-  // }
+    return this.handleTx(signerList, ixs, computeConfig, isDisplayed);
+  }
 
   async transferTokens(
     amount: number,
@@ -197,7 +203,7 @@ export class ChainHelpers {
     to: Address,
     computeConfig: ComputeConfig = {},
     isDisplayed: boolean = false,
-  ) {
+  ): Promise<TxResponse> {
     const { sender, client } = this;
     const from = sender.address;
     const signerList: CryptoKeyPair[] = [sender.keyPair];
@@ -217,14 +223,7 @@ export class ChainHelpers {
 
     if (!infoFrom || !infoTo) throw new Error("ATA aren't found!");
 
-    const { value } = await getAccInfo(client.rpc, mint);
-    const data = value?.data;
-    if (!data) throw new Error("No mint data found");
-
-    // Decode base64 data to buffer
-    const buffer = Buffer.from(data[0], "base64");
-    // Read decimals from byte offset 44
-    const decimals = buffer.readUInt8(44);
+    const decimals = await this.getDecimals(client.rpc, mint);
     const amountInBaseUnits = amount * 10 ** decimals;
 
     const ixs: Ix[] = [
@@ -420,5 +419,16 @@ export class ChainHelpers {
     }
 
     return this.handleTx(signerList, ixs, computeConfig, isDisplayed);
+  }
+
+  private async getDecimals(rpc: RpcAny, mint: Address): Promise<number> {
+    const { value } = await getAccInfo(rpc, mint);
+    const data = value?.data;
+    if (!data) throw new Error("No mint data found");
+
+    // Decode base64 data to buffer
+    const buffer = Buffer.from(data[0], "base64");
+    // Read decimals from byte offset 44
+    return buffer.readUInt8(44);
   }
 }

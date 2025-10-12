@@ -3,8 +3,11 @@ import { PATH, REVENUE_MINT } from "../common/config";
 import { getClient, l, li, tokenProgramFactory } from "../common/utils";
 import { RegistryHelpers } from "../common/account/index2";
 import { ChainHelpers, WSOL_MINT } from "../common/account/chain";
+import { address } from "gill";
 
 // const addr = getAddressEncoder();
+const awsm = address("fPcP9vGoowPikgu7oTRCJKHUvSNn9N5WZhYshR4UXyo");
+const recipient = address("4aPycKEbgz5tpFozhX3M22vdhPKumM4dpLwFXoFyR8WW");
 
 async function main() {
   const client = getClient("DEVNET");
@@ -31,6 +34,26 @@ async function main() {
   //     c.getTokenBalance(WSOL_MINT, sender.address),
   //   ]);
   //   li({ sol, wsol });
+  // })();
+  // return;
+
+  // (async () => {
+  //   const [from, to] = await Promise.all([
+  //     c.getTokenBalance(awsm, sender.address),
+  //     c.getTokenBalance(awsm, recipient),
+  //   ]);
+  //   li({ from, to });
+  // })();
+
+  // // await c.wrapSol(1);
+  // await c.mintTokens(1, awsm, sender.address);
+
+  // (async () => {
+  //   const [from, to] = await Promise.all([
+  //     c.getTokenBalance(awsm, sender.address),
+  //     c.getTokenBalance(awsm, recipient),
+  //   ]);
+  //   li({ from, to });
   // })();
   // return;
 
