@@ -23,6 +23,7 @@ import {
   pdaFactory,
   numberFrom,
   l,
+  getAccInfo,
 } from "../utils";
 import {
   getInitInstruction,
@@ -190,53 +191,58 @@ export class ChainHelpers {
   //   return this.handleTx(instructions, params, isDisplayed);
   // }
 
-  // async transferTokens(
-  //   amount: number,
-  //   mint: Address,
-  //   to: Address,
-  //   computeConfig: ComputeConfig = {},
-  //   isDisplayed: boolean = false,
-  // ) {
-  //   const from = this.sender.address;
-  //   const signerList: CryptoKeyPair[] = [this.sender.keyPair];
+  async transferTokens(
+    amount: number,
+    mint: Address,
+    to: Address,
+    computeConfig: ComputeConfig = {},
+    isDisplayed: boolean = false,
+  ) {
+    const { sender, client } = this;
+    const from = sender.address;
+    const signerList: CryptoKeyPair[] = [sender.keyPair];
 
-  //   const tokenProgram = await this.tokenProgram(mint);
-  //   const [infoFrom, infoTo] = await Promise.all(
-  //     [from, to].map((owner) =>
-  //       getOrCreateAtaInstructions(
-  //         this.client.rpc,
-  //         this.sender,
-  //         mint,
-  //         owner,
-  //         tokenProgram,
-  //       ),
-  //     ),
-  //   );
+    const tokenProgram = await this.tokenProgram(mint);
+    const [infoFrom, infoTo] = await Promise.all(
+      [from, to].map((owner) =>
+        getOrCreateAtaInstructions(
+          client.rpc,
+          sender,
+          mint,
+          owner,
+          tokenProgram,
+        ),
+      ),
+    );
 
-  //   if (!infoFrom || !infoTo) throw new Error("ATA aren't found!");
+    if (!infoFrom || !infoTo) throw new Error("ATA aren't found!");
 
-  //   const { value } = await getAccInfo(mint).send();
-  //   const data = value?.data;
+    const { value } = await getAccInfo(client.rpc, mint);
+    const data = value?.data;
+    if (!data) throw new Error("No mint data found");
 
-  //   if (!data) throw new Error("");
+    // Decode base64 data to buffer
+    const buffer = Buffer.from(data[0], "base64");
+    // Read decimals from byte offset 44
+    const decimals = buffer.readUInt8(44);
+    const amountInBaseUnits = amount * 10 ** decimals;
 
-  //   const { decimals } = spl.unpackMint(mint as any, data);
+    const ixs: Ix[] = [
+      ...infoFrom.ixs,
+      ...infoTo.ixs,
+      getTransferInstruction(
+        {
+          authority: sender,
+          source: infoFrom.ata,
+          destination: infoTo.ata,
+          amount: amountInBaseUnits,
+        },
+        { programAddress: tokenProgram },
+      ),
+    ];
 
-  //   const ixs: Ix[] = [
-  //     ...infoFrom.ixs,
-  //     ...infoTo.ixs,
-  //     getTransferCheckedInstruction({
-  //       source: infoFrom.ata,
-  //       mint,
-  //       destination: infoTo.ata,
-  //       authority: this.sender,
-  //       amount: amount * 10 ** decimals,
-  //       decimals,
-  //     }),
-  //   ];
-
-  //   return this.handleTx(signerList, ixs, computeConfig, isDisplayed);
-  // }
+    return this.handleTx(signerList, ixs, computeConfig, isDisplayed);
+  }
 
   async getBalance(
     publicKey: Address,
