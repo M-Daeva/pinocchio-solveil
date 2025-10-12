@@ -12,10 +12,8 @@ const recipient = address("4aPycKEbgz5tpFozhX3M22vdhPKumM4dpLwFXoFyR8WW");
 async function main() {
   const client = getClient("DEVNET");
   const sender = await readKeypairSigner(PATH.OWNER_KEYPAIR);
-  const h = new RegistryHelpers(client, sender);
-
-  const tokenProgram = tokenProgramFactory(client.rpc);
-  const c = new ChainHelpers(tokenProgram, client, sender);
+  const r = new RegistryHelpers(client, sender);
+  const c = new ChainHelpers(client, sender);
 
   // const mintSigner = await generateKeyPairSigner();
   // await c.createMint(6, mintSigner);
@@ -60,7 +58,7 @@ async function main() {
   // })();
   // return;
 
-  // await h.exec.init(
+  // await r.exec.init(
   //   {
   //     rotationTimeout: 48 * 3_600,
   //     accountRegistrationFee: {
@@ -86,16 +84,16 @@ async function main() {
   // l({ targetEnum: new TEnum(Target, targetNumber).get() });
   //
 
-  await h.query.config(true);
-  await h.query.userCounter(true);
-  await h.query.adminRotationState(true);
-  await h.query.revenue(true);
-  // await h.exec.updateConfig(
+  await r.query.config(true);
+  await r.query.userCounter(true);
+  await r.query.adminRotationState(true);
+  await r.query.revenue(true);
+  // await r.exec.updateConfig(
   //   { rotationTimeout: 24 * 3_600, isPaused: true },
   //   {},
   //   true,
   // );
-  // await h.query.config(true);
+  // await r.query.config(true);
 }
 
 main();

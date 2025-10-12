@@ -6,6 +6,7 @@ import {
   logAndReturn,
   numberFrom,
   getAccInfo,
+  tokenProgramFactory,
 } from "../utils";
 import {
   address,
@@ -32,6 +33,82 @@ import {
 export const WSOL_MINT = address("So11111111111111111111111111111111111111112");
 
 export class ChainHelpers {
+  query: ChainQuery;
+  exec: ChainExec;
+
+  constructor(client: ClientAny, sender: KeyPairSigner) {
+    const tokenProgram = tokenProgramFactory(client.rpc);
+    this.query = new ChainQuery(tokenProgram, client.rpc);
+    this.exec = new ChainExec(tokenProgram, this.query, sender, client);
+  }
+}
+
+export class ChainQuery {
+  constructor(
+    private tokenProgram: (mint: Address) => Promise<Address>,
+    private rpc: RpcAny,
+  ) {}
+
+  async getBalance(
+    address: Address,
+    isDisplayed: boolean = false,
+  ): Promise<number> {
+    const { value } = await this.rpc.getBalance(address).send();
+    const res = numberFrom(value.toString())
+      .div(LAMPORTS_PER_SOL)
+      .toDecimalPlaces(9)
+      .toNumber();
+
+    return logAndReturn(res, isDisplayed);
+  }
+
+  async getAtaTokenBalance(rpc: RpcAny, ownerAta: Address): Promise<number> {
+    let uiAmountString: string = "0";
+
+    try {
+      ({
+        value: { uiAmountString },
+      } = await rpc.getTokenAccountBalance(ownerAta).send());
+    } catch (_) {}
+
+    return Number(uiAmountString);
+  }
+
+  async getTokenBalance(
+    mint: Address,
+    owner: Address,
+    isDisplayed: boolean = false,
+  ): Promise<number> {
+    const tokenProgram = await this.tokenProgram(mint);
+    const ata = await getAssociatedTokenAccountAddress(
+      mint,
+      owner,
+      tokenProgram,
+    );
+
+    const uiAmount = await this.getAtaTokenBalance(this.rpc, ata);
+
+    return logAndReturn(uiAmount, isDisplayed);
+  }
+
+  async getTx(signature: Signature, isDisplayed: boolean = false) {
+    const tx = await this.rpc.getTransaction(signature).send();
+    return logAndReturn(tx, isDisplayed);
+  }
+
+  async getDecimals(mint: Address): Promise<number> {
+    const { value } = await getAccInfo(this.rpc, mint);
+    const data = value?.data;
+    if (!data) throw new Error("No mint data found");
+
+    // Decode base64 data to buffer
+    const buffer = Buffer.from(data[0], "base64");
+    // Read decimals from byte offset 44
+    return buffer.readUInt8(44);
+  }
+}
+
+export class ChainExec {
   private handleTx: (
     signerList: CryptoKeyPair[],
     instructions: Ix[],
@@ -41,8 +118,9 @@ export class ChainHelpers {
 
   constructor(
     private tokenProgram: (mint: Address) => Promise<Address>,
-    private client: ClientAny,
+    private query: ChainQuery,
     private sender: KeyPairSigner,
+    private client: ClientAny,
   ) {
     this.handleTx = handleTxFactory(client, sender);
   }
@@ -140,10 +218,10 @@ export class ChainHelpers {
     computeConfig: ComputeConfig = {},
     isDisplayed: boolean = false,
   ): Promise<TxResponse> {
-    const { sender, client } = this;
+    const { sender, client, query } = this;
     const signerList: CryptoKeyPair[] = [sender.keyPair];
 
-    const decimals = await this.getDecimals(client.rpc, mint);
+    const decimals = await query.getDecimals(mint);
     const amountInBaseUnits = amount * 10 ** decimals;
 
     const tokenProgram = await this.tokenProgram(mint);
@@ -179,7 +257,7 @@ export class ChainHelpers {
     computeConfig: ComputeConfig = {},
     isDisplayed: boolean = false,
   ): Promise<TxResponse> {
-    const { sender, client } = this;
+    const { sender, client, query } = this;
     const from = sender.address;
     const signerList: CryptoKeyPair[] = [sender.keyPair];
 
@@ -198,7 +276,7 @@ export class ChainHelpers {
 
     if (!infoFrom || !infoTo) throw new Error("ATA aren't found!");
 
-    const decimals = await this.getDecimals(client.rpc, mint);
+    const decimals = await query.getDecimals(mint);
     const amountInBaseUnits = amount * 10 ** decimals;
 
     const ixs: Ix[] = [
@@ -216,59 +294,6 @@ export class ChainHelpers {
     ];
 
     return this.handleTx(signerList, ixs, computeConfig, isDisplayed);
-  }
-
-  async getBalance(
-    publicKey: Address,
-    isDisplayed: boolean = false,
-  ): Promise<number> {
-    const { value } = await this.client.rpc.getBalance(publicKey).send();
-    const res = numberFrom(value.toString())
-      .div(LAMPORTS_PER_SOL)
-      .toDecimalPlaces(9)
-      .toNumber();
-
-    return logAndReturn(res, isDisplayed);
-  }
-
-  static async getAtaTokenBalance(
-    rpc: RpcAny,
-    ownerAta: Address,
-  ): Promise<number> {
-    let uiAmountString: string = "0";
-
-    try {
-      ({
-        value: { uiAmountString },
-      } = await rpc.getTokenAccountBalance(ownerAta).send());
-    } catch (_) {}
-
-    return Number(uiAmountString);
-  }
-
-  async getTokenBalance(
-    mint: Address,
-    owner: Address,
-    isDisplayed: boolean = false,
-  ): Promise<number> {
-    const tokenProgram = await this.tokenProgram(mint);
-    const ata = await getAssociatedTokenAccountAddress(
-      mint,
-      owner,
-      tokenProgram,
-    );
-
-    const uiAmount = await ChainHelpers.getAtaTokenBalance(
-      this.client.rpc,
-      ata,
-    );
-
-    return logAndReturn(uiAmount, isDisplayed);
-  }
-
-  async getTx(signature: Signature, isDisplayed: boolean = false) {
-    const tx = await this.client.rpc.getTransaction(signature).send();
-    return logAndReturn(tx, isDisplayed);
   }
 
   async wrapSol(
@@ -393,16 +418,5 @@ export class ChainHelpers {
     }
 
     return this.handleTx(signerList, ixs, computeConfig, isDisplayed);
-  }
-
-  private async getDecimals(rpc: RpcAny, mint: Address): Promise<number> {
-    const { value } = await getAccInfo(rpc, mint);
-    const data = value?.data;
-    if (!data) throw new Error("No mint data found");
-
-    // Decode base64 data to buffer
-    const buffer = Buffer.from(data[0], "base64");
-    // Read decimals from byte offset 44
-    return buffer.readUInt8(44);
   }
 }

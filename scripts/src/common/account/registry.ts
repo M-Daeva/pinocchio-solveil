@@ -102,7 +102,7 @@ import {
   IUserCounter,
   IUserId,
 } from "../schema/codegen/registry-cpi/accounts";
-import { ChainHelpers } from "./chain";
+import { ChainHelpers, ChainQuery } from "./chain";
 
 export class RegistryHelpers {
   programId: Address;
@@ -364,7 +364,10 @@ class RegistryQuery {
       tokenProgram,
     );
 
-    const res = await ChainHelpers.getAtaTokenBalance(rpc, ata);
+    const res = await new ChainQuery(this.tokenProgram, rpc).getAtaTokenBalance(
+      rpc,
+      ata,
+    );
     return logAndReturn(res, isDisplayed);
   }
 }
